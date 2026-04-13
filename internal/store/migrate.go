@@ -11,6 +11,8 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
+const targetSchemaVersion = 2
+
 func currentVersion(db *sql.DB) (int, error) {
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'schema_meta'`).Scan(&n); err != nil {
@@ -28,25 +30,42 @@ func currentVersion(db *sql.DB) (int, error) {
 }
 
 func migrate(db *sql.DB) error {
-	v, err := currentVersion(db)
-	if err != nil {
-		return err
+	for {
+		v, err := currentVersion(db)
+		if err != nil {
+			return err
+		}
+		if v >= targetSchemaVersion {
+			return nil
+		}
+		switch {
+		case v < 1:
+			if err := applyMigration(db, "migrations/001_initial.sql", 1); err != nil {
+				return fmt.Errorf("migration 001: %w", err)
+			}
+		case v < 2:
+			if err := applyMigration(db, "migrations/002_collections.sql", 2); err != nil {
+				return fmt.Errorf("migration 002: %w", err)
+			}
+		default:
+			return fmt.Errorf("store migrate: unsupported schema version %d (target %d)", v, targetSchemaVersion)
+		}
 	}
-	if v >= 1 {
-		return nil
-	}
-	body, err := migrationFS.ReadFile("migrations/001_initial.sql")
+}
+
+func applyMigration(db *sql.DB, relPath string, newVersion int) error {
+	body, err := migrationFS.ReadFile(relPath)
 	if err != nil {
 		return err
 	}
 	if err := execStatements(db, string(body)); err != nil {
-		return fmt.Errorf("migration 001: %w", err)
+		return fmt.Errorf("exec %s: %w", relPath, err)
 	}
 	if _, err := db.Exec(`
-INSERT INTO schema_meta (singleton, version) VALUES (1, 1)
+INSERT INTO schema_meta (singleton, version) VALUES (1, ?)
 ON CONFLICT(singleton) DO UPDATE SET version = excluded.version
-`); err != nil {
-		return fmt.Errorf("schema_meta version: %w", err)
+`, newVersion); err != nil {
+		return fmt.Errorf("schema_meta version %d: %w", newVersion, err)
 	}
 	return nil
 }

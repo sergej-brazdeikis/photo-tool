@@ -1,37 +1,37 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
+	"os"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/widget"
+	fyneapp "fyne.io/fyne/v2/app"
 
+	ptapp "photo-tool/internal/app"
 	"photo-tool/internal/config"
 	"photo-tool/internal/store"
 )
 
 func main() {
-	msg := bootstrapMessage()
-	a := app.New()
-	w := a.NewWindow("Photo Tool")
-	w.SetContent(widget.NewLabel(msg))
-	w.Resize(fyne.NewSize(520, 140))
-	w.ShowAndRun()
-}
-
-func bootstrapMessage() string {
 	root, err := config.ResolveLibraryRoot()
 	if err != nil {
-		return fmt.Sprintf("Library root: error\n%v", err)
+		slog.Error("library root", "err", err)
+		os.Exit(1)
 	}
 	if err := config.EnsureLibraryLayout(root); err != nil {
-		return fmt.Sprintf("Library layout: %v", err)
+		slog.Error("library layout", "err", err)
+		os.Exit(1)
 	}
 	db, err := store.Open(root)
 	if err != nil {
-		return fmt.Sprintf("Library: %s\nDatabase: %v", root, err)
+		slog.Error("open store", "path", root, "err", err)
+		os.Exit(1)
 	}
-	_ = db.Close()
-	return fmt.Sprintf("Library ready\n%s", root)
+	defer func() { _ = db.Close() }()
+
+	a := fyneapp.New()
+	w := a.NewWindow("Photo Tool")
+	w.SetContent(ptapp.NewUploadView(w, db, root))
+	w.Resize(fyne.NewSize(640, 520))
+	w.ShowAndRun()
 }

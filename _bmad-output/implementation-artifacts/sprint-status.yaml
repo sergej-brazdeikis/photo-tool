@@ -1,0 +1,20 @@
+# Sprint tracking for BMAD create-story / dev-story auto-discover.
+# Story state machine: backlog → ready-for-dev → in-progress → review → done
+# See .claude/skills/bmad-sprint-planning/workflow.md
+
+generated: "2026-04-13"
+last_updated: "2026-04-13"
+project: photo-tool
+project_key: photo-tool
+tracking_system: file
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-1-library-foundation: done
+  1-2-capture-time-hash: in-progress
+  1-3-core-ingest: in-progress
+  1-4-collections-schema: in-progress
+  1-5-upload-confirm-receipt: in-progress
+  epic-1-retrospective: done
+  epic-2: backlog

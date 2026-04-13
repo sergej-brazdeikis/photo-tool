@@ -12,7 +12,7 @@ import (
 func SumHex(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open: %w", err)
 	}
 	defer f.Close()
 	return ReaderHex(f)

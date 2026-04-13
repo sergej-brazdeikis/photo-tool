@@ -1,4 +1,4 @@
-.PHONY: all build run test tidy clean fmt vet
+.PHONY: all build run test tidy clean fmt vet gate
 
 BIN_DIR := bin
 BINARY := $(BIN_DIR)/photo-tool
@@ -23,6 +23,10 @@ fmt:
 
 vet:
 	go vet ./...
+
+# Full module gate (tidy, fmt, verify, vet, test, build; optional staticcheck / golangci-lint). See script header.
+gate:
+	./scripts/bmad-story-workflow.sh --phase=gate
 
 clean:
 	rm -rf $(BIN_DIR)
