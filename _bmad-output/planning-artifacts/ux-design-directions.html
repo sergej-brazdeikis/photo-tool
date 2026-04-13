@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photo Tool — UX design directions</title>
+  <style>
+    :root {
+      --page-bg: #0f1218;
+      --card-bg: #161b24;
+      --text: #e8eaef;
+      --muted: #8b93a7;
+      --accent: #5b8cff;
+      --border: #2a3142;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px 20px 64px;
+    }
+    header {
+      max-width: 1200px;
+      margin: 0 auto 28px;
+    }
+    h1 { font-size: 1.5rem; font-weight: 650; margin: 0 0 8px; }
+    header p { margin: 0; color: var(--muted); max-width: 72ch; }
+    .grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+    .dir {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      background: var(--card-bg);
+    }
+    .dir h2 {
+      margin: 0 0 4px;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #2a3142;
+      color: var(--muted);
+    }
+    .chosen-pill {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #1e3a5f;
+      color: #93c5fd;
+      border: 1px solid #3b82f6;
+    }
+    .dir.selected {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+    .dir .tagline { margin: 0 0 12px; font-size: 0.85rem; color: var(--muted); }
+    .mock {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      min-height: 200px;
+      position: relative;
+    }
+    .mock:hover { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .mock .bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+    .mock .filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; font-size: 10px; }
+    .chip { padding: 4px 8px; border-radius: 6px; border: 1px solid; }
+    .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; }
+    .thumb {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      padding: 4px;
+      font-size: 9px;
+    }
+    .stars { opacity: 0.9; }
+    footer {
+      max-width: 1200px;
+      margin: 32px auto 0;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer ul { margin: 8px 0 0; padding-left: 1.2rem; }
+    /* Direction themes */
+    .d1 { --m-bg: #1a1f2e; --m-bar: #222838; --m-t1: #3d4558; --m-t2: #4a5568; --m-accent: #5b8cff; --m-warn: #e7a23d; --m-bad: #e05d5d; }
+    .d2 { --m-bg: #f4f5f8; --m-bar: #ffffff; --m-t1: #dde1ea; --m-t2: #cfd6e3; --m-accent: #2563eb; --m-warn: #d97706; --m-bad: #dc2626; color: #111827; }
+    .d2 .dir .tagline, .d2 h2 { color: #111827; }
+    .d3 { --m-bg: #0a0a0a; --m-bar: #141414; --m-t1: #2a2a2a; --m-t2: #333; --m-accent: #fbbf24; --m-warn: #f97316; --m-bad: #ef4444; }
+    .d4 { --m-bg: #1e293b; --m-bar: #0f172a; --m-t1: #334155; --m-t2: #475569; --m-accent: #38bdf8; --m-warn: #facc15; --m-bad: #fb7185; }
+    .d5 { --m-bg: #25232a; --m-bar: #312e38; --m-t1: #4a4658; --m-t2: #5c5669; --m-accent: #a78bfa; --m-warn: #fbbf24; --m-bad: #f87171; }
+    .d6 { --m-bg: #eef2f6; --m-bar: #e2e8f0; --m-t1: #cbd5e1; --m-t2: #94a3b8; --m-accent: #0d9488; --m-warn: #ca8a04; --m-bad: #b91c1c; color: #0f172a; }
+    .d6 .dir .tagline, .d6 h2 { color: #0f172a; }
+    .mock.d1, .mock.d2, .mock.d3, .mock.d4, .mock.d5, .mock.d6 {
+      background: var(--m-bg);
+    }
+    .mock.d1 .bar, .mock.d2 .bar, .mock.d3 .bar, .mock.d4 .bar, .mock.d5 .bar, .mock.d6 .bar {
+      background: var(--m-bar);
+      border-bottom: 1px solid rgba(0,0,0,0.15);
+    }
+    .mock.d2 .bar, .mock.d6 .bar { border-bottom-color: rgba(0,0,0,0.08); }
+    .mock.d1 .chip { border-color: var(--m-t2); color: var(--muted); }
+    .mock.d2 .chip { border-color: #94a3b8; color: #475569; }
+    .mock.d3 .chip { border-color: #444; color: #a3a3a3; }
+    .mock.d4 .chip { border-color: #475569; color: #cbd5e1; }
+    .mock.d5 .chip { border-color: #5c5669; color: #d4d0dd; }
+    .mock.d6 .chip { border-color: #94a3b8; color: #334155; }
+    .t-a { background: linear-gradient(135deg, var(--m-t1), var(--m-t2)); }
+    .t-sel { box-shadow: 0 0 0 2px var(--m-accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Photo Tool — design direction explorations</h1>
+    <p>
+      <strong>Non-production showcase only.</strong> The real app UI is <strong>Fyne</strong> (Go); this HTML file exists solely to compare palette/density ideas in a browser before you map choices into a <code>fyne.Theme</code> and tokens. It is not a UI stack decision for the desktop client.
+      Six static wireframes for <strong>bulk review</strong> (filters + thumbnail grid). Open in a browser, pick a direction (or combine traits), then record the choice in <code>ux-design-specification.md</code> (Design Direction Decision).
+      <br /><strong style="color:#93c5fd">Locked for product:</strong> Direction 1 <strong>Dark DAM default</strong> + full <strong>light/white</strong> Fyne theme (documented in the spec).
+    </p>
+  </header>
+
+  <div class="grid">
+    <section class="dir d1 selected">
+      <h2><span class="badge">1</span> Dark DAM default <span class="chosen-pill">CHOSEN</span></h2>
+      <p class="tagline">High-contrast dark surfaces, blue primary—closest to “pro workstation” / Lightroom night. Ship with a matched <strong>light/white</strong> theme (same roles, Fyne).</p>
+      <div class="mock d1" title="Hover: focus ring demo">
+        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review · <span style="opacity:.7">⌨ 1–5</span></div>
+        <div class="filters">
+          <span class="chip">Collection ▾</span>
+          <span class="chip">Min rating ▾</span>
+          <span class="chip">Tags ▾</span>
+          <span class="chip" style="border-color:var(--m-warn);color:var(--m-warn)">Reject ✕</span>
+        </div>
+        <div class="thumbs">
+          <div class="thumb t-a t-sel"><span class="stars" style="color:var(--m-accent)">★★★★☆</span></div>
+          <div class="thumb t-a"><span class="stars" style="color:#888">☆☆☆☆☆</span></div>
+          <div class="thumb t-a"><span style="color:var(--m-warn)">R</span></div>
+          <div class="thumb t-a"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dir d2">
+      <h2><span class="badge">2</span> Light clinical</h2>
+      <p class="tagline">Bright neutral, airy spacing—calm “Apple-adjacent” clarity for long sessions in daylight.</p>
+      <div class="mock d2">
+        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review</div>
+        <div class="filters">
+          <span class="chip">Collection ▾</span>
+          <span class="chip">Min rating ▾</span>
+          <span class="chip">Tags ▾</span>
+        </div>
+        <div class="thumbs" style="gap:10px">
+          <div class="thumb t-a t-sel"><span class="stars" style="color:var(--m-accent)">★★★★★</span></div>
+          <div class="thumb t-a"></div>
+          <div class="thumb t-a"></div>
+          <div class="thumb t-a"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dir d3">
+      <h2><span class="badge">3</span> OLED contrast</h2>
+      <p class="tagline">Near-black canvas, amber primary—maximum separation for stars vs reject (gold vs orange).</p>
+      <div class="mock d3">
+        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review</div>
+        <div class="filters">
+          <span class="chip">Filters</span>
+          <span class="chip" style="border-color:var(--m-warn)">Reject</span>
+        </div>
+        <div class="thumbs">
+          <div class="thumb t-a t-sel"><span style="color:var(--m-accent)">★★★</span></div>
+          <div class="thumb t-a"></div>
+          <div class="thumb t-a"><span style="color:var(--m-bad)">Del</span></div>
+          <div class="thumb t-a"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dir d4">
+      <h2><span class="badge">4</span> Cool slate toolbar</h2>
+      <p class="tagline">Strong top bar, cyan accent—navigation weight reads “IDE / tool” not “gallery app.”</p>
+      <div class="mock d4">
+        <div class="bar" style="justify-content:space-between">
+          <span><strong style="color:var(--m-accent)">Photo Tool</strong></span>
+          <span style="opacity:.85">Upload · Review · Collections</span>
+        </div>
+        <div class="filters">
+          <span class="chip">Collection ▾</span>
+          <span class="chip">Min rating ▾</span>
+          <span class="chip">Tags ▾</span>
+        </div>
+        <div class="thumbs">
+          <div class="thumb t-a"></div>
+          <div class="thumb t-a t-sel"></div>
+          <div class="thumb t-a"></div>
+          <div class="thumb t-a"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dir d5">
+      <h2><span class="badge">5</span> Soft violet dense</h2>
+      <p class="tagline">Tighter grid, purple accent—higher information density for power culling.</p>
+      <div class="mock d5">
+        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review <span style="margin-left:auto;opacity:.7">240 selected</span></div>
+        <div class="filters" style="padding:4px 8px">
+          <span class="chip" style="padding:2px 6px;font-size:9px">Collection ▾</span>
+          <span class="chip" style="padding:2px 6px;font-size:9px">Rating ▾</span>
+          <span class="chip" style="padding:2px 6px;font-size:9px">Tags ▾</span>
+        </div>
+        <div class="thumbs" style="grid-template-columns:repeat(6,1fr);gap:4px;padding:6px">
+          <div class="thumb t-a" style="padding:2px"></div>
+          <div class="thumb t-a" style="padding:2px"></div>
+          <div class="thumb t-a t-sel" style="padding:2px"></div>
+          <div class="thumb t-a" style="padding:2px"></div>
+          <div class="thumb t-a" style="padding:2px"></div>
+          <div class="thumb t-a" style="padding:2px"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dir d6">
+      <h2><span class="badge">6</span> Teal minimal share-adjacent</h2>
+      <p class="tagline">Light gray chrome, teal primary—closest to a neutral “reader” that could extend to share pages.</p>
+      <div class="mock d6">
+        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Shared link preview <span style="opacity:.6">(read-only)</span></div>
+        <div class="thumbs" style="grid-template-columns:1fr 2fr;gap:8px">
+          <div class="thumb t-a" style="grid-column:span 2;aspect-ratio:21/9;min-height:100px"></div>
+          <div class="thumb t-a"></div>
+          <div class="thumb t-a t-sel" style="display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--m-accent)">Prev / Next</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <strong>How to choose</strong>
+    <ul>
+      <li><strong>Layout intuitiveness</strong> — Does the filter strip + grid match your mental model?</li>
+      <li><strong>Density</strong> — Direction 5 is dense; 2 and 6 are airier.</li>
+      <li><strong>Reject vs delete vs stars</strong> — Direction 3 emphasizes separation; verify against your spec.</li>
+      <li><strong>Brand</strong> — None of these are final hex; they are <em>directions</em> to map into Fyne theme tokens.</li>
+    </ul>
+    <p style="margin-top:16px">File (exploration only, not shipped UI): <code>_bmad-output/planning-artifacts/ux-design-directions.html</code> · Implement in <strong>Fyne</strong>.</p>
+  </footer>
+</body>
+</html>
