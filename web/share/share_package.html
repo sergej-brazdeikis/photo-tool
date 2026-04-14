@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{.PageTitle}}</title>
+	<style>{{.InlineCSS}}</style>
+</head>
+<body>
+	{{/* WCAG: focus order — skip link, package heading, then each grid link in minted order. */}}
+	<a class="skip-link" href="#share-main">Skip to main content</a>
+	<main id="share-main" class="shell" tabindex="-1">
+		<h1 class="package-title">{{.Heading}}</h1>
+		<p class="package-meta">{{.Summary}}</p>
+		<ul class="package-grid" role="list">
+			{{range .Items}}
+			<li role="listitem">
+				<a href="{{.ImagePath}}">
+					<div class="thumb-frame">
+						<img src="{{.ImagePath}}" alt="{{.Alt}}" width="140" height="140" loading="lazy">
+					</div>
+					<span class="thumb-caption">{{.Caption}}</span>
+				</a>
+			</li>
+			{{end}}
+		</ul>
+	</main>
+</body>
+</html>

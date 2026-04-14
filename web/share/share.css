@@ -1,0 +1,176 @@
+/* Story 3.3: read-only share page layout (letterbox + rating strip). */
+/* Story 3.4: skip link, focus-visible, reflow, reduced motion (WCAG A / UX-DR11–12). */
+* {
+	box-sizing: border-box;
+}
+html, body {
+	margin: 0;
+	height: 100%;
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+	background: #111;
+	color: #eee;
+}
+/* First focusable control: bypass block (WCAG 2.4.1). */
+.skip-link {
+	position: absolute;
+	left: -9999px;
+	top: auto;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	z-index: 1000;
+}
+/* Show on focus; collapse back when focus is not keyboard-visible (AC2). Legacy: no :focus-visible → reset rule may not match; keyboard still gets visible skip link. */
+.skip-link:focus {
+	position: fixed;
+	left: 0.5rem;
+	top: 0.5rem;
+	width: auto;
+	height: auto;
+	overflow: visible;
+	padding: 0.5rem 0.75rem;
+	background: #1a1a1a;
+	color: #fff;
+	text-decoration: none;
+	border-radius: 4px;
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px #111;
+}
+.skip-link:focus:not(:focus-visible) {
+	position: absolute;
+	left: -9999px;
+	top: auto;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	padding: 0;
+	background: transparent;
+	color: inherit;
+	text-decoration: none;
+	border-radius: 0;
+	box-shadow: none;
+}
+.shell :focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+}
+.shell {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	padding: 0.5rem;
+}
+.stage {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.25rem;
+}
+.photo-frame {
+	width: 100%;
+	max-width: 100%;
+	height: min(90vh, calc(100vh - 5.5rem));
+	max-height: 90vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.photo-frame img {
+	max-width: 100%;
+	max-height: 100%;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	vertical-align: middle;
+}
+.rating-strip {
+	flex: 0 0 auto;
+	margin-top: 0.5rem;
+	padding: 0.5rem 0.75rem;
+	background: #1a1a1a;
+	border-radius: 6px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 0.75rem;
+	max-width: 100%;
+	min-width: 0;
+}
+.stars {
+	font-size: 1.15rem;
+	letter-spacing: 0.05em;
+	line-height: 1.2;
+}
+.star {
+	color: #666;
+}
+.star.filled {
+	color: #e6c200;
+}
+.rating-label {
+	font-size: 0.95rem;
+	color: #ccc;
+	overflow-wrap: anywhere;
+}
+
+/* Story 4.1: package gallery — focus order follows DOM (skip link → title → each thumbnail link). */
+.package-title {
+	font-size: 1.1rem;
+	font-weight: 600;
+	margin: 0 0 0.25rem 0;
+}
+.package-meta {
+	font-size: 0.9rem;
+	color: #bbb;
+	margin: 0 0 0.75rem 0;
+}
+.package-grid {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 0.75rem;
+	max-width: 100%;
+}
+.package-grid a {
+	display: block;
+	text-decoration: none;
+	color: inherit;
+}
+.package-grid .thumb-frame {
+	background: #1a1a1a;
+	border-radius: 6px;
+	overflow: hidden;
+	aspect-ratio: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.package-grid img {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+	vertical-align: middle;
+}
+.package-grid .thumb-caption {
+	display: block;
+	font-size: 0.75rem;
+	color: #aaa;
+	margin-top: 0.25rem;
+	overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.shell *,
+	.shell *::before,
+	.shell *::after {
+		animation: none !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition: none !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

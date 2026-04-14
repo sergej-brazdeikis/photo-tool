@@ -263,6 +263,7 @@ So that **I can reconcile large archives safely**.
 - **Given** `--dry-run=true`, **when** scan runs, **then** **no** files are copied and **no** DB writes occur, but the summary counts are emitted (FR-27).
 - **Given** scan completes, **when** output is printed, **then** **`OperationSummary`** categories match the GUI ingest receipt semantics (NFR-04).
 - **And** a 10,000-file dry-run does not grow memory unbounded (NFR-02) — verified by streaming walk test or benchmark note in code comments.
+- **And** the process exits with **non-zero status** when any per-file failures were recorded, **after** printing the summary.
 
 **Implements:** FR-27; NFR-02, NFR-04.
 
@@ -276,11 +277,15 @@ So that **the DB matches disk after manual operations**.
 
 **Acceptance criteria:**
 
-- **Given** a configured uploads/import path, **when** import runs, **then** files not in DB are registered per PRD FR-28 rules; missing EXIF backfill applies where specified.
-- **Given** `--dry-run`, **when** import runs, **then** only summary output is produced (FR-28).
-- **Given** import completes, **when** CLI prints results, **then** summary categories align with GUI (NFR-04).
+- **Given** an import root **under** `libraryRoot` (after symlink resolution; no “path under library” tricks), **when** import runs without `--dry-run`, **then** supported images missing from the DB by **content hash** are **registered in place** (no copy): `rel_path` relative to library, capture time and hash consistent with scan/upload (FR-28, NFR-03).
+- **Given** a file whose hash already exists on **another** `rel_path` in the DB, **when** import processes a second path with the same bytes, **then** the outcome is **skipped duplicate** (NFR-03).
+- **Given** `--dry-run`, **when** import runs, **then** no `INSERT`/`UPDATE`/`DELETE` on `assets`, no file copies/moves under the library tree, and only summary output is produced (FR-28).
+- **Given** backfill rules in implementation (same hash and `rel_path`, stale `capture_time_unix`), **when** import runs, **then** metadata is updated and **updated** count reflects it where applicable (NFR-04).
+- **Given** import completes, **when** CLI prints results, **then** **`OperationSummary`** categories match **scan** / GUI: **added**, **skipped duplicate**, **updated**, **failed** (NFR-04).
+- **And** large trees use the same **streaming walk** discipline as scan (NFR-02).
+- **And** the process exits with **non-zero status** when any per-file failures were recorded, **after** printing the summary — **same rule as `scan`** so scripts and CI can detect partial failure.
 
-**Implements:** FR-28; NFR-04.
+**Implements:** FR-28; NFR-02, NFR-03, NFR-04.
 
 ---
 

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Shared photo</title>
+	<style>{{.InlineCSS}}</style>
+</head>
+<body>
+	<a class="skip-link" href="#share-main">Skip to main content</a>
+	<main id="share-main" class="shell" tabindex="-1">
+		<div class="stage">
+			<div class="photo-frame">
+				<img src="{{.ImagePath}}" alt="Shared photo">
+			</div>
+		</div>
+		<div class="rating-strip" role="group" aria-labelledby="share-rating-summary">
+			<span class="stars" aria-hidden="true">{{.StarsHTML}}</span>
+			<span class="rating-label" id="share-rating-summary">{{.RatingLabel}}</span>
+		</div>
+	</main>
+</body>
+</html>

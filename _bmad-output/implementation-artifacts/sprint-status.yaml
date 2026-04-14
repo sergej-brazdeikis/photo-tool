@@ -1,9 +1,85 @@
 # Sprint tracking for BMAD create-story / dev-story auto-discover.
 # Story state machine: backlog → ready-for-dev → in-progress → review → done
 # See .claude/skills/bmad-sprint-planning/workflow.md
+# 2026-04-13: Party mode create session 1 for 2-5 — story AC/tasks/risks hardened (implementation unchanged).
+# 2026-04-13: Party mode create session 2/2 for 2-5 — FK/NOCASE/stale-id/UX stress test; DoD + tasks extended (implementation unchanged).
+# 2026-04-13: Story 2-5 dev-story complete — status review.
+# 2026-04-13: Party mode dev session 1/2 (2-5) — tag error UX dialogs; status → done.
+# 2026-04-13: Party mode dev session 2/2 (2-5) — chunk partial-apply UX, tag strip sync hint, store tests (no status change).
+# 2026-04-13: create-story workflow — Story 2.6 spec at 2-6-reject-undo-hidden-restore.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-6) — story risks/DoD/edge cases; ReviewRejectedBaseWhere + contract test.
+# 2026-04-13: Party mode create session 2/2 (2-6) — story AC/tasks tightened (undo push contract, stack cap, a11y); store reject/restore/rejected list + share eligibility + tests.
+# 2026-04-13: Story 2-6 dev-story — Review reject/undo + Rejected panel UI; status review.
+# 2026-04-13: Party mode dev session 1/2 (2-6) — undo hint, bulk-reject refresh, clearReviewUndoIfLeftReview test, button copy; status review.
+# 2026-04-13: Party mode dev session 2/2 (2-6) — undo hint cap wording, RestoreAsset changed+log, bulk-reject contract comment, shell/stack tests; status review.
+# 2026-04-13: create-story workflow — Story 2.7 spec at 2-7-delete-quarantine.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-7) — risks, DoD, ordering/missing-file/keyboard AC; tasks pinned to delete.go + batch confirm note.
+# 2026-04-13: Party mode create session 2/2 (2-7) — batch abort/refresh parity, rel_path escape guard, Cmd/Ctrl+Shift+D AC; DeleteAssetToTrash + Review UI; status review.
+# 2026-04-13: Party mode dev session 1/2 (2-7) — quarantine collision store test, split-brain slog includes quarantine_file; status review.
+# 2026-04-13: Party mode dev session 2/2 (2-7) — assetPrimaryPath rejects rel that cleans to library root; loupe refresh on changed==false; status done.
+# 2026-04-13: create-story workflow — Story 2.8 spec at 2-8-collections-list-detail.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-8) — story AC7–AC11, camera label rules, paging/grouping risk, invalid-id tests; status unchanged ready-for-dev.
+# 2026-04-13: Party mode create session 2/2 (2-8) — AC10 paging×grouping contract (A/B/C), AC12 nav reset, NULL star order, camera trim/UTF-8, ErrCollectionNotFound task, Fyne RadioGroup note; store sentinel added; status unchanged ready-for-dev.
+# 2026-04-13: Story 2-8 dev-story — collections list/detail UI, camera migration + EXIF, per-section paging; status review.
+# 2026-04-13: Party mode dev session 1/2 (2-8) — AC7 list hide + AC12 predicate test + day paging guard + collections init order; status review.
+# 2026-04-13: Party mode dev session 2/2 (2-8) — camera paging store test, per-section scroll/cap doc, ErrCollectionNotFound on lazy grid fetch → list; status review.
+# 2026-04-13: create-story workflow — Story 2.9 spec at 2-9-collection-crud-multi-assign.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-9) — AC2 display-date rule pinned, validation/risks/DoD, DeleteCollection→ErrCollectionNotFound + test; story still ready-for-dev.
+# 2026-04-13: Party mode create session 2/2 (2-9) — AC3 transactional create+link, Unlink idempotency + UX risks; store CreateCollectionAndLinkAssets + tests; story still ready-for-dev.
+# 2026-04-13: Party mode dev session 1/2 (2-9) — loupe album FK/user copy + single-flight save; CreateCollection godoc; review_loupe_test; status unchanged review.
+# 2026-04-13: Party mode dev session 2/2 (2-9) — collectionStoreErrText (ErrCollectionNotFound + FK); Collections album form single-flight + shared copy; status unchanged review.
+# 2026-04-13: create-story workflow — Story 2.10 spec at 2-10-quick-collection-assign.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-10) — AC7–AC8, rejectedMode scope, suspendAssignTargetRefresh, loupe-dismiss parity, risks/QA; status unchanged ready-for-dev.
+# 2026-04-13: Party mode create session 2/2 (2-10) — challenged: tab/focus contract (strip vs assign Select), menu vs visible affordance, single-flight scope; implemented grid secondary-click menu + bulk assign strip; tests + story → review.
+# 2026-04-13: Story 2-10 dev-story follow-up — `TestStory210_*` headless regression; story tasks completed; status remains review.
+# 2026-04-13: Party mode dev session 1/2 (2-10) — AC3 assign-target vs browse sentinel test; quick-assign ListCollections error copy aligned with bulk strip; status review.
+# 2026-04-13: Party mode dev session 2/2 (2-10) — AC8 loupe dismiss before write for quick assign (parity with bulk); status review.
+# 2026-04-13: create-story workflow — Story 2.11 spec at 2-11-layout-display-scaling-gate.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-11) — NFR-01/NFR-07 evidence templates + AC7 matrix cell IDs + band geometry notes; links live in story References; status unchanged ready-for-dev.
+# 2026-04-13: Party mode create session 2/2 (2-11) — challenged: full light matrix, AC2 sweep + filter-strip rule, env fingerprint, platform scaling notes, Collections/Rejected shell checks, Epic 2 NFR-07 default subset; `internal/domain/nfr_layout.go` + test; status unchanged ready-for-dev.
+# 2026-04-13: Party mode dev session 2/2 (2-11) — challenged: CI stub-loupe vs manual loupe documented; `NFR01AC2ResizeSweepPath` + gate test; AC2 dwell + multi-monitor scaling repro notes; status unchanged ready-for-dev.
+# Story 2.11 evidence (traceability): `_bmad-output/implementation-artifacts/nfr-01-layout-matrix-evidence.md`, `_bmad-output/implementation-artifacts/nfr-07-os-scaling-checklist.md`.
+# 2026-04-13: create-story workflow — Story 2.12 spec at 2-12-empty-states-error-tone.md; status ready-for-dev.
+# 2026-04-13: Party mode create session 1/2 (2-12) — simulated PM/UX/Arch/TEA round; UX-DR9 empty states + libraryErrText + Story212 tests; status → review.
+# 2026-04-14: Party mode create session 2/2 (2-12) — challenged AC5 dialog leak; userFacingDialogErrText sweep + upload file-open copy + err_text tests; status review.
+# 2026-04-14: Party mode dev session 1/2 (2-12) — collection write-path SQL scrub (`userFacingCollectionWriteErrText`) + DnD URI reject copy; status review.
+# 2026-04-14: Party mode dev session 2/2 (2-12) — capped drop skip `ShowInformation` bodies + import receipt next step when Failed>0 + non-file drop copy; status review.
+# 2026-04-14: create-story workflow — Story 3.1 spec at 3-1-share-preview-snapshot-mint.md; epic-3 → in-progress; 3-1-share-preview-snapshot-mint → ready-for-dev.
+# 2026-04-14: Party mode create session 1/2 (3-1) — PM/UX/Arch/TEA simulated round; risks/DoD + share_links migration, MintDefaultShareLink, loupe Share preview→confirm; 3-1 → in-progress.
+# 2026-04-14: Party mode create session 2/2 (3-1) — challenged sticky-id vs on-screen photo; confirm-time loupe alignment gate, Cmd/Ctrl+Shift+S, `internal/share.ShareHTTPPath`, AC8 predicate test; 3-1 remains in-progress (awaiting dev-story/review close).
+# 2026-04-14: Story 3-1 dev-story — AC4 gate + AC7c preview tests; `go test ./...` / `go build .` green; 3-1-share-preview-snapshot-mint → review.
+# 2026-04-14: Party mode dev session 1/2 (3-1) — simulated Dev/TEA/Arch/UX; nil loupe callback + invalid preview id fail closed; `userFacingShareMintErrText`; 3-1 remains review.
+# 2026-04-14: Party mode dev session 2/2 (3-1) — challenged AC6 empty-dialog edge + collision helper testability; defensive mint copy, `isSQLiteUniqueTokenHash` test, soft-delete row-count parity, path token note; 3-1 remains review.
+# 2026-04-14: create-story workflow — Story 3.2 spec at 3-2-loopback-http-token.md; 3-2-loopback-http-server-token-resolution → ready-for-dev.
+# 2026-04-14: Party mode create session 1/2 (3-2) — simulated Arch/PM/UX/TEA; AC3 404 parity (method/extra path/ineligible asset), AC2 compare scope, default 127.0.0.1 + env naming, store join eligibility, tests (d)(e); story hardened; status unchanged ready-for-dev.
+# 2026-04-14: Party mode create session 2/2 (3-2) — Winston/Sally/Murat/Amelia: IPv6 host + HEAD404 Content-Length parity + port-retry cap; `internal/share` HTTP+Loopback, `ResolveDefaultShareLink`, config env, mint **Copy link**, `go test ./...` green; 3-2-loopback-http-server-token-resolution → review.
+# 2026-04-14: Party mode dev session 2/2 (3-2) — simulated Amelia/Murat/Winston/Sally: TRACE→404 parity, soft-delete-after-mint HTTP 404 vs unknown byte match, loopback EnsureRunning idempotent + concurrent + Close/restart tests (`loopback_test.go`); 3-2 remains review.
+# 2026-04-14: Party mode dev session 1/2 (3-2) — simulated Amelia/Murat/Winston/Sally: GET 404 Content-Length parity, OPTIONS→404 parity, query-string resolution regression tests; 3-2 remains review.
+# 2026-04-14: create-story workflow — Story 3.3 spec at 3-3-share-html-readonly.md; 3-3-read-only-share-html-page → ready-for-dev.
+# 2026-04-14: Party mode create session 1/2 (3-3) — simulated John/Sally/Winston/Murat; AC (/i/ parity, rating null vs 0, cross-route 404), mux+libraryRoot tasks, risks (split-brain, ServeContent, templates); story hardened; 3-3 remains ready-for-dev.
+# 2026-04-14: Party mode create session 2/2 (3-3) — challenged FR-14 snapshot vs PRD wording, non-color-only rating, query/path decoding parity, nosniff+inline+Range rules, HTML identifier-leak AC, ETag/symlink/mime risks, extra tests in Tasks/DoD; story updated; 3-3 remains ready-for-dev.
+# 2026-04-14: Story 3-3 dev-story — HTML/CSS share page, GET /i/{token} bytes, store payload + AssetPrimaryPath + AssetLibraryFileForShare; 3-3-read-only-share-html-page → review.
+# 2026-04-14: Party mode dev session 1/2 (3-3) — rating strip aria-labelledby vs masking aria-label; Range+404 test for /s/ and /i/; 3-3 remains review.
+# 2026-04-14: Party mode dev session 2/2 (3-3) — HEAD HTML Content-Length vs GET body; HEAD+Range on 404 for /s/ and /i/; <main class="shell"> landmark; 3-3 remains review.
+# 2026-04-14: create-story workflow — Story 3.4 spec at 3-4-share-privacy-wcag.md; 3-4-share-page-privacy-wcag-2-1-level-a → ready-for-dev.
+# 2026-04-14: Party mode create session 2/2 (3-4) — simulated PM/UX/Arch/TEA; challenged HTML-only Referrer-Policy; `/i/` parity + reduced-motion CSS + http_test probes; story tasks/AC/risks updated; status unchanged ready-for-dev (manual 200% zoom matrix open).
+# 2026-04-14: Party mode dev session 1/2 (3-4) — 404 Referrer-Policy regression + skip-link :focus-visible; story Dev Agent Record; 3-4 remains review.
+# 2026-04-14: Story 3-4 dev-story — manual QA matrix in story Dev Agent Record; AC/tasks complete; 3-4-share-page-privacy-wcag-2-1-level-a → review.
+# 2026-04-14: Party mode dev session 2/2 (3-4) — HTML CSP + nosniff (200 only); main tabindex=-1 skip target; 404 header parity tests; 3-4 remains review.
+# 2026-04-14: create-story workflow — Story 3.5 spec at 3-5-share-performance-abuse.md; 3-5-share-cold-load-performance-abuse-posture → ready-for-dev.
+# 2026-04-14: Party mode create session 1/2 (3-5) — simulated PM/UX/Arch/TEA; NFR-05 gate + rate limit + docs; 3-5-share-cold-load-performance-abuse-posture → in-progress.
+# 2026-04-14: Party mode create session 2/2 (3-5) — challenged: unbounded limiter map, NFR-05 keep-alive semantics, burst-80 vs public posture; visitor cap+eviction + doc/arch updates; 3-5-share-cold-load-performance-abuse-posture → review.
+# 2026-04-14: Party mode dev session 2/2 (3-5) — NFR-05 gate: DisableKeepAlives client (httptest Transport sharing); story/docs updated; sprint unchanged review.
+# 2026-04-14: Party mode dev session 1/2 (3-5) — NFR-05 gate: separate httptest client per leg (no keep-alive reuse); cold-load doc + story AC note; 3-5 remains review.
+# 2026-04-14: create-story workflow — Story 4.1 spec at 4-1-multi-asset-snapshot-packages.md; epic-4 → in-progress; 4-1-multi-asset-snapshot-packages → ready-for-dev.
+# 2026-04-14: Party mode create session 1/2 (4-1) — story AC5 snapshot-vs-bytes split, AC3 dedupe+cap, tasks/risks/tests; domain StableDedupeAssetIDs + tests; status unchanged ready-for-dev.
+# 2026-04-14: Party mode create session 2/2 (4-1) — challenged: preview throttle AC, resolve fork + enumeration parity, schema CHECK/members table pin, ErrPackageTooManyAssets/ErrPackageNoEligibleAssets in store; story + share.go godoc; status unchanged ready-for-dev.
 
 generated: "2026-04-13"
-last_updated: "2026-04-13"
+last_updated: "2026-04-14"
+# 2026-04-14: Story 4-1 dev-story — multi-asset package shares; sprint entry → in-progress → review.
+# 2026-04-14: Party mode dev session 1/2 (4-1) — AC1 confirm count label + wrapped mint err UX test + HTTP 404 header/HEAD parity; status unchanged review.
+# 2026-04-14: Party mode dev session 2/2 (4-1) — NFR-06: OOB package member404 parity + post-reject package HTML snapshot assertions; status unchanged review.
 project: photo-tool
 project_key: photo-tool
 tracking_system: file
@@ -16,5 +92,28 @@ development_status:
   1-3-core-ingest: in-progress
   1-4-collections-schema: in-progress
   1-5-upload-confirm-receipt: in-progress
+  1-6-scan-cli: done
+  1-7-import-cli: done
+  1-8-drag-drop-upload: review
   epic-1-retrospective: done
-  epic-2: backlog
+  epic-2: in-progress
+  2-1-app-shell-navigation-themes: done
+  2-2-filter-strip: done
+  2-3-thumbnail-grid-rating-badges: done
+  2-4-review-loupe-keyboard-rating: review
+  2-5-tags-bulk-review: done
+  2-6-reject-undo-hidden-restore: review
+  2-7-delete-quarantine: done
+  2-8-collections-list-detail: review
+  2-9-collection-crud-multi-assign: review
+  2-10-quick-collection-assign: review
+  2-11-layout-display-scaling-gate: ready-for-dev
+  2-12-empty-states-error-tone: review
+  epic-3: in-progress
+  3-1-share-preview-snapshot-mint: review
+  3-2-loopback-http-server-token-resolution: review
+  3-3-read-only-share-html-page: review
+  3-4-share-page-privacy-wcag-2-1-level-a: review
+  3-5-share-cold-load-performance-abuse-posture: review
+  epic-4: in-progress
+  4-1-multi-asset-snapshot-packages: review

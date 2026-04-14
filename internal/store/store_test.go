@@ -2,6 +2,8 @@ package store
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -24,11 +26,11 @@ func TestOpen_migratesFreshLibrary(t *testing.T) {
 	if err := db.QueryRow(`SELECT version FROM schema_meta WHERE singleton = 1`).Scan(&v); err != nil {
 		t.Fatal(err)
 	}
-	if v != 2 {
-		t.Fatalf("schema version: got %d want 2", v)
+	if v != 7 {
+		t.Fatalf("schema version: got %d want 7", v)
 	}
 
-	for _, tbl := range []string{"assets", "collections", "asset_collections"} {
+	for _, tbl := range []string{"assets", "collections", "asset_collections", "tags", "asset_tags", "share_links", "share_link_members"} {
 		var n int
 		q := `SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`
 		if err := db.QueryRow(q, tbl).Scan(&n); err != nil {
@@ -125,8 +127,8 @@ func TestCollections_createLinkIdempotentDelete(t *testing.T) {
 	if err := db.QueryRow(`SELECT version FROM schema_meta WHERE singleton = 1`).Scan(&v); err != nil {
 		t.Fatal(err)
 	}
-	if v != 2 {
-		t.Fatalf("schema version: got %d want 2", v)
+	if v != 7 {
+		t.Fatalf("schema version: got %d want 7", v)
 	}
 
 	now := time.Now().Unix()
@@ -209,6 +211,98 @@ func TestCreateCollection_emptyName(t *testing.T) {
 	}
 }
 
+func TestCreateCollection_invalidDisplayDate(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := CreateCollection(db, "Album", "not-a-date"); err == nil {
+		t.Fatal("expected error for invalid display date")
+	}
+}
+
+func TestCreateCollectionAndLinkAssets_success(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	now := time.Now().Unix()
+	if err := InsertAsset(db, "hash-a", "2024/a.jpg", now, now); err != nil {
+		t.Fatal(err)
+	}
+	var aid int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = 'hash-a'`).Scan(&aid); err != nil {
+		t.Fatal(err)
+	}
+
+	collID, err := CreateCollectionAndLinkAssets(db, "LoupeAlbum", "", []int64{aid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM collections WHERE id = ?`, collID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("collections row: n=%d err=%v", n, err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM asset_collections WHERE collection_id = ? AND asset_id = ?`, collID, aid).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("junction: n=%d err=%v", n, err)
+	}
+}
+
+func TestCreateCollectionAndLinkAssets_rollsBackOnBadAsset(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := CreateCollectionAndLinkAssets(db, "OrphanRisk", "", []int64{999999}); err == nil {
+		t.Fatal("expected error for missing asset id")
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM collections WHERE name = 'OrphanRisk'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("collection should not exist after failed link, got %d rows", n)
+	}
+}
+
+func TestDeleteCollection_notFound(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	err = DeleteCollection(db, 999999)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, ErrCollectionNotFound) {
+		t.Fatalf("expected ErrCollectionNotFound, got %v", err)
+	}
+}
+
 func TestLinkAssetsToCollection_invalidReferences(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "lib")
 	if err := config.EnsureLibraryLayout(root); err != nil {
@@ -237,5 +331,201 @@ func TestLinkAssetsToCollection_invalidReferences(t *testing.T) {
 	}
 	if err := LinkAssetsToCollection(db, 999999, []int64{aid}); err == nil {
 		t.Fatal("expected error for missing collection id")
+	}
+}
+
+func TestErrCollectionNotFound_wrappedIs(t *testing.T) {
+	err := fmt.Errorf("collection detail: %w", ErrCollectionNotFound)
+	if !errors.Is(err, ErrCollectionNotFound) {
+		t.Fatalf("errors.Is: got %v", err)
+	}
+}
+
+func TestGetCollection_notFound(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	_, err = GetCollection(db, 99999)
+	if err == nil || !errors.Is(err, ErrCollectionNotFound) {
+		t.Fatalf("expected ErrCollectionNotFound, got %v", err)
+	}
+}
+
+func TestGetCollection_ok(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	id, err := CreateCollection(db, "Trip", "2024-06-01")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := GetCollection(db, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.ID != id || d.Name != "Trip" || d.DisplayDate != "2024-06-01" {
+		t.Fatalf("detail: %+v", d)
+	}
+	if d.CreatedAtUnix <= 0 {
+		t.Fatal("created_at_unix")
+	}
+}
+
+func TestUpdateCollection_clearDisplayDateUsesCreatedAtUnixLocal(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	ts := time.Date(2022, 7, 4, 23, 30, 0, 0, time.Local).Unix()
+	if _, err := db.Exec(`
+INSERT INTO collections (name, display_date, created_at_unix) VALUES ('Alb', '1999-01-01', ?)`, ts); err != nil {
+		t.Fatal(err)
+	}
+	var id int64
+	if err := db.QueryRow(`SELECT id FROM collections WHERE name = 'Alb'`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	want := time.Unix(ts, 0).In(time.Local).Format("2006-01-02")
+	if err := UpdateCollection(db, id, "Alb", ""); err != nil {
+		t.Fatal(err)
+	}
+	var dd string
+	if err := db.QueryRow(`SELECT display_date FROM collections WHERE id = ?`, id).Scan(&dd); err != nil {
+		t.Fatal(err)
+	}
+	if dd != want {
+		t.Fatalf("display_date: got %q want %q", dd, want)
+	}
+}
+
+func TestUpdateCollection_validationAndNotFound(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	id, err := CreateCollection(db, "X", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UpdateCollection(db, id, " ", ""); err == nil {
+		t.Fatal("empty name")
+	}
+	if err := UpdateCollection(db, id, "X", "nope"); err == nil {
+		t.Fatal("bad date")
+	}
+	if err := UpdateCollection(db, 999999, "Y", ""); err == nil || !errors.Is(err, ErrCollectionNotFound) {
+		t.Fatalf("not found: %v", err)
+	}
+}
+
+func TestListCollectionIDsForAsset_andUnlink(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	now := time.Now().Unix()
+	if err := InsertAsset(db, "h1", "a.jpg", now, now); err != nil {
+		t.Fatal(err)
+	}
+	var aid int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = 'h1'`).Scan(&aid); err != nil {
+		t.Fatal(err)
+	}
+	c1, err := CreateCollection(db, "Zebra", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c2, err := CreateCollection(db, "Alpha", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkAssetsToCollection(db, c1, []int64{aid}); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkAssetsToCollection(db, c2, []int64{aid}); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := ListCollectionIDsForAsset(db, aid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 2 || ids[0] != c2 || ids[1] != c1 {
+		t.Fatalf("order/name stable: got %v want [%d,%d]", ids, c2, c1)
+	}
+	if err := UnlinkAssetFromCollection(db, aid, c1); err != nil {
+		t.Fatal(err)
+	}
+	ids, err = ListCollectionIDsForAsset(db, aid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != 1 || ids[0] != c2 {
+		t.Fatalf("after unlink: %v", ids)
+	}
+	if err := UnlinkAssetFromCollection(db, aid, c1); err != nil {
+		t.Fatal("idempotent unlink")
+	}
+	if err := UnlinkAssetFromCollection(db, aid, 99999); err != nil {
+		t.Fatal("unlink missing collection junction")
+	}
+}
+
+func TestUnlinkAssetFromCollection_idempotentNeverLinked(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	now := time.Now().Unix()
+	if err := InsertAsset(db, "h1", "a.jpg", now, now); err != nil {
+		t.Fatal(err)
+	}
+	var aid int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = 'h1'`).Scan(&aid); err != nil {
+		t.Fatal(err)
+	}
+	cid, err := CreateCollection(db, "C", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := UnlinkAssetFromCollection(db, aid, cid); err != nil {
+		t.Fatal(err)
 	}
 }

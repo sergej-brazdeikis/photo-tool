@@ -11,7 +11,7 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
-const targetSchemaVersion = 2
+const targetSchemaVersion = 7
 
 func currentVersion(db *sql.DB) (int, error) {
 	var n int
@@ -46,6 +46,26 @@ func migrate(db *sql.DB) error {
 		case v < 2:
 			if err := applyMigration(db, "migrations/002_collections.sql", 2); err != nil {
 				return fmt.Errorf("migration 002: %w", err)
+			}
+		case v < 3:
+			if err := applyMigration(db, "migrations/003_review_filters.sql", 3); err != nil {
+				return fmt.Errorf("migration 003: %w", err)
+			}
+		case v < 4:
+			if err := applyMigration(db, "migrations/004_tags.sql", 4); err != nil {
+				return fmt.Errorf("migration 004: %w", err)
+			}
+		case v < 5:
+			if err := applyMigration(db, "migrations/005_camera_meta.sql", 5); err != nil {
+				return fmt.Errorf("migration 005: %w", err)
+			}
+		case v < 6:
+			if err := applyMigration(db, "migrations/006_share_links.sql", 6); err != nil {
+				return fmt.Errorf("migration 006: %w", err)
+			}
+		case v < 7:
+			if err := applyMigration(db, "migrations/007_share_packages.sql", 7); err != nil {
+				return fmt.Errorf("migration 007: %w", err)
 			}
 		default:
 			return fmt.Errorf("store migrate: unsupported schema version %d (target %d)", v, targetSchemaVersion)

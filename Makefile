@@ -1,4 +1,4 @@
-.PHONY: all build run test tidy clean fmt vet gate
+.PHONY: all build run test test-ci tidy clean fmt vet gate
 
 BIN_DIR := bin
 BINARY := $(BIN_DIR)/photo-tool
@@ -14,6 +14,10 @@ run:
 
 test:
 	go test ./...
+
+# Fyne software driver; includes main_fyne_ci_test.go (NewWithID / preferences regression).
+test-ci:
+	go test -tags ci ./...
 
 tidy:
 	go mod tidy

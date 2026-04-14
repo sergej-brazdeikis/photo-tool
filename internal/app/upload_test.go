@@ -39,3 +39,14 @@ func TestSummarizeDoneMessage_wantedAssignButNoIngestedAssets(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestSummarizeDoneMessage_failedIncludesNextStep(t *testing.T) {
+	sum := domain.OperationSummary{Added: 1, SkippedDuplicate: 0, Failed: 2}
+	got := summarizeDoneMessage(sum, false, false)
+	if !strings.Contains(got, "failed 2") {
+		t.Fatalf("got %q", got)
+	}
+	if !strings.Contains(got, "For items that failed") {
+		t.Fatalf("missing next step: %q", got)
+	}
+}

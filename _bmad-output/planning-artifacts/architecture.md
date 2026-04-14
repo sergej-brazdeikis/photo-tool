@@ -149,8 +149,8 @@ Document in user-facing copy that delete is **stronger** than reject and that **
 - **Routes (MVP):** e.g. `GET /s/{token}` → resolve hash → load snapshot row → render HTML. Optional `GET /assets/...` for image bytes with same session cookie or signed query (prefer **opaque token-bound URLs** to avoid guessable paths).
 - **Semantics:** **Snapshot** at mint (PRD FR-32 default): persist **asset id** + **rendition path or content hash** + **rating at mint** if shown on web per FR-14.
 - **Privacy:** Strip **raw GPS** and restricted fields in **share template**; desktop may show full EXIF.
-- **NFR-05:** Pre-render or cache **web-sized** JPEG/WEBP; avoid on-the-fly full RAW decode on share path.
-- **NFR-06:** Loopback bind + token entropy + simple **per-IP rate limit** (in-memory) on share routes; document need for reverse-proxy limits if later deployed remotely.
+- **NFR-05:** Pre-render or cache **web-sized** JPEG/WEBP; avoid on-the-fly full RAW decode on share path. **Measurement:** `docs/share-cold-load-nfr05.md` and `internal/share/nfr05_cold_load_test.go` (`TestNFR05_ShareColdLoadMedian`).
+- **NFR-06:** Loopback bind + token entropy + simple **per-IP rate limit** (in-memory) on share routes with a **bounded visitor map** (eviction when distinct IP keys exceed cap); document need for reverse-proxy limits if later deployed remotely. **Posture:** `docs/share-abuse-posture.md` (canonical); defaults in `internal/share/ratelimit.go`.
 
 ### 3.6 MVP web stack vs Fyne WASM
 

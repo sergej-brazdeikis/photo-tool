@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"photo-tool/internal/config"
+	"photo-tool/internal/domain"
 	"photo-tool/internal/store"
 )
 
@@ -151,6 +152,88 @@ func TestIngestWithAssetIDs_duplicateMatchesFirstID(t *testing.T) {
 	}
 	if ids[0] == 0 || ids[1] != ids[0] {
 		t.Fatalf("asset ids: %v", ids)
+	}
+}
+
+func TestIngest_dryRun_noWrites_emptyDB(t *testing.T) {
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	srcDir := filepath.Join(t.TempDir(), "in")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(srcDir, "a.jpg")
+	mt := time.Date(2020, 6, 1, 15, 4, 5, 0, time.UTC)
+	if err := writeJPEGGray(src, 0x33); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(src, mt, mt); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	var sum domain.OperationSummary
+	id := IngestPath(db, libRoot, src, &sum, true)
+	if id != 0 {
+		t.Fatalf("dry-run id: got %d want 0", id)
+	}
+	if sum.Added != 1 || sum.SkippedDuplicate != 0 || sum.Failed != 0 {
+		t.Fatalf("dry-run summary: %+v", sum)
+	}
+	if n := assetCount(t, db); n != 0 {
+		t.Fatalf("dry-run must not insert: got %d asset rows", n)
+	}
+
+	sum2 := Ingest(db, libRoot, []string{src})
+	if sum2.Added != 1 {
+		t.Fatalf("live ingest: %+v", sum2)
+	}
+	if n := assetCount(t, db); n != 1 {
+		t.Fatalf("after live: got %d want 1", n)
+	}
+
+	var sum3 domain.OperationSummary
+	_ = IngestPath(db, libRoot, src, &sum3, true)
+	if sum3.Added != 0 || sum3.SkippedDuplicate != 1 {
+		t.Fatalf("dry-run after live: %+v", sum3)
+	}
+}
+
+func TestIngestPaths_dryRun_matchesLiveWhenUnique(t *testing.T) {
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	srcDir := filepath.Join(t.TempDir(), "in")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(srcDir, "a.jpg")
+	mt := time.Date(2021, 1, 2, 3, 4, 5, 0, time.UTC)
+	if err := writeJPEGGray(src, 0x44); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(src, mt, mt); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	dry := IngestPaths(db, libRoot, []string{src}, true)
+	live := IngestPaths(db, libRoot, []string{src}, false)
+	if dry.Added != live.Added || dry.SkippedDuplicate != live.SkippedDuplicate || dry.Failed != live.Failed {
+		t.Fatalf("dry %+v vs live %+v", dry, live)
 	}
 }
 

@@ -1,0 +1,50 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            nfr07_macos_ci_tier: "125"
+            nfr07_macos_fyne_scale: "1.25"
+          - os: macos-latest
+            nfr07_macos_ci_tier: "150"
+            nfr07_macos_fyne_scale: "1.5"
+          - os: windows-latest
+            nfr07_windows_dpi: 120
+          - os: windows-latest
+            nfr07_windows_dpi: 144
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Windows — system DPI for NFR-07 AC3 (LogPixels)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dpi = [int]${{ matrix.nfr07_windows_dpi }}
+          Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name LogPixels -Value $dpi -Type DWord
+          Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name Win8DpiScaling -Value 1 -Type DWord
+          rundll32.exe user32.dll,UpdatePerUserSystemParameters
+
+      - name: Test run (macOS — NFR-07 AC3 surrogate + FYNE_SCALE)
+        if: runner.os == 'macOS'
+        env:
+          PHOTO_TOOL_NFR07_MACOS_CI_TIER: ${{ matrix.nfr07_macos_ci_tier }}
+          FYNE_SCALE: ${{ matrix.nfr07_macos_fyne_scale }}
+        run: go test ./...
+
+      - name: Test run (Windows)
+        if: runner.os == 'Windows'
+        run: go test ./...

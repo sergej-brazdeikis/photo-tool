@@ -31,12 +31,23 @@ import (
 
 // Ingest processes each path in order; per-file errors increment Failed and do not stop the batch.
 func Ingest(db *sql.DB, libraryRoot string, sourcePaths []string) domain.OperationSummary {
+	return IngestPaths(db, libraryRoot, sourcePaths, false)
+}
+
+// IngestPaths is like [Ingest] but can run in dry-run mode (hash + read-only dedup only; no copy/insert).
+func IngestPaths(db *sql.DB, libraryRoot string, sourcePaths []string, dryRun bool) domain.OperationSummary {
 	var sum domain.OperationSummary
 	libRoot := filepath.Clean(libraryRoot)
 	for _, p := range sourcePaths {
-		_ = ingestOne(db, libRoot, p, &sum)
+		_ = ingestOne(db, libRoot, p, &sum, dryRun)
 	}
 	return sum
+}
+
+// IngestPath processes a single file and updates sum. When dryRun is true, no files are copied and no
+// assets rows are written; Added/SkippedDuplicate/Failed still reflect the would-be outcome.
+func IngestPath(db *sql.DB, libraryRoot, srcPath string, sum *domain.OperationSummary, dryRun bool) int64 {
+	return ingestOne(db, filepath.Clean(libraryRoot), filepath.Clean(srcPath), sum, dryRun)
 }
 
 // IngestWithAssetIDs runs the same pipeline as [Ingest]. For each source path, the parallel element in
@@ -47,18 +58,23 @@ func IngestWithAssetIDs(db *sql.DB, libraryRoot string, sourcePaths []string) (d
 	libRoot := filepath.Clean(libraryRoot)
 	ids := make([]int64, len(sourcePaths))
 	for i, p := range sourcePaths {
-		ids[i] = ingestOne(db, libRoot, p, &sum)
+		ids[i] = ingestOne(db, libRoot, p, &sum, false)
 	}
 	return sum, ids
 }
 
-func ingestOne(db *sql.DB, libraryRoot, srcPath string, sum *domain.OperationSummary) int64 {
+func ingestOne(db *sql.DB, libraryRoot, srcPath string, sum *domain.OperationSummary, dryRun bool) int64 {
 	srcPath = filepath.Clean(srcPath)
 	capRes, err := exifmeta.ReadCapture(srcPath)
 	if err != nil {
 		sum.Failed++
 		slog.Error("ingest: read capture", "path", srcPath, "err", err)
 		return 0
+	}
+	cam, camErr := exifmeta.ReadCamera(srcPath)
+	if camErr != nil {
+		slog.Warn("ingest: read camera", "path", srcPath, "err", camErr)
+		cam = exifmeta.CameraStrings{}
 	}
 
 	f, err := os.Open(srcPath)
@@ -85,6 +101,11 @@ func ingestOne(db *sql.DB, libraryRoot, srcPath string, sum *domain.OperationSum
 	if exists {
 		sum.SkippedDuplicate++
 		return existingID
+	}
+
+	if dryRun {
+		sum.Added++
+		return 0
 	}
 
 	ext := filepath.Ext(srcPath)
@@ -115,7 +136,7 @@ func ingestOne(db *sql.DB, libraryRoot, srcPath string, sum *domain.OperationSum
 	captureUnix := capRes.UTC.Unix()
 	createdAt := time.Now().Unix()
 
-	err = store.InsertAsset(db, hashHex, relPath, captureUnix, createdAt)
+	err = store.InsertAssetWithCamera(db, hashHex, relPath, captureUnix, createdAt, cam.Make, cam.Model)
 	if err != nil {
 		_ = os.Remove(destAbs)
 		if isUniqueContentHash(err) {
