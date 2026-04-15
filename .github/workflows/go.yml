@@ -29,8 +29,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Bash syntax — bmad-story-workflow.sh
-        run: bash -n scripts/bmad-story-workflow.sh
+      - name: Bash syntax — helper scripts
+        run: bash -n scripts/bmad-story-workflow.sh scripts/assemble-judge-bundle.sh scripts/ux-judge-loop.sh
 
       - name: Windows — system DPI for NFR-07 AC3 (LogPixels)
         if: runner.os == 'Windows'
@@ -47,6 +47,26 @@ jobs:
           PHOTO_TOOL_NFR07_MACOS_CI_TIER: ${{ matrix.nfr07_macos_ci_tier }}
           FYNE_SCALE: ${{ matrix.nfr07_macos_fyne_scale }}
         run: go test ./...
+
+      # Optional Phase 8 (plan): ensure Fyne journey capture writes PNGs + steps.json — no LLM / no agent.
+      - name: UX journey capture smoke (macOS only, one matrix leg)
+        if: runner.os == 'macOS' && matrix.nfr07_macos_ci_tier == '125'
+        env:
+          PHOTO_TOOL_UX_JOURNEY_TEST: "1"
+          PHOTO_TOOL_UX_CAPTURE_DIR: ${{ runner.temp }}/photo-tool-ux-capture
+          FYNE_SCALE: ${{ matrix.nfr07_macos_fyne_scale }}
+        run: |
+          mkdir -p "$PHOTO_TOOL_UX_CAPTURE_DIR"
+          go test ./internal/app -run TestUXJourneyCapture -count=1 -v
+          test -f "$PHOTO_TOOL_UX_CAPTURE_DIR/steps.json"
+          ls "$PHOTO_TOOL_UX_CAPTURE_DIR"/*.png
+          echo "UX_CAPTURE_DIR=$PHOTO_TOOL_UX_CAPTURE_DIR" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS' && matrix.nfr07_macos_ci_tier == '125'
+        with:
+          name: ux-capture-smoke
+          path: ${{ env.UX_CAPTURE_DIR }}
 
       - name: Test run (Windows)
         if: runner.os == 'Windows'

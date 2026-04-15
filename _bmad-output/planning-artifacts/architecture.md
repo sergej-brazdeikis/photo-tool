@@ -169,6 +169,18 @@ Document in user-facing copy that delete is **stronger** than reject and that **
 - **State:** Prefer **explicit view models** (small structs per screen) fed by **repository interfaces** in `internal/store`—keeps GUI testable and mirrors CLI usage.
 - **Grid performance:** **Paged queries** from DB + **thumbnail cache** on disk under `{libraryRoot}/.cache/thumbnails/`; avoid loading full pixmap sets for entire library.
 
+#### 3.8.1 Layout ↔ async coherence (Fyne image-first)
+
+Phase 1 spec work (party synthesis: `initiative-fyne-image-first-phase1-party-2026-04-15.md`) ties **UX-DR16–DR19** to implementation:
+
+- **Measurement anchor:** Any numeric layout budget in UX docs or Story **2.11** evidence must name the **same box** as implementation uses (e.g. outer window vs inner content pane) and the **lifecycle moment** (initial paint, after decode, after cache hit). If UX and this architecture disagree, update **one** side explicitly—no dual interpretations.
+
+- **UX-DR17:** Decode, disk IO, hashing, and heavy EXIF work stay off the UI thread; Fyne mutations run on the main thread via the project’s standard scheduling (`fyne.Do` or equivalent). Rapid scroll or batch updates should **coalesce** UI refreshes where Dev Notes specify.
+
+- **Stale async work:** Thumbnail and upload-preview jobs use **cancellation or epoch** semantics so completed work from a prior navigation or batch cannot repaint the current view.
+
+- **Loading / layout shift:** Dev Notes or stories should state **fixed vs flexible** height reservation per region (grid, upload previews, receipt) so UX-DR18 states do not fight the thumbnail pipeline.
+
 ### 3.9 CLI / GUI parity (NFR-04)
 
 - Define a single **`OperationSummary`** (names stable): `added`, `skipped_duplicate`, `updated`, `failed`, and when applicable **`rejected`** count for operations that touch reject semantics.

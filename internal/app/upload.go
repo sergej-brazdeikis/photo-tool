@@ -23,8 +23,28 @@ import (
 	"photo-tool/internal/store"
 )
 
+// Bounded preview strip for Direction E (UX spec): keeps pixmap count predictable on large batches.
+const (
+	uploadPreviewStripMaxItems = 6
+	uploadPreviewThumbMin      = 140
+)
+
 // imageOpenFilter limits the picker to the same extension set as CLI scan ([ingest.PickerFilterExtensions]).
 var imageOpenFilter = storage.NewExtensionFileFilter(ingest.PickerFilterExtensions())
+
+// uploadImportCloseBlocked is the policy behind [fyne.Window.SetCloseIntercept] for the upload view:
+// block while ingest runs (UX-DR17 worker may still schedule [fyne.Do]) and during the post-import collection step (FR-06).
+func uploadImportCloseBlocked(importInFlight, awaitingPostImportStep bool) (title, msg string, block bool) {
+	if importInFlight {
+		return "Import in progress",
+			"Wait for the current import to finish before closing the window.", true
+	}
+	if awaitingPostImportStep {
+		return "Collection step pending",
+			"Confirm or cancel the collection assignment before closing the window.", true
+	}
+	return "", "", false
+}
 
 // UploadViewOptions configures [NewUploadViewWithOptions]. Zero value matches [NewUploadView] behavior.
 type UploadViewOptions struct {
@@ -36,8 +56,8 @@ type UploadViewOptions struct {
 	// The fyne test driver does not queue [fyne.Do] across Tap boundaries; without this, Tap(Import) then
 	// Tap(Confirm) races the background ingest (UX-DR17 production path uses a worker + [fyne.Do]).
 	SynchronousIngest bool
-	// DisableImportCloseIntercept skips [fyne.Window.SetCloseIntercept] for import-in-flight guarding
-	// (e.g. tests or when another owner already manages window close).
+	// DisableImportCloseIntercept skips [fyne.Window.SetCloseIntercept] for upload-flow close guarding
+	// (import in flight and pending collection step — e.g. tests or when another owner manages window close).
 	DisableImportCloseIntercept bool
 }
 
@@ -99,6 +119,48 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 	)
 	receiptAcc := widget.NewAccordion(widget.NewAccordionItem("Receipt", receiptBody))
 	receiptAcc.Open(0)
+
+	previewHeading := widget.NewLabelWithStyle("Batch preview", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	previewHeading.Hide()
+	previewStrip := container.NewHBox()
+	previewScroll := container.NewHScroll(previewStrip)
+	previewScroll.Hide()
+	previewMoreLab := widget.NewLabel("")
+	previewMoreLab.Hide()
+	previewBlock := container.NewVBox(previewHeading, previewScroll, previewMoreLab)
+
+	// Previews load from the picked paths on the UI goroutine; strip is capped
+	// (uploadPreviewStripMaxItems) so cost stays bounded. If large JPEGs cause visible hitch,
+	// profile first — offload decode + fyne.Do swap is a follow-up (Story 1.5 risks).
+	updateBatchPreview := func(batchPaths []string) {
+		previewStrip.RemoveAll()
+		if len(batchPaths) == 0 {
+			previewHeading.Hide()
+			previewScroll.Hide()
+			previewMoreLab.Hide()
+			return
+		}
+		previewHeading.Show()
+		n := len(batchPaths)
+		show := batchPaths
+		if n > uploadPreviewStripMaxItems {
+			show = batchPaths[:uploadPreviewStripMaxItems]
+		}
+		thumb := fyne.NewSize(uploadPreviewThumbMin, uploadPreviewThumbMin)
+		for _, p := range show {
+			img := canvas.NewImageFromFile(p)
+			img.FillMode = canvas.ImageFillContain
+			img.SetMinSize(thumb)
+			previewStrip.Add(img)
+		}
+		if n > uploadPreviewStripMaxItems {
+			previewMoreLab.SetText(fmt.Sprintf("+ %d more in this batch (scroll the file list above for paths).", n-uploadPreviewStripMaxItems))
+			previewMoreLab.Show()
+		} else {
+			previewMoreLab.Hide()
+		}
+		previewScroll.Show()
+	}
 
 	assignRadio := widget.NewRadioGroup([]string{"Skip collection", "Assign to collection"}, nil)
 	assignRadio.Selected = "Skip collection"
@@ -169,6 +231,7 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		updatedRow.Hide()
 		batchCountLab.SetText("")
 		batchCountLab.Hide()
+		updateBatchPreview(nil)
 		receiptAcc.Open(0)
 		if addBtn != nil {
 			addBtn.Enable()
@@ -193,12 +256,13 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		fcd.Show()
 	}
 
-	applyImportResult := func(sum domain.OperationSummary, ids []int64, batchFileCount int) {
+	applyImportResult := func(sum domain.OperationSummary, ids []int64, batchFileCount int, batchPaths []string) {
 		importInFlight = false
 		importStatusLab.SetText("")
 		importStatusLab.Hide()
 		lastSummary = sum
 		lastAssetIDs = ids
+		updateBatchPreview(batchPaths)
 		showReceipt(sum)
 		if batchFileCount > 0 {
 			batchCountLab.SetText(fmt.Sprintf("Files in this batch: %d", batchFileCount))
@@ -242,12 +306,12 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		nFiles := len(pathsCopy)
 		if opts.SynchronousIngest {
 			sum, ids := ingest.IngestWithAssetIDs(db, root, pathsCopy)
-			applyImportResult(sum, ids, nFiles)
+			applyImportResult(sum, ids, nFiles, pathsCopy)
 			return
 		}
 		go func() {
 			sum, ids := ingest.IngestWithAssetIDs(db, root, pathsCopy)
-			fyne.Do(func() { applyImportResult(sum, ids, nFiles) })
+			fyne.Do(func() { applyImportResult(sum, ids, nFiles, pathsCopy) })
 		}()
 	}
 
@@ -307,6 +371,7 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		container.NewHBox(confirmCollectionBtn, cancelCollectionBtn),
 	)
 
+	postImport.Add(previewBlock)
 	postImport.Add(widget.NewSeparator())
 	postImport.Add(receiptAcc)
 	postImport.Add(widget.NewSeparator())
@@ -412,12 +477,12 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 	}
 
 	if !opts.DisableImportCloseIntercept {
-		// Avoid tearing down the window while a worker still schedules [fyne.Do] (UX-DR17).
+		// Avoid tearing down the window while a worker still schedules [fyne.Do] (UX-DR17),
+		// and avoid abandoning the explicit collection confirm step without Confirm/Cancel (Journey A).
 		// If the shell adds its own close intercept later, chain that handler here instead of replacing it.
 		win.SetCloseIntercept(func() {
-			if importInFlight {
-				dialog.ShowInformation("Import in progress",
-					"Wait for the current import to finish before closing the window.", win)
+			if title, msg, ok := uploadImportCloseBlocked(importInFlight, awaitingPostImportStep); ok {
+				dialog.ShowInformation(title, msg, win)
 				return
 			}
 			win.Close()

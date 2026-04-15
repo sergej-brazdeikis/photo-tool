@@ -9,6 +9,8 @@
 | `_bmad-output/planning-artifacts/ux-design-specification.md` | Party follow-ups, UX consistency patterns, image stage / density |
 | `_bmad-output/planning-artifacts/ux-design-directions.html` | Direction A (shell), Direction E (ingest previews) |
 | `_bmad-output/planning-artifacts/epics-v2-ux-aligned-2026-04-14.md` | UX-DR16–19, Story 1.5 / 2.1–2.3 / 2.11 AC language |
+| `_bmad-output/planning-artifacts/initiative-fyne-image-first-phase1-party-2026-04-15.md` | Phase 1 party synthesis: layout budget template, risk rows, UX and architecture coherence |
+| `_bmad-output/planning-artifacts/initiative-fyne-image-first-tea-notes.md` | **Murat / TEA:** risk-based test strategy, AC-to-automation map, NFR-01 headless vs manual, **UX-DR17** `-race` guidance |
 | `_bmad-output/planning-artifacts/PRD.md` | FRs unchanged — layout is NFR-01 + UX-DR layer |
 | `_bmad-output/planning-artifacts/architecture.md` | Fyne boundaries, thumbnail pipeline, `fyne.Do` / threading |
 
@@ -26,6 +28,15 @@
 ## Phase 1 — Spec fidelity (before new story files)
 
 Lock **layout intent** so implementation stories do not drift.
+
+**Headless YOLO (e.g. `scripts/initiative-fyne-image-first-yolo.sh`):** Phase 1 runs **two** party rounds (UX + architect); round 2 challenges round 1. Outcomes land in [initiative-fyne-image-first-phase1-party-2026-04-15.md](initiative-fyne-image-first-phase1-party-2026-04-15.md) and small deltas here / epics / `architecture.md` §3.8.1 — **no production Go** in this phase.
+
+**Deliverables to carry into stories**
+
+- **Layout budget table** (region × min/max height × scroll owner × **measurement box** × **lifecycle moment** × fixed vs flexible loading reservation).
+- **Risk register** rows tying UX contracts to pipeline ADRs (see party doc example **R-UX-01**).
+- **Journey × emotional state × recovery** one-pager (record requirement in party doc; implement in UX spec or a short `ux-journey-latency-states.md` on next UX edit).
+- **CI vs manual matrix:** classify by **user-visible invariant** first, then map to CI / headless Fyne / manual NFR-01 — not “whatever is easy in CI.”
 
 | Skill | Invoke when | Outcome |
 |-------|-------------|---------|
@@ -76,11 +87,20 @@ Keep **`go test ./...`** and Fyne headless tests green; use **`GO_TEST_RACE=1`**
 
 | Skill | When |
 |-------|------|
-| `bmad-tea` (Murat) | Test design for new states (loading/error/list), resize, thread safety |
+| `bmad-tea` (Murat) | Test design for new states (loading/error/list), resize, thread safety — see [initiative-fyne-image-first-tea-notes.md](initiative-fyne-image-first-tea-notes.md) |
 | `bmad-checkpoint-preview` | Human walkthrough before you mark story **done** |
 | `bmad-code-review` | Adversarial pass before merge / “done” |
 
 Optional: **`bmad-qa-generate-e2e-tests`** — extend CLI or headless Fyne coverage if AC allow.
+
+### CI vs local UX automation
+
+| Where | What runs | What does **not** run |
+|-------|-----------|------------------------|
+| **CI** ([`.github/workflows/go.yml`](../../.github/workflows/go.yml)) | `go test ./...`, `bash -n` on helper shell scripts, deterministic Fyne/layout tests (for example release-shell invariants in `internal/app/ux_layout_invariants_test.go`) | Cursor **`agent`**, LLM judge, screenshot review loop |
+| **Local (developer machine)** | [`scripts/assemble-judge-bundle.sh`](../../scripts/assemble-judge-bundle.sh) → fresh `logs/`, `ui/*.png`, `ui/steps.json`, `manifest.json`; optional [`make ux-judge-loop`](../../Makefile) / [`scripts/ux-judge-loop.sh`](../../scripts/ux-judge-loop.sh) for **capture → vision judge → fix → repeat** until `UX_JUDGE_RESULT=pass` or `UX_LOOP_MAX` | N/A |
+
+Prompts (local only): [`judge-prompt-v2-screenshots.md`](../test-artifacts/judge-prompt-v2-screenshots.md), [`ux-fix-from-judge-prompt-v1.md`](../test-artifacts/ux-fix-from-judge-prompt-v1.md). For a single agent invocation that should drive the loop from chat, see [`ux-implement-loop-prompt-v1.md`](../test-artifacts/ux-implement-loop-prompt-v1.md). Cursor CLI binary: prefer `UX_AGENT`, or `CURSOR_AGENT` as an alias in `ux-judge-loop.sh`.
 
 ---
 
@@ -108,4 +128,4 @@ Optional: **`bmad-qa-generate-e2e-tests`** — extend CLI or headless Fyne cover
 - Review: **filter strip** does not become a second nav; grid **defaults** image-dominant with documented **min** sizes in **2.11** evidence.
 - No regression on **NFR-01** / **UX-DR17** (layout + main-thread updates).
 
-_Last updated: 2026-04-14 — aligns with `epics-v2-ux-aligned-2026-04-14.md`._
+_Last updated: 2026-04-15 — Phase 1 party synthesis added; still aligns with `epics-v2-ux-aligned-2026-04-14.md`._

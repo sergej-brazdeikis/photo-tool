@@ -25,6 +25,19 @@ func TestReviewFilterStripSegmentLabels_order(t *testing.T) {
 	}
 }
 
+// Story 2.2 AC1/AC2 default option strings (MVP English literals; update story if copy changes).
+func TestReviewFilterStrip_defaultSentinels_matchStory22(t *testing.T) {
+	if reviewCollectionSentinel != "No assigned collection" {
+		t.Fatalf("collection sentinel: got %q", reviewCollectionSentinel)
+	}
+	if reviewRatingAny != "Any rating" {
+		t.Fatalf("rating any: got %q", reviewRatingAny)
+	}
+	if reviewTagAny != "Any tag" {
+		t.Fatalf("tag any: got %q", reviewTagAny)
+	}
+}
+
 func collectLabels(o fyne.CanvasObject) []*widget.Label {
 	var out []*widget.Label
 	var walk func(fyne.CanvasObject)
@@ -178,6 +191,74 @@ func TestNewReviewView_nilDB_honestLabel(t *testing.T) {
 	sels := collectSelectWidgets(view)
 	if len(sels) != 3 {
 		t.Fatalf("expected 3 Select widgets, got %d", len(sels))
+	}
+}
+
+// Story 2.2 / Story 2.5: tag strip sync failure must not be log-only — count line mirrors collections-unavailable pattern.
+// Story 2.2 / party dev 2/2: when count fails and both album + tag reads fail, suffix order matches strip (Collection before Tags).
+func TestReviewView_closedDB_degradedSuffix_ordersCollectionsBeforeTags(t *testing.T) {
+	test.NewTempApp(t)
+
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	sels := collectSelectWidgets(view)
+	if len(sels) < 2 {
+		t.Fatalf("expected filter selects, got %d", len(sels))
+	}
+	sels[1].SetSelected("1")
+	sels[1].SetSelected(reviewRatingAny)
+
+	got := matchingAssetsLabelText(t, view)
+	iCol := strings.Index(got, "collections unavailable")
+	iTag := strings.Index(got, "tags unavailable")
+	if iCol < 0 || iTag < 0 {
+		t.Fatalf("want both degraded hints in label: %q", got)
+	}
+	if iCol >= iTag {
+		t.Fatalf("collections hint should precede tags hint: %q", got)
+	}
+}
+
+func TestReviewView_tagStripSyncFailure_showsActionableSuffix(t *testing.T) {
+	test.NewTempApp(t)
+
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
+	if _, err := db.Exec("DROP TABLE IF EXISTS asset_tags"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("DROP TABLE IF EXISTS tags"); err != nil {
+		t.Fatal(err)
+	}
+	sels := collectSelectWidgets(view)
+	if len(sels) < 2 {
+		t.Fatalf("expected filter selects, got %d", len(sels))
+	}
+	sels[1].SetSelected("1")
+	sels[1].SetSelected(reviewRatingAny)
+
+	got := matchingAssetsLabelText(t, view)
+	if !strings.Contains(got, "tags unavailable") {
+		t.Fatalf("want tags unavailable hint in %q", got)
 	}
 }
 

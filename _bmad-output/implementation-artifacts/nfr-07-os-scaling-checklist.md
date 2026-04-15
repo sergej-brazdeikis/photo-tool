@@ -37,7 +37,7 @@
 - **Full matrix:** every cell ID from NFR-01 doc re-run under each scaling × OS combination (time consuming).  
 - **Subset (allowed):** list exact **Cell IDs** re-run; add **Justification** (e.g. “smoke: S-mid, 169-mid, 219-mid Review+Loupe × both themes”).
 
-**Epic 2 default subset (if not full matrix):** re-run **`S-mid`, `169-mid`, `219-mid`** for **Review** and **Loupe** in **dark** and **light** (12 cells × scaling tier), plus **AC2 sweep** once per OS × scaling row. Expand if any cell **fails** until root cause is bounded.
+**Epic 2 default subset (if not full matrix):** re-run **`S-mid`, `169-mid`, `219-mid`** for **Review** and **Loupe** in **dark** and **light** (12 cells × scaling tier), plus **AC2 sweep** once per OS × scaling row. **Blind spot:** this subset is **mid-only** — scaled OS UI often breaks first at **minimum logical width**. **Expansion rule:** if **any** cell in the default subset **fails** under a scaling tier, expand that tier’s re-run to also include **`S-min`, `169-min`, `219-min`** (and matching **`-L`** loupe rows) before closing the defect; record the expanded ID list in **Notes**. If no failures, mid-only remains an acceptable Epic 2 time-box **provided** manual **non-Review** routes (collection detail, Rejected) were still exercised per `nfr-01-layout-matrix-evidence.md` / Story **2.11** Tasks.
 
 ---
 

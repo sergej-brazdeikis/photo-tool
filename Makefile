@@ -1,4 +1,4 @@
-.PHONY: all build run test test-e2e test-ci judge-bundle tidy clean fmt vet gate scripts-check
+.PHONY: all build run test test-e2e test-ci judge-bundle ux-judge-loop tidy clean fmt vet gate scripts-check
 
 BIN_DIR := bin
 BINARY := $(BIN_DIR)/photo-tool
@@ -23,9 +23,13 @@ test-e2e:
 test-ci:
 	go test -tags ci ./...
 
-# Optional: assemble _bmad-output/test-artifacts/judge-bundles/<stamp>/ for LLM review (advisory).
+# Optional: assemble _bmad-output/test-artifacts/judge-bundles/<stamp>/ (logs, rubric, UI PNGs, manifest).
 judge-bundle:
 	./scripts/assemble-judge-bundle.sh
+
+# Local-only: bundle → vision judge agent → fix agent loop (requires Cursor `agent` on PATH; not for CI).
+ux-judge-loop:
+	./scripts/ux-judge-loop.sh
 
 tidy:
 	go mod tidy
@@ -42,7 +46,7 @@ gate:
 
 # Catch unclosed quotes / truncated edits before long BMAD runs (see scripts/bmad-story-workflow.sh header).
 scripts-check:
-	bash -n scripts/bmad-story-workflow.sh
+	bash -n scripts/bmad-story-workflow.sh scripts/assemble-judge-bundle.sh scripts/ux-judge-loop.sh
 
 clean:
 	rm -rf $(BIN_DIR)

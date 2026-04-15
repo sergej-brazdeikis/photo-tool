@@ -2,16 +2,71 @@ package app
 
 import (
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
 
 	"photo-tool/internal/config"
 	"photo-tool/internal/store"
 )
+
+func hiddenAssetsLabelText(t *testing.T, view fyne.CanvasObject) string {
+	t.Helper()
+	for _, lb := range collectLabels(view) {
+		if strings.HasPrefix(lb.Text, "Hidden assets:") {
+			return lb.Text
+		}
+	}
+	t.Fatal("no Hidden assets label in view")
+	return ""
+}
+
+// Story 2.2 / party dev 2/2: Rejected reloads collections each refresh; dead DB shows collection degradation before tag degradation (strip order).
+func TestRejectedView_closedDB_degradedSuffix_ordersCollectionsBeforeTags(t *testing.T) {
+	test.NewTempApp(t)
+
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view := NewRejectedView(nil, db, root, nil)
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	sels := collectSelectWidgets(view)
+	if len(sels) < 2 {
+		t.Fatalf("expected filter selects, got %d", len(sels))
+	}
+	sels[1].SetSelected("1")
+	sels[1].SetSelected(reviewRatingAny)
+
+	got := hiddenAssetsLabelText(t, view)
+	iCol := strings.Index(got, "collections unavailable")
+	iTag := strings.Index(got, "tags unavailable")
+	if iCol < 0 || iTag < 0 {
+		t.Fatalf("want both degraded hints in label: %q", got)
+	}
+	if iCol >= iTag {
+		t.Fatalf("collections hint should precede tags hint: %q", got)
+	}
+	// Story 2.3 party dev 2/2: count-query failure must not trap the user — escape hatch stays visible.
+	btn := findButtonByText(t, view, "Back to Review")
+	if !btn.Visible() {
+		t.Fatal("expected Back to Review visible after count failure")
+	}
+	if btn.Importance != widget.MediumImportance {
+		t.Fatalf("Back to Review importance = %v want Medium", btn.Importance)
+	}
+}
 
 // Story 2.12 / UX-DR9: default Rejected scope with no hidden rows — distinct copy + Back to Review.
 func TestStory212_Rejected_defaultEmpty_backToReviewCTA(t *testing.T) {

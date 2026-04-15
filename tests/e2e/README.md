@@ -33,6 +33,9 @@ When behavior changes, extend the closest layer (avoid duplicating HTTP scenario
 | Primary nav or cross-panel shell | [`internal/app/e2e_shell_journeys_test.go`](../../internal/app/e2e_shell_journeys_test.go) |
 | Upload receipt or collection confirm/cancel | [`internal/app/upload.go`](../../internal/app/upload.go) + [`upload_fr06_flow_test.go`](../../internal/app/upload_fr06_flow_test.go) |
 
-## Optional: LLM judge bundle
+## CI vs local UX gates
 
-[`scripts/assemble-judge-bundle.sh`](../../scripts/assemble-judge-bundle.sh) writes `_bmad-output/test-artifacts/judge-bundles/<stamp>/` with logs, copied rubric, and `manifest.json`. Pair with [`_bmad-output/test-artifacts/judge-prompt-v1.md`](../../_bmad-output/test-artifacts/judge-prompt-v1.md) in Cursor CLI for qualitative review (advisory only).
+- **CI** runs `go test` and shell syntax checks only — **no** Cursor `agent`, **no** LLM. Deterministic UX checks live in the main module (for example `internal/app/ux_layout_invariants_test.go` for the shipping shell).
+- **Local:** [`scripts/assemble-judge-bundle.sh`](../../scripts/assemble-judge-bundle.sh) produces `_bmad-output/test-artifacts/judge-bundles/<stamp>/` with `logs/go-test*.txt`, `context/rubric.md`, `ui/*.png` + `ui/steps.json` + `ui/README.md`, and `manifest.json` (including a `steps` array copied from `steps.json`). Capture uses `PHOTO_TOOL_UX_JOURNEY_TEST=1` and `PHOTO_TOOL_UX_CAPTURE_DIR=<bundle>/ui`. The journey currently covers six steps: Upload, Review grid, Review loupe, Collections list, album detail, Rejected.
+- **CI (optional smoke):** one macOS matrix leg runs `TestUXJourneyCapture` with those env vars and uploads PNGs as a workflow artifact — still **no** LLM/`agent`.
+- **Closed loop (local only):** [`scripts/ux-judge-loop.sh`](../../scripts/ux-judge-loop.sh) or `make ux-judge-loop` — re-bundles each round, runs `agent` as judge then implementer until the verdict’s last line is `UX_JUDGE_RESULT=pass` or `UX_LOOP_MAX` (default `5`). Set `UX_AGENT` or `CURSOR_AGENT` if your CLI binary is not named `agent`. **Do not add this to CI.**

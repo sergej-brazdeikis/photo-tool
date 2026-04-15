@@ -16,21 +16,29 @@ So that **browsing matches my mental model**.
 
 ## Acceptance Criteria
 
-1. **Given** the **Review** surface, **when** the filter strip renders, **then** controls appear in this **fixed left-to-right order**: **Collection → minimum rating → tags** (FR-15). Each segment has a **visible text label** (not icon-only) per UX filter-strip guidance: **“Collection”**, **“Minimum rating”**, **“Tags”** (exact capitalization may follow existing shell copy style, but words must not collapse to icons-only). Default option strings visible in controls: **“No assigned collection”**, **“Any rating”**, **“Any tag”** (FR-16 + Story 2.5 placeholder for tags).
-2. **Given** a **fresh session** (process start with no prior in-memory Review state; preferences for filter persistence **unset**), **when** the user opens **Review**, **then** defaults are **no assigned collection** (show all assets regardless of collection membership) and **any rating** (no minimum-star threshold) (FR-16).
-3. **Given** the user changes **any** filter control, **when** the new selection applies, **then** the **derived result** (at minimum: **count** of assets matching the current filter predicate, and the **same SQL predicate** the thumbnail grid will use in Story 2.3—same conditions as `CountAssetsForReview` / shared store helper, not a second hand-written filter) **updates immediately** in the UI—no stale label/count that still reflects the old filters (UX-DR2: no silent mismatch).
-4. **Given** keyboard focus, **when** the user **Tabs** through the filter strip, **then** focus moves **in layout order** through the strip controls and **focus is visibly indicated** in both dark and light themes using the existing `PhotoToolTheme` focus role (UX-DR2; builds on Story 2.1 / UX-DR15 baseline).
-5. **Given** default browse rules from architecture, **when** filters run against the library, **then** queries **exclude** `rejected = 1` and **exclude** soft-deleted assets (`deleted_at_unix IS NOT NULL`) unless a future story explicitly defines a different surface (architecture §3.4, §4.5 **Agent MUST** rules).
+*Aligned with `_bmad-output/planning-artifacts/epics.md` — Story 2.2 (FR-15, FR-16, UX-DR2).*
 
-### UX backlog delta (epics.md alignment 2026-04-14)
+1. **Given** the **Review** surface, **when** filters render, **then** order is **Collection → minimum rating → tags** (FR-15).  
+   - **Elaboration:** Fixed **left-to-right** order only; each segment has a **visible text label** (not icon-only): **“Collection”**, **“Minimum rating”**, **“Tags”** (capitalization may follow shell copy, but not icon-only). Default option strings in controls: **“No assigned collection”**, **“Any rating”**, **“Any tag”** (tags slot may stay “Any tag” only until Story 2.5).
+2. **Given** a **fresh session**, **when** Review opens, **then** defaults are **no assigned collection** and **any rating** (FR-16).  
+   - **Elaboration:** *Fresh session* = process start with no prior in-memory Review state and filter persistence **unset**; “no assigned collection” = **no** membership constraint (sentinel, not a DB collection row); “any rating” = no minimum-star threshold (includes NULL `rating`). Third control defaults to **“Any tag”** per strip contract / Story 2.5 handoff.
+3. **Given** the user changes filters, **when** applied, **then** the result set updates **without silent mismatch** (UX-DR2).  
+   - **Elaboration:** Visible **count** (and any result summary) must match the **same** filter predicate as **`CountAssetsForReview` / `ReviewFilterWhereSuffix` / `ReviewBrowseBaseWhere`** and the grid / **`ListAssetsForReview` / `ListAssetIDsForReview`** surfaces—no second hand-written filter.
+4. **And** keyboard users can traverse the strip with **visible focus** (UX-DR2).  
+   - **Elaboration:** **Tab** order follows layout order within the strip; **focus** is visible in **dark** and **light** `PhotoToolTheme` (Story 2.1 baseline). **UX-DR15** end-to-end order (**strip → grid → loupe**) is satisfied once Stories **2.3–2.4** ship; this story only **locks** strip-internal traversal + theme contrast.
+5. **And** the strip occupies **at most one** default **row** of controls; additional filters or sort/scope controls use **overflow** (sheet, drawer, or equivalent)—**not** a **second** horizontal **nav** (UX-DR2).  
+   - **Elaboration:** MVP may not add extra controls yet; still **document** the overflow pattern for the next control and avoid introducing a second full-width filter/nav row when extending Review. At **NFR-01** minimum width (**1024×768**), if combined labels + `Select` chrome risk clipping, **prefer** shorter copy or a **single** overflow affordance—**not** a second horizontal control row.
 
-- **One row + overflow:** The strip must **not** grow into a **second nav bar**. **At most one** default **row** of filter controls; additional sort/scope/advanced filters use a **sheet, drawer, or “More filters”** pattern (**UX-DR2** clarification in epics). If MVP has no extra filters yet, document the overflow pattern for the next control added.
+### Architecture guardrail (default browse predicate)
+
+- **Given** default browse rules, **when** filters run against the library, **then** queries **exclude** `rejected = 1` and **exclude** soft-deleted assets (`deleted_at_unix IS NOT NULL`) unless a story explicitly defines a different surface ([Source: `_bmad-output/planning-artifacts/architecture.md` — §4.5 **Agent MUST**; implemented via `ReviewBrowseBaseWhere` + shared review queries]).
 
 ## Tasks / Subtasks
 
-- [x] **Replace Review placeholder with Review layout + filter strip** (AC: 1, 4)
+- [x] **Replace Review placeholder with Review layout + filter strip** (AC: 1, 4, 5)
   - [x] Introduce a dedicated builder (e.g. `NewReviewView(...)` in `internal/app/`) and swap `shell.go` Review panel from `NewSectionPlaceholder` to that view—**keep** Upload / Collections / Rejected placeholders unchanged unless trivial glue is needed.
   - [x] Compose strip as **horizontal** `container` (e.g. `HBox` with padding): **Collection** control, **minimum rating** control, **tags** control—**no reordering** at runtime.
+  - [x] **UX-DR2 layout:** default strip stays **one row**; defer extra sort/scope/advanced filters to **overflow** (sheet / drawer / “More filters”)—do **not** add a second horizontal nav row (document pattern for next controls).
   - [x] Below the strip, add a **Review body** region: until Story 2.3, an **honest** non-grid placeholder is acceptable **if** it shows a **live filtered count** (and short line of text like “Thumbnail grid in Story 2.3”) so AC3 is testable without implying FR-07 grid is done.
 - [x] **Collection filter** (AC: 1–3, 5)
   - [x] Store: **`ListCollections`** in `internal/store/collections.go` (name order). *(Party session 1)*
@@ -49,11 +57,33 @@ So that **browsing matches my mental model**.
 - [x] **Keyboard / focus** (AC: 4)
   - [x] Ensure strip widgets are **not** unnecessarily wrapped in focus-swallowing containers; verify **Tab** order matches visual order; adjust theme if focus ring is low-contrast on strip background.
   - [x] **Manual QA:** Tab through Review strip in **dark and light** themes; confirm focus ring visibility (Story 2.1 baseline). *(Covered by `TestReviewFilterStrip_tabFocusOrder_*` + `TestPhotoToolTheme_focusDistinctFromInputBackground` in CI; optional human spot-check in a real window.)*
-- [x] **Tests** (AC: 2–5)
+- [x] **Tests** (AC: 2–5 + default-browse guardrail)
   - [x] **Store/integration tests:** `review_query_test.go` — default exclusions, min-rating vs unrated, collection scope; `ListCollections` ordering. *(Party session 1)*
   - [x] **Light UI test** optional: if headless Fyne is painful, document manual QA steps in Dev Agent Record; **must** keep `go test ./...` green.
 
 ## Dev Notes
+
+### Spec authority (epic vs story)
+
+- **`epics.md` §2.2** states the **headline** acceptance bar for stakeholders; **this story file** carries elaborations (SQL parity, sentinel strings, degraded DB copy, Story 2.5 handoffs). If they diverge, **update both**—the epic must not imply only two default controls when the strip has three slots (FR-15 order).
+
+### UX-DR16 scope fence (vs UX-DR2 in this story)
+
+- **UX-DR2 (this story):** fixed strip order, defaults, keyboard focus, **one row** + **overflow** for extra controls—no second horizontal nav row.
+- **UX-DR16 (Story 2.11 / NFR-01 evidence):** measured **combined top-chrome height budget**, **minimum thumbnail edge**, **minimum loupe image region** at reference layouts. **Not** a Story 2.2 acceptance gate; do not treat filter-strip implementation as proof of those numeric thresholds.
+
+### AC3 — strip selections → `domain.ReviewFilters` (no silent mismatch)
+
+| Strip control | UI sentinel / value | `ReviewFilters` field |
+|---------------|---------------------|------------------------|
+| Collection | “No assigned collection” | `CollectionID == nil` (no membership constraint) |
+| Collection | specific album label | `CollectionID` non-nil |
+| Minimum rating | “Any rating” | `MinRating == nil` (includes NULL `rating` in store) |
+| Minimum rating | `1`…`5` | `MinRating` non-nil |
+| Tags | “Any tag” | `TagID == nil` (no tag predicate until Story 2.5 lists real tags) |
+| Tags | specific tag (2.5+) | `TagID` non-nil |
+
+Fresh-session defaults = **all three pointers unset** (`ReviewFilters` zero value); see **`TestReviewFilters_FR16DefaultMeansUnconstrained`**.
 
 ### Technical requirements
 
@@ -83,13 +113,14 @@ So that **browsing matches my mental model**.
 
 - Table-driven **integration tests** against real SQLite file in temp dir (pattern: existing `internal/store` tests).
 - Cover: default sentinel filters, collection-scoped count, min-rating edge cases (unrated vs rated), rejected/deleted exclusions.
+- **Domain:** `TestReviewFilters_FR16DefaultMeansUnconstrained` pins the **all-nil** `ReviewFilters` default (three “any” dimensions) alongside UI sentinel string tests in `internal/app/review_test.go`.
 
 ### Previous story intelligence (Story 2.1)
 
 - **Shell pattern:** `NewMainShell` builds a `map[string]fyne.CanvasObject` and swaps center stack—mirror that **lifetime** for Review (no duplicate DB open).
 - **Placeholders:** Story 2.1 **AC4** required non-deceptive placeholders; continue that honesty: show **counts**, not fake thumbnails.
 - **Theme / focus:** `internal/app/theme.go` already encodes focus color—verify strip sits on **background** or **surface** color with sufficient contrast for focus ring.
-- **Regression style:** Story 2.1 exported `PrimaryNavLabels()` for order tests; consider **exported helper** for filter strip **control order labels** if it prevents future drift (optional).
+- **Regression style:** Story 2.1 exported `PrimaryNavLabels()` for order tests; Story 2.2 exports **`ReviewFilterStripSegmentLabels()`** (`internal/app/review.go`) + **`TestReviewFilterStripSegmentLabels_order`**; default option sentinels are pinned by **`TestReviewFilterStrip_defaultSentinels_matchStory22`**.
 
 ### Latest technical information
 
@@ -103,10 +134,10 @@ So that **browsing matches my mental model**.
 ### References
 
 - [Source: _bmad-output/planning-artifacts/epics.md — Epic 2, Story 2.2, FR-15, FR-16, UX-DR2]
-- [Source: _bmad-output/planning-artifacts/epics.md — Requirements inventory FR-15, FR-16, UX-DR2]
 - [Source: _bmad-output/planning-artifacts/PRD.md — FR-15, FR-16]
-- [Source: _bmad-output/planning-artifacts/architecture.md — §3.3 schema, §3.8 Fyne state/view models, §3.12 step 5, §4.5 default queries, §5.1–§5.2 boundaries]
-- [Source: _bmad-output/planning-artifacts/ux-design-specification.md — Component Strategy §1. Filter strip (lines ~583–588); Testability note on filter updates (~649–650); Focus order note (~712)]
+- [Source: _bmad-output/planning-artifacts/architecture.md — §3.3 schema; §3.8 / §3.8.1 Fyne state, layout ↔ async; §3.12 step 5 (Review queries FR-15–FR-16); §4.5 default queries; §5.1–§5.2 boundaries]
+- [Source: _bmad-output/planning-artifacts/ux-design-specification.md — § “Filter strip” (~664+); filter vs sort vs scope + overflow (~820); micro-form / one row / sheet (~854); order target strip → grid → loupe (~896)]
+- [Source: _bmad-output/planning-artifacts/initiative-fyne-image-first-phase1-party-2026-04-15.md — UX-DR16–DR19 measurement / async coherence (cross-check if layout or strip height claims change)]
 - [Source: _bmad-output/implementation-artifacts/2-1-app-shell-navigation-themes.md — shell/theme/focus baseline]
 - [Source: internal/app/shell.go — `NewMainShell`, Review placeholder swap target]
 - [Source: internal/store/migrations/001_initial.sql — `assets` baseline columns]
@@ -123,6 +154,13 @@ So that **browsing matches my mental model**.
 | **Empty library / zero-row collection** | Count **0** is valid; strip must not error—empty `collections` table still shows sentinel + no real collection options (or only sentinel). |
 | **Duplicate collection display names** | `Select` matches by label string; identical names are ambiguous. Mitigation: treat as data-quality issue for now; Story 2.x could enforce unique names or use “Name (id)” labels. |
 | **Duplicate tag display names** | Same `Select` label collision as collections once Story 2.5 lists real tags. Mitigation: first matching option wins (documented on `buildFilters`); later enforce unique tag labels or disambiguate in UI. |
+| **Literal English copy vs future i18n** | AC default strings and segment labels are **MVP English literals** (testable in CI). Full localization is **out of scope** until a dedicated epic; changing user-visible strings requires updating **`internal/app/review.go`** constants **and** this story / regression tests together. |
+
+### Definition of Done (Story 2.2, create lens)
+
+- Epics **FR-15**, **FR-16**, **UX-DR2** behaviors are **traceable** to AC + tasks; no hand-written second filter for count vs list/ID queries (`ReviewBrowseBaseWhere` + `ReviewFilterWhereSuffix` + shared list APIs).
+- **`epics.md` §2.2** stays **non-contradictory** with the three-slot strip defaults (including **`any tag`** sentinel semantics).
+- **Regression:** `go test ./...` green, including strip **label order**, **Tab/focus** order (dark + light), **theme focus contrast**, **suffix/base SQL contracts**, **default sentinel strings** pinned to AC copy, and **`TestReviewFilters_FR16DefaultMeansUnconstrained`** (DTO vocabulary for FR-16 “all any”).
 
 ### Party mode — session 1/2 (automated, `create` hook)
 
@@ -164,6 +202,34 @@ Roundtable (simulated): **Winston (Architect)** challenged the prior round’s n
 
 **Orchestrator synthesis:** Land **`TestListAssetIDsForReview_matchesCountAndListAssetsForReviewOrder`** in `internal/store/review_query_test.go` (two-row match, one row excluded by min-rating under the same album+tag scope; asserts `len(ids)==count` and row/`id` order parity including `capture_time_unix DESC`).
 
+### Party mode — session 1/2 (automated, `dev` hook; 2026-04-15)
+
+Roundtable (simulated): **Amelia (Dev):** Story 2.5 already surfaces tag-strip sync failures on the **count line** (non-modal), but the string was still generic while **collections** used **`libraryErrText`**—support and QA cannot distinguish read failures from a silent refresh bug. **Sally (UX):** Do not paste raw `sqlite` into the strip; **mapped** library-read copy is enough if the prefix says **tags** failed. **Winston (Architect):** Mirror the **collections** shape: `(tags unavailable — …)` after the numeric count; no new architecture. **Mary (Analyst):** Hand-edited or corrupted libraries can lose the tags tables; the count must stay **honest** and the user must not trust a stale tag dropdown silently.
+
+**Orchestrator synthesis:** Retain the **`syncTagStrip` error value**; append **`libraryErrText`** in **`tags unavailable`** suffixes on Review; apply the same pattern on **Rejected** for parity; add **`TestReviewView_tagStripSyncFailure_showsActionableSuffix`**. Sprint audit comment only; story stays **done**.
+
+### Party mode — session 2/2 (automated, `dev` hook; 2026-04-15 deepen)
+
+Roundtable (simulated): **🎨 Sally (UX):** Session 1/2 fixed **tags** copy, but the **count-failure** line still appended **`listErr`** without the **collections unavailable** prefix—QA hears "two different products" depending on whether `Count*` succeeded. **🏗️ Winston (Architect):** Worse: on that path, **tags** were named **before** **collections**, which fights **FR-15** left-to-right mental order. **💻 Amelia (Dev):** **`Rejected`** only read **`ListCollections` once** at construct time; a DB that dies **after** open leaves **`listErr` stale** forever while tag sync and counts go red—**Review** already re-lists each refresh. **📋 John (PM):** Ship **one** degradation story: same prefixes, same ordering, Rejected = Review.
+
+**Orchestrator synthesis:** Reorder **`qerr`** degradation fragments to **collections → tags**; use **`; collections unavailable — `** + **`libraryErrText`** for **`listErr`** (Review + Rejected). **`refreshRejectedData`:** reload **`ListCollections`** every pass with the same **sentinel / stale-id** behavior as Review’s collection strip. Tests: **`TestReviewView_closedDB_degradedSuffix_ordersCollectionsBeforeTags`**, **`TestRejectedView_closedDB_degradedSuffix_ordersCollectionsBeforeTags`**. Sprint audit comment; status **done**.
+
+### Party mode — session 1/2 (automated, `create` hook; 2026-04-15)
+
+Roundtable (simulated): **📋 John (PM):** The sprint file still said **ready-for-dev** while the story header says **done**—that will confuse stand-up and scope reports; pick one source of truth. **🎨 Sally (UX):** UX-DR15 is bigger than the strip; without saying so in AC, QA might file false bugs that grid/loupe tab order is "wrong" before 2.3/2.4. **🏗️ Winston (Architect):** NFR-01 minimum width is where filter UIs die—either spell "shorter copy or overflow, never a second nav row" in AC5 or we'll relitigate layout every story. **📊 Mary (Analyst):** Acceptance tests assume **fixed English strings**; if someone "helpfully" localizes the `Select` options without updating specs, we'll get green tests that lie about product copy.
+
+**Orchestrator synthesis:** (1) Set **`2-2-filter-strip: done`** in `sprint-status.yaml` with an audit comment. (2) Tighten **AC4**/**AC5** elaborations for **UX-DR15 deferral** and **NFR-01** clipping strategy. (3) Add **i18n risk** + a short **DoD** block for traceability/regression expectations. (4) Add **`TestReviewFilterStrip_defaultSentinels_matchStory22`** beside existing label-order coverage; refresh Dev Notes to reflect **`ReviewFilterStripSegmentLabels`** as **implemented**, not optional.
+
+### Party mode — session 2/2 (automated, `create` hook; 2026-04-15 deepen)
+
+Roundtable (simulated): **📚 Paige (Tech Writer):** Session 1/2 hardened *this* file, but **`epics.md` §2.2** still read as if FR-16 stopped at **two** defaults—stakeholders skimming only the epic would treat the third-slot **"Any tag"** contract as scope creep. **📋 John (PM):** The epic should stay a **headline**, not a clone of the story, yet it must **not contradict** the PRD strip; pick the smallest epic edit that restores trust. **Resolution:** Add **`any tag`** to the epic's fresh-session bullet; keep SQL/predicate detail **here** only.
+
+**🎨 Sally (UX):** If we do not **fence** **UX-DR16**, teams will argue filter work already "proved" combined chrome height—**Story 2.11** loses leverage. **🏗️ Winston (Architect):** Numeric budgets and **minimum thumb edge** belong to **2.11 / NFR-01** evidence, not 2.2 acceptance. **Resolution:** Record that split under **Dev Notes** in this pass.
+
+**📚 Paige (Tech Writer):** AC3 "no silent mismatch" is still prose-heavy for implementers extending **FR-17**; spell the **DTO fields** once. **📋 John (PM):** Put it in **Dev Notes**, not new AC—AC count is already high. **Resolution:** DTO table + **`TestReviewFilters_FR16DefaultMeansUnconstrained`** so "FR-16 defaults" names the same triple-nil state in spec and Go.
+
+**Orchestrator synthesis:** Land **epic §2.2** clause, **story Dev Notes** (authority / UX-DR16 fence / AC3 map), **`internal/domain/review_filter_test.go`** FR-16 default test, **`sprint-status.yaml`** audit comment—**`2-2-filter-strip` remains `done`**.
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -174,6 +240,11 @@ Composer (Cursor AI coding agent)
 
 ### Completion Notes List
 
+- **2026-04-15 (party `dev` 2/2):** **`Count*` error** lines use **`collections unavailable —`** for **`listErr`** and **FR-15** fragment order (collections before tags); **`refreshRejectedData`** reloads **`ListCollections`** each refresh (parity with Review); **`TestReviewView_closedDB_degradedSuffix_ordersCollectionsBeforeTags`**, **`TestRejectedView_closedDB_degradedSuffix_ordersCollectionsBeforeTags`**.
+- **2026-04-15 (party `dev` 1/2):** Tag strip sync errors use **`libraryErrText`** on the Review count line (parallel to collections-unavailable); same pattern on **Rejected**; regression **`TestReviewView_tagStripSyncFailure_showsActionableSuffix`** (dropped `tags` / `asset_tags`, refresh via rating `Select`).
+- **2026-04-15 (BMAD dev-story):** Re-ran full workflow on provided story path; all tasks already `[x]`; `go test ./...` and `go build .` green (no code changes). AC1–5 satisfied by existing `NewReviewView` strip (`ReviewFilterStripSegmentLabels`, FR-16 sentinels), shared `ReviewBrowseBaseWhere` + `ReviewFilterWhereSuffix` + count/list/ID parity tests. Status remains **done** per sprint `2-2-filter-strip: done`.
+- **2026-04-15 (party `create` 2/2):** Epic §2.2 **`any tag`** default parity; Dev Notes **UX-DR16 fence** + **AC3 DTO table**; `TestReviewFilters_FR16DefaultMeansUnconstrained`; sprint audit comment only (status **done**).
+- **2026-04-15 (party `create` 1/2):** Sprint **`2-2-filter-strip`** aligned to **done**; story AC4/AC5 + risks/DoD tightened; `TestReviewFilterStrip_defaultSentinels_matchStory22` pins FR-16 / strip default copy.
 - **2026-04-14 (dev-story re-run):** `go test ./...` and `go build .` green; all acceptance criteria and tasks remain satisfied. **UX backlog (one row + overflow):** additional sort/scope/advanced filters after MVP should use a sheet, drawer, or “More filters” control—not a second full-width nav row (UX-DR2 / epics alignment).
 - Review panel uses **`NewReviewView`** (`internal/app/review.go`): labeled strip **Collection → Minimum rating → Tags**, defaults **No assigned collection / Any rating / Any tag**, live **`CountAssetsForReview`** label, honest **Story 2.3** grid placeholder.
 - **`ReviewFilterWhereSuffix`** centralizes filter SQL for **count vs future list** parity (session 2 architect constraint). **`dev` party session 1** adds **suffix unit tests** plus **degraded-DB** label behavior (count still runs; list failure surfaces as a suffix warning when count works).
@@ -192,11 +263,18 @@ Composer (Cursor AI coding agent)
 - `internal/store/review_query.go`, `internal/store/review_query_test.go` — `ReviewBrowseBaseWhere`, `ReviewFilterWhereSuffix`, `CountAssetsForReview`, `ListAssetsForReview`, `ListAssetIDsForReview` (+ triple-filter arg-order contract test + ListIDs/count/order parity test)
 - `internal/store/collections.go` — `ListCollections`, `CollectionRow`
 - `internal/store/store_test.go` — expect schema version 3
-- `internal/app/review.go`, `internal/app/review_test.go` — Review UI + strip label order test
+- `internal/app/review.go`, `internal/app/review_test.go` — Review UI + strip label order + default-sentinel string regression tests + tag-sync degraded count line
+- `internal/app/rejected.go` — Rejected filter strip uses the same **tags unavailable** / `libraryErrText` pattern when `ListTags` fails; **`refreshRejectedData`** reloads **`ListCollections`** each pass (party dev 2/2 parity with Review)
 - `internal/app/shell.go` — Review panel wired to `NewReviewView`
 
 ## Change Log
 
+- **2026-04-15:** Party mode **`dev` session 2/2** — **`qerr`** degradation copy/order parity (collections prefix + strip order); Rejected **per-refresh `ListCollections`**; closed-DB ordering tests (Review + Rejected); sprint audit comment.
+- **2026-04-15:** Party mode **`dev` session 1/2** — actionable **tags unavailable** copy on Review/Rejected count lines; `TestReviewView_tagStripSyncFailure_showsActionableSuffix`; sprint audit comment.
+- **2026-04-15:** BMAD **dev-story** workflow — verification pass: `go test ./...`, `go build .` green; no implementation gaps vs AC/tasks; story/sprint status unchanged (**done**).
+- **2026-04-15:** BMAD **create-story** workflow — merged epics.md Story 2.2 AC (including UX-DR2 **one row + overflow**); preserved **Status: done**; refreshed References; sprint tracking later aligned to **done** (party create 2026-04-15).
+- **2026-04-15:** Party mode **`create` session 2/2** — epic AC **`any tag`** default; story Dev Notes (spec authority, UX-DR16 fence, AC3 mapping); `TestReviewFilters_FR16DefaultMeansUnconstrained`.
+- **2026-04-15:** Party mode **`create` session 1/2** — AC4/AC5 UX-DR15 + NFR-01 elaborations; DoD + i18n risk; sprint **`2-2-filter-strip` → done**; `TestReviewFilterStrip_defaultSentinels_matchStory22`.
 - **2026-04-14:** Party mode **`dev` session 2/2** (deepen) — `TestListAssetIDsForReview_matchesCountAndListAssetsForReviewOrder` guards filtered ID lists vs grid **count + sort** (`internal/store/review_query_test.go`); sprint note updated; story **done** unchanged.
 - **2026-04-14:** BMAD dev-story workflow re-run for Story 2.2 — verified implementation vs AC/tasks; `go test ./...` and `go build .` green; sprint `2-2-filter-strip` remains **done**; UX-DR2 overflow pattern for future controls noted in Completion Notes.
 - **2026-04-13:** Story 2.2 — completed remaining Keyboard/focus task: automated Tab-order tests for Review filter strip (dark/light theme) and theme test for focus ring vs input background; `go test ./...` green.

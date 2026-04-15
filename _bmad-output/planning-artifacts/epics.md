@@ -258,7 +258,7 @@ So that **I get predictable organization without surprise albums**.
 
 - **Given** the user selects multiple images via file picker, **when** import completes successfully, **then** each new file is ingested per Story 1.3 and the UI shows an **operation receipt** with added / duplicate / failed counts (UX-DR6, FR-03, NFR-04).
 - **Given** the upload flow offers collection assignment, **when** the user has not confirmed, **then** no new collection and no links are persisted (FR-06).
-- **Given** the default collection name pattern `Upload YYYYMMDD`, **when** the user confirms, **then** the collection is created/updated and all batch assets are linked as specified (FR-04, FR-05).
+- **Given** the default collection name pattern `Upload YYYYMMDD`, **when** the user confirms, **then** a **new** collection row is created (MVP: no merge into an existing same-named collection; see Story 1.5 Dev Notes) and all batch assets are linked as specified (FR-04, FR-05).
 - **Given** the user clears or renames the collection name before confirm, **when** they confirm, **then** the persisted name matches their input.
 - **Given** a multi-file pick, **when** the confirm step is shown, **then** the UI surfaces **large previews** of the batch (image-first **ingest** stage per UX **Direction E**); the **operation receipt** remains readable and may be **collapsed** after the user has learned the pattern (UX spec **feedback patterns**).
 - **Given** ingest work runs off the UI thread, **when** results are applied, **then** **Fyne** widgets update on the **main thread** (UX-DR17).
@@ -348,7 +348,7 @@ So that **browsing matches my mental model**.
 **Acceptance criteria:**
 
 - **Given** the Review surface, **when** filters render, **then** order is **Collection → minimum rating → tags** (FR-15).
-- **Given** a fresh session, **when** Review opens, **then** defaults are **no assigned collection** and **any rating** (FR-16).
+- **Given** a fresh session, **when** Review opens, **then** defaults are **no assigned collection** and **any rating** (FR-16), **and** the tags control defaults to **any tag** (no tag constraint until Story 2.5 supplies real tag values).
 - **Given** the user changes filters, **when** applied, **then** the result set updates without silent mismatch (UX-DR2).
 - **And** keyboard users can traverse the strip with visible focus (UX-DR2).
 - **And** the strip occupies **at most one** default **row** of controls; additional filters or sort/scope controls use **overflow** (sheet, drawer, or equivalent)—not a **second** horizontal **nav** (UX-DR2).
@@ -368,10 +368,12 @@ So that **photos stay primary while I triage quickly**.
 - **Given** filtered assets, **when** the grid loads, **then** thumbnails load incrementally (paged or windowed) without loading all pixmaps at once (architecture).
 - **Given** an asset with rating or reject state, **when** shown in grid, **then** badges reflect DB state within the PRD **1 second** guideline for local single-user use (FR-10, SC-3 / FR-07 baseline for display).
 - **Given** decode failure, **when** a cell renders, **then** user sees failed-decode affordance (placeholder + explanation) per UX-DR3.
+- **Given** a visible cell whose thumbnail is still decoding, **when** it renders, **then** the **pending** state is **visually distinct** from **failed** decode (UX-DR3): a non-blank pending affordance (e.g. media placeholder icon) versus the failed path (error affordance + short explanation). Silent empty image regions are not acceptable for pending.
 - **And** at default density, **thumbnail imagery** is the **largest** element in the cell; nonessential chrome **defers** to **hover/focus** where feasible (UX-DR3, UX-DR16).
 - **And** **minimum** thumbnail **readability** at **1024×768** and **1920×1080** reference layouts is **recorded** in Story **2.11** / NFR-01 evidence (numeric thresholds—not ad hoc).
+- **And** when the filtered **asset count is zero**, the grid exposes **no thumbnail rows** and the **thumbnail scroll region is hidden** while the shell **empty state** carries user messaging (UX-DR18 coordination; full empty/loading/error/populated matrix remains Story **2.12**).
 
-**Implements:** FR-07 (display tags/ratings context); supports FR-08/FR-29 display; UX-DR3, UX-DR16.
+**Implements:** FR-07 (display tags/ratings context); supports FR-08/FR-29 display; UX-DR3, UX-DR16, UX-DR18 (zero-count grid coordination only).
 
 ---
 

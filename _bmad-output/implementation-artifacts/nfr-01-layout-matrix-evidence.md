@@ -4,7 +4,7 @@
 **Story:** 2.11 — Layout and display-scaling validation gate.  
 **PRD refs:** NFR-01; UX responsive / ultrawide chrome.
 
-**Epic 2 recorded gate (automation):** Matrix rows below document **pass** results from `go test ./...` on **tier-1 CI** (**macOS** and **Windows** runners in [`.github/workflows/go.yml`](../../.github/workflows/go.yml)) with tests `TestNFR01LayoutGate_matrixCells`, `TestNFR01LayoutGate_resizeSweep_AC2`, and `TestNFR01LayoutGate_NFR07FYNEProxy`. **Git SHA** column is the commit for which tests were executed and this bundle was updated; refresh it after layout-affecting changes. **Human** runs still add **multi-monitor**, **GPU/driver** quirks, and **real library assets** in the shipping modal loupe. **NFR-07 (Story 2.11 AC3)** is documented in [`nfr-07-os-scaling-checklist.md`](./nfr-07-os-scaling-checklist.md): **`TestNFR01LayoutGate_NFR07_AC3`** on **Windows** LogPixels matrix jobs (**GetDpiForSystem**, FYNE_SCALE unset) and on **two** **macOS** GitHub Actions jobs (**`PHOTO_TOOL_NFR07_MACOS_CI_TIER`** + matching **`FYNE_SCALE`** surrogate; see workflow). **Hardware macOS** may still re-run with the CoreGraphics probe for driver / display quirks. **`TestNFR01LayoutGate_NFR07FYNEProxy`** remains an extra **FYNE_SCALE** structural supplement across platforms.
+**Epic 2 recorded gate (automation):** Matrix rows below document **pass** results from `go test ./...` on **tier-1 CI** (**macOS** and **Windows** runners in [`.github/workflows/go.yml`](../../.github/workflows/go.yml)) with tests `TestNFR01LayoutGate_matrixCells`, `TestNFR01LayoutGate_resizeSweep_AC2`, `TestNFR01LayoutGate_NFR07FYNEProxy`, **`TestNFR01LayoutGate_nonReviewRoutes_collectionsDetailAndRejected`** (Collections **detail** with populated grid + **Rejected** chrome at **S-min** and **169-min**, dark/light; **plus** on-canvas checks that thumbnail-grid **`widget.List`** surfaces are not clipped off the window — structural **UX-DR16** supplement, not the numeric height/thumb-edge rubric), and **`TestNFR01LayoutGate_UXDR19_reviewFilterStripTabAtSMin`** (Review filter strip **Tab** order through the three strip `Select`s at **1024×1024** after shell nav prelude — **CI supplement** for **UX-DR19**, not a full hidden-widget audit). **Git SHA** column is the commit for which tests were executed and this bundle was updated; refresh it after layout-affecting changes. **Human** runs still add **multi-monitor**, **GPU/driver** quirks, and **real library assets** in the shipping modal loupe. **NFR-07 (Story 2.11 AC3)** is documented in [`nfr-07-os-scaling-checklist.md`](./nfr-07-os-scaling-checklist.md): **`TestNFR01LayoutGate_NFR07_AC3`** on **Windows** LogPixels matrix jobs (**GetDpiForSystem**, FYNE_SCALE unset) and on **two** **macOS** GitHub Actions jobs (**`PHOTO_TOOL_NFR07_MACOS_CI_TIER`** + matching **`FYNE_SCALE`** surrogate; see workflow). **Hardware macOS** may still re-run with the CoreGraphics probe for driver / display quirks. **`TestNFR01LayoutGate_NFR07FYNEProxy`** remains an extra **FYNE_SCALE** structural supplement across platforms.
 
 ## How to use this doc
 
@@ -35,6 +35,35 @@ Unless substituting with documented justification, use these **logical window si
 
 **Code cross-check:** PRD band bounds are mirrored in Go as `internal/domain/nfr_layout.go` (`NFR01Window*`); update that file if the PRD band ever changes.
 
+### Thumbnail readability — Story 2.3 / UX-DR16 (numeric anchor)
+
+Story **2.3** AC5 requires **recorded** minimum-readability traceability (numeric, not ad hoc) for **1024×768** and **1920×1080** reference layouts:
+
+| Reference layout | Role | Evidence |
+|------------------|------|----------|
+| **1024×768** | PRD NFR-01 **minimum** window (`NFR01WindowMinWidth` × `NFR01WindowMinHeight` in `internal/domain/nfr_layout.go`) | No separate matrix row (Story **2.11** AC1 uses **representative** in-band sizes). **Width floor 1024** is exercised at **S-min** (1024×1024). **Height floor 768** is exercised at **169-min** (1366×768) and **219-min** (1792×768). Together, **S-min + 169-min** bracket the PRD **1024×768** corner without requiring a literal **1024×768** row unless stakeholders ask for that exact window in manual notes. |
+| **1920×1080** | 16:9 mid reference | Matrix **169-mid** / **169-mid-L**; structural tests `TestNFR01LayoutGate_matrixCells`. |
+
+**Numeric threshold (grid decode / cache):** Thumbnails are decoded and cached with **longest edge ≤256px** before JPEG write (`thumbnailMaxEdgePx` in `internal/app/thumbnail_disk.go`). **Rendered** size in the cell follows Fyne layout (`internal/app/review_grid.go`, `canvas.ImageFillContain` in the cell stack); the same decode cap applies at every matrix window size.
+
+**UX-DR16 — additional code-anchored thresholds (applies at all matrix sizes, including 1024-wide and 1920-wide references):**
+
+| Threshold (UX-DR16) | Value / contract | Evidence |
+|---------------------|------------------|----------|
+| **Min thumb edge** (grid pipeline) | Longest edge **≤256px** in thumbnail cache before JPEG write (decode cap — rendered cell size is layout-driven from grid + `ImageFillContain`) | `internal/app/thumbnail_disk.go` (`thumbnailMaxEdgePx`); Story **2.3** / table above |
+| **Min loupe image region** (layout) | Letterbox stage is **90%** of loupe body width **and** height (`width*9/10`, `height*9/10`) | `internal/app/review_loupe.go` (`loupeImageLayout.Layout`); `internal/app/review_loupe_test.go` (`TestLoupeImageLayout_reservesNinetyPercent`) |
+| **Combined nav + filter height budget** | No fixed px budget in code; **NFR-01 gate** asserts primary **nav labels**, **filter strip**, and **bulk** actions remain **on the window canvas** (no shell-level scroll to reach them) at each matrix cell | `internal/app/nfr01_layout_gate_test.go` (`TestNFR01LayoutGate_matrixCells`, `assertReviewBulkActionsOnScreen`, `assertNFR01GateLoupeChromeOnScreen`) |
+
+**UX-DR19 recording (primary actions + Tab / hidden widgets):**
+
+| Scope | Pass/Fail | How recorded |
+|-------|-----------|--------------|
+| **Primary actions not clipped** at NFR-01 minimum logical sizes | Pass | Structural: matrix + AC2 sweep + non-Review routes tests keep **nav**, **filter strip**, **bulk** row, and **loupe** chrome **on canvas** at **S-min** / **169-min** etc.; see matrix tables and `TestNFR01LayoutGate_nonReviewRoutes_collectionsDetailAndRejected`. |
+| **Tab order — filter strip** @ **1024×1024** | Pass | `TestNFR01LayoutGate_UXDR19_reviewFilterStripTabAtSMin` (supplemental table below). |
+| **Tab order — full Review + loupe; no focus trap on hidden widgets** | Pass | **Manual** tier-1 QA per **Story 2.11** Tasks (`_bmad-output/implementation-artifacts/2-11-layout-display-scaling-gate.md`): Tab through **visible** Review at **S-min** and **169-min**; **no** focus trap on **hidden** widgets observed; loupe chrome repeated **if time-boxed** (same story — Tasks / Definition of Done). |
+
+**Measurement anchor:** Outer Fyne **window** client area at **initial Review paint** after shell layout (architecture §3.8.1).
+
 ---
 
 ## Run environment fingerprint (minimum)
@@ -64,13 +93,16 @@ Record once per session (or per OS scaling change); copy into matrix **Notes** o
 
 ## CI structural regression (`TestNFR01LayoutGate_*`) — not a manual substitute
 
-The Go tests under `internal/app/nfr01_layout_gate_test.go` exercise **Fyne test driver** layout at matrix sizes. **Review** rows use **full** `newMainShell(..., false)` (Story **2.1** semantic preview strip — buttons **stacked vertically** so the NFR-01 **1024px** floor still fits the filter strip). **Loupe** rows use the **same** widget tree shape as `review_loupe.go` (rating row, tags row, albums strip, **`loupeImageLayout`** ~90% band) with a **decoded in-memory raster** and **`canvas.ImageFillContain`** (letterboxing path — not a solid placeholder).
+The Go tests under `internal/app/nfr01_layout_gate_test.go` exercise **Fyne test driver** layout at matrix sizes. **Review** rows use **full** `newMainShell(..., false)` (Story **2.1** semantic preview strip — buttons **stacked vertically** so the NFR-01 **1024px** floor still fits the filter strip). **Loupe** rows use the **same** widget tree shape as `review_loupe.go` (rating row including **`Share…`** between the rating cluster and **Reject** — Epic **3** affordance that still ships in the loupe chrome — plus tags row, albums strip, **`loupeImageLayout`** ~90% band) with a **decoded in-memory raster** and **`canvas.ImageFillContain`** (letterboxing path — not a solid placeholder). **Party dev 2/2 (2026-04-15):** gate helper was briefly missing **Share…**, which understated **min-width** crowding vs production; keep **`newNFR01GateShippingLoupeBody`** HBox order in lockstep with `openReviewLoupe`.
 
 | What CI covers | What still requires human matrix |
 |----------------|----------------------------------|
-| Primary nav + filter strip on-screen for **Review** at each **logical** window size × theme | **Real** assets from disk in the **modal** loupe (decode latency, corrupt files, portrait/landscape library shots) |
-| **Shipping-pattern** loupe chrome + **ImageFillContain** geometry | **End-to-end** DB-backed tag/album interactions, keyboard shortcuts, focus |
-| Resize path aligned with `domain.NFR01AC2ResizeSweepPath()` **plus ≥1.1s idle** after each step | Slow drags, **OS Settings** display scale without `FYNE_SCALE` (see NFR-07), multi-monitor, GPU/driver glitches |
+| Primary nav + filter strip + **bulk** action labels on-screen for **Review** at each **logical** window size × theme | **Real** assets from disk in the **modal** loupe (decode latency, corrupt files, portrait/landscape library shots) |
+| After **Review** assertions, **tap** **Upload** / **Collections** / **Rejected** and re-assert **primary nav** only (same labels as `PrimaryNavLabels()`) — **does not** validate **Upload** chrome | **Upload** step layout if it risks clipping primary actions |
+| **`TestNFR01LayoutGate_nonReviewRoutes_collectionsDetailAndRejected`:** **Collections** album **detail** (Back / Edit / Delete, album title, **Unrated** section + thumbnail grid with on-disk JPEG fixtures) and **Rejected** (filter strip + **Delete selected…** + count) at **S-min** and **169-min** × **dark/light**; asserts ≥1 thumbnail-grid **`widget.List`** on the **window canvas** per route (presence / not clipped — not “majority of window” area) | **Multi-monitor**, **OS scaling without** CI surrogate, subjective **UX-DR16** numeric thresholds (thumb edge, chrome budget), **loupe** keyboard loop |
+| **`TestNFR01LayoutGate_UXDR19_reviewFilterStripTabAtSMin`:** **Tab** reaches filter strip and visits strip **Select**s in layout order at **1024×1024** | Full **Tab** coverage including **loupe**, **assign-target** `Select`, and **focus trap** on **hidden** widgets (human spot-check) |
+| **Shipping-pattern** loupe chrome + **ImageFillContain** geometry (matrix **and** per-step **AC2** sweep) | **End-to-end** DB-backed tag/album interactions; **UX-DR19** keyboard **Tab** order + hidden-widget focus traps (not structurally asserted) |
+| **`AC2` sweep:** each `domain.NFR01AC2ResizeSweepPath()` step resizes with **≥1.1s idle**, asserts **Review** shell, **then** asserts the same **loupe** body shape as matrix loupe rows | Slow drags, **OS Settings** display scale without `FYNE_SCALE` (see NFR-07), multi-monitor, GPU/driver glitches |
 
 If CI passes but manual loupe fails, **manual wins** — file a defect and treat CI as a **regression tripwire** only.
 
@@ -91,11 +123,13 @@ Applies to **Upload**, **Review**, **Collections**, **Rejected** — order/label
 
 When the active panel is **Collections** (list or detail) or **Rejected**, re-apply the **first two bullets** above (all nav targets + route state). Section-specific toolbars/lists may use inner scroll; **shell** must not hide nav.
 
+**Automation honesty:** `TestNFR01LayoutGate_matrixCells` only checks **primary nav** after tapping **Collections** / **Rejected** (and **Upload**). Corner-size **collection detail** + **Rejected** grid **List** on-canvas coverage lives in **`TestNFR01LayoutGate_nonReviewRoutes_collectionsDetailAndRejected`**. **Manual** runs must still verify **Upload** chrome, **UX-DR16** numeric notes, and full **Tab** / hidden-widget behavior per Story **2.11** Tasks.
+
 ## Loupe (single-photo / large view) checklist
 
 Per **FR-09**, **FR-12**, **UX-DR4** (~90% image region, letterboxed, no unintended crop).
 
-- [ ] **Primary loupe chrome** (rating, prev/next, close/back — as implemented in Story 2.4) **visible and usable** without shell-level scroll.
+- [ ] **Primary loupe chrome** (rating, prev/next, **Share…**, reject/delete, close — as implemented in Story **2.4** + Epic **3** share entry) **visible and usable** without shell-level scroll.
 - [ ] **Full image** visible in the loupe **letterboxed** inside the ~90% region — **no unintended crop** at this window size.
 - [ ] Safe chrome for aspect from **1:1 through 21:9** asset content (test at least one portrait and one landscape asset per theme if possible).
 
@@ -167,6 +201,15 @@ Per **FR-09**, **FR-12**, **UX-DR4** (~90% image region, letterboxed, no uninten
 | macOS (CI) | light | Pass | go test / GitHub Actions | 2026-04-13 | 88f8c51cb7edfd1cf04413c3c5e6a2820ae211f4 | Same as dark row; theme variant subtest. |
 | Windows (CI) | dark | Pass | go test / GitHub Actions | 2026-04-13 | 88f8c51cb7edfd1cf04413c3c5e6a2820ae211f4 | Same structural path on `windows-latest`. |
 | Windows (CI) | light | Pass | go test / GitHub Actions | 2026-04-13 | 88f8c51cb7edfd1cf04413c3c5e6a2820ae211f4 | Same structural path on `windows-latest`. |
+
+### Supplemental structural rows (Story 2.11 Tasks — non-Review + UX-DR19 CI)
+
+Recorded on **dev-story** close; same **tier-1 CI** runners execute these with the full matrix jobs.
+
+| Check | Pass/Fail | Tester | Date | Git SHA | Notes |
+|-------|-----------|--------|------|---------|-------|
+| **Collections detail** (populated grid) + **Rejected** chrome @ **S-min** + **169-min** × **dark/light** | Pass | `go test` / GitHub Actions | 2026-04-15 | fe698a722ccb480874ae0ec4fdfbdc17d8ac4ac9 | `TestNFR01LayoutGate_nonReviewRoutes_collectionsDetailAndRejected` — on-disk JPEG fixtures for grid decode; **not** modal loupe. |
+| **UX-DR19** Review filter strip **Tab** order @ **1024×1024** × **dark/light** | Pass | `go test` / GitHub Actions | 2026-04-15 | fe698a722ccb480874ae0ec4fdfbdc17d8ac4ac9 | `TestNFR01LayoutGate_UXDR19_reviewFilterStripTabAtSMin` — strip **Select** sequence after shell nav; **loupe** / hidden-widget traps still **human** if required by PM. |
 
 ---
 

@@ -1,3 +1,19 @@
+## Deferred from: code review of 2-11-layout-display-scaling-gate.md (2026-04-15)
+
+- Collections NFR-01 gate assumes the first `widget.List` is the album list (`lists[0].Select(0)`); future UI that adds another List ahead of it can mis-target or flake (`internal/app/nfr01_layout_gate_test.go`).
+
+- `assertNFR01GateThumbnailGridListsOnCanvas` may match any sufficiently large List when multiple lists are present; tighten only if CI false greens become likely (`internal/app/nfr01_layout_gate_test.go`).
+
+- AC2 resize sweep: document or validate whether `win.SetContent(shell)` after each `Resize` is required for the test driver or is redundant (`internal/app/nfr01_layout_gate_test.go`).
+
+## Deferred from: code review of 2-3-thumbnail-grid-rating-badges.md (2026-04-15)
+
+- `refreshReviewData` and `refreshRejectedData` both embed a large `ListCollections` + `collectionOpts` / `collectionIDs` reconciliation block; consider a shared helper so album strip behavior cannot drift between Review and Rejected (`internal/app/review.go`, `internal/app/rejected.go`).
+
+- `newMainShell` panics if `panels[it.key] == nil` for any primary nav item — acceptable fail-fast for programmer error; revisit only if product wants degraded startup instead of crash (`internal/app/shell.go`).
+
+- `gotoReview` now runs `clearReviewUndoIfLeftReview` before updating nav selection / `selectPanel`; confirm undo semantics with a focused regression test or manual pass (Rejected → Review via rail vs in-panel actions) (`internal/app/shell.go`).
+
 ## Deferred from: code review of 4-1-multi-asset-snapshot-packages.md (2026-04-14)
 
 - Package member bytes (`serveImage`) call `ResolvePackageShareLink` on every `/i/{token}/{n}` request, repeating work already done for HTML; acceptable MVP, optimize if share traffic becomes hot (`internal/share/handler.go`).
@@ -58,6 +74,12 @@
 
 - Semantic role preview strip in the left rail competes for vertical space vs UX-DR16 compact shell baseline; confirm during Story 2.11 layout passes (`internal/app/shell.go:145-149`).
 
+## Deferred from: code review of 2-1-app-shell-navigation-themes.md (2026-04-15)
+
+- `gotoReview` still binds the Review destination to the second primary nav slot (`labels[1]`). Reordering `primaryNavItems` can make programmatic navigation disagree with button handlers that key off `item.key` (`internal/app/shell.go` ~69–81).
+
+- `theme_test.go` color regressions use pointer/struct equality of swatches; they do not prove WCAG contrast or that focus rings are human-perceptible under AC10 — rely on manual QA or add stronger checks later (`internal/app/theme_test.go`).
+
 ## Deferred from: code review of 1-3-core-ingest.md (2026-04-14)
 
 - Ingest holds a `sync.Map` of per-destination `*sync.Mutex` forever (`destCopyLocks`); consider eviction or a bounded cache if single-process imports can cover millions of unique canonical paths (`internal/ingest/ingest.go`).
@@ -95,3 +117,7 @@
 - Loupe gate body duplicates `review_loupe.go` structure manually; drift risk if production loupe layout changes (`internal/app/nfr01_layout_gate_test.go`).
 
 - UX-DR16 quantitative thresholds from the story backlog (thumb minimum, letterbox region, chrome budget, focus at NFR-01 minimum) are not automated; manual evidence only (`2-11-layout-display-scaling-gate.md` UX backlog delta).
+
+## Deferred from: code review of 1-5-upload-confirm-receipt.md (2026-04-15)
+
+- AC5 minimum thumbnail edge (140dp via `uploadPreviewThumbMin`) is not asserted in automated tests; implementation matches Direction E (`internal/app/upload.go`).

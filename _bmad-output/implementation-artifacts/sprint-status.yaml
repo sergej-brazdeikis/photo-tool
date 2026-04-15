@@ -1,3 +1,9 @@
+# 2026-04-15: Party mode **dev** session **2/2** (2-11) — simulated Dev/UX/Arch/PM; gate loupe **`Share…`** + HBox order parity vs `review_loupe.go`; evidence loupe checklist; sprint **`2-11-layout-display-scaling-gate`** remains **review**.
+# 2026-04-15: Party mode **dev** session **2/2** (2-3) — simulated Dev/UX/Arch/PM; `syncGridScrollVisible`, Rejected count-error **Back to Review**, `thumbGen` stale-thumb guard; sprint **`2-3-thumbnail-grid-rating-badges`** remains **done**.
+# 2026-04-15: Party mode **dev** session **1/2** (2-3) — simulated Dev/UX/Arch/PM; hide grid `Scroll` when count0 or count query fails (Review + Rejected); sprint **`2-3-thumbnail-grid-rating-badges`** remains **done**.
+# 2026-04-15: Party mode **create** session **2/2** (2-3) — simulated Analyst/PM/UX/Dev; epic §2.3 AC parity + `TestReviewGridListRowCount`; sprint **`2-3-thumbnail-grid-rating-badges`** remains **done**.
+# 2026-04-15: Party mode **create** session **1/2** (2-3) — simulated PM/TechWriter/UX/Arch; AC6 pending-vs-failed + rejected-mode traceability + Risks/DoD; sprint **`2-3-thumbnail-grid-rating-badges`** aligned to **done** (matches story Status).
+# 2026-04-15: create-story workflow — Story 2.3 spec merged (`2-3-thumbnail-grid-rating-badges.md`); sprint key → ready-for-dev (story file Status remains done).
 # Sprint tracking for BMAD create-story / dev-story auto-discover.
 # Story state machine: backlog → ready-for-dev → in-progress → review → done
 # See .claude/skills/bmad-sprint-planning/workflow.md
@@ -75,8 +81,29 @@
 # 2026-04-14: Party mode create session 1/2 (4-1) — story AC5 snapshot-vs-bytes split, AC3 dedupe+cap, tasks/risks/tests; domain StableDedupeAssetIDs + tests; status unchanged ready-for-dev.
 # 2026-04-14: Party mode create session 2/2 (4-1) — challenged: preview throttle AC, resolve fork + enumeration parity, schema CHECK/members table pin, ErrPackageTooManyAssets/ErrPackageNoEligibleAssets in store; story + share.go godoc; status unchanged ready-for-dev.
 
-generated: "2026-04-13"
-last_updated: "2026-04-14"
+generated: "2026-04-15"
+last_updated: "2026-04-15"
+# 2026-04-15: Party mode dev session 2/2 (2-2) — simulated Dev/UX/Arch/PM; `Count*` error line uses `collections unavailable —` + FR-15 suffix order; Rejected reloads `ListCollections` each refresh; `TestReviewView_closedDB_degradedSuffix_ordersCollectionsBeforeTags` + Rejected twin; 2-2-filter-strip remains **done**.
+# 2026-04-15: Party mode dev session 1/2 (2-2) — simulated Dev/UX/Arch/Analyst; tag strip `ListTags` failures surface `libraryErrText` on count line (Review + Rejected parity); `TestReviewView_tagStripSyncFailure_showsActionableSuffix`; 2-2-filter-strip remains **done**.
+# 2026-04-15: Party mode create session 2/2 (2-2) — simulated PM/UX/Arch/TechWriter; epic §2.2 **any tag** default parity; story Dev Notes UX-DR16 scope fence + AC3 DTO mapping; `TestReviewFilters_FR16DefaultMeansUnconstrained`; 2-2-filter-strip remains **done**.
+# 2026-04-15: Party mode create session 1/2 (2-2) — simulated PM/UX/Arch/Analyst; NFR-01/UX-DR15 traceability + sprint `2-2-filter-strip` aligned to **done** (implementation + story Status); default-string regression test.
+# 2026-04-15: create-story workflow — Story 2.2 spec merged (epics AC refresh); 2-2-filter-strip tracking superseded by create session alignment → done.
+# 2026-04-15: Party mode dev session 2/2 (2-1) — simulated Dev/UX/Arch/PM; challenged session-1 focus gap: focus vs caution/destructive + separator≠background regressions; gotoUpload prelude comment parity; 2-1-app-shell-navigation-themes remains done.
+# 2026-04-15: Party mode dev session 1/2 (2-1) — simulated Dev/UX/Arch/PM; PrimaryNavKeys traceability + focus≠primary theme regression + shell godoc (vertical rail vs epic “row/rail”); 2-1-app-shell-navigation-themes remains done.
+# 2026-04-15: Party mode create session 2/2 (2-1) — challenged doc/sprint prose drift + gotoReview transition order + theme primary≠destructive test; 2-1-app-shell-navigation-themes remains done.
+# 2026-04-15: Party mode create session 1/2 (2-1) — sprint aligned to implemented shell/theme (story Status done); 2-1-app-shell-navigation-themes → done.
+# 2026-04-15: Story **2-11** dev-story — `TestNFR01LayoutGate_nonReviewRoutes_*` + UX-DR19 Tab supplement; evidence supplemental rows; `2-11-layout-display-scaling-gate` → **review**.
+# 2026-04-15: Party mode **create** session **2/2** (2-11) — simulated Analyst/PM/UX/Arch; NFR-07 mid-only expansion rule + CI nav-only vs manual collection-detail/Rejected; `nfr01_layout_gate_test.go` comment; `2-11-layout-display-scaling-gate` remains **ready-for-dev**.
+# 2026-04-15: Party mode **dev** session **1/2** (2-11) — simulated Dev/UX/Arch/PM; `assertNFR01GateThumbnailGridListsOnCanvas` + matrixCell comment + story/evidence sync; `2-11-layout-display-scaling-gate` remains **review**.
+# 2026-04-15: Party mode **create** session **1/2** (2-11) — simulated PM/UX/Arch/TechWriter; UX-DR19 manual QA subtask + CI-vs-sign-off risk; Review Findings reconciled to `nfr01_layout_gate_test.go`; evidence AC2/CI table row updated; `2-11-layout-display-scaling-gate` remains **ready-for-dev**.
+# 2026-04-15: create-story workflow — Story 2.11 spec merged (`2-11-layout-display-scaling-gate.md` epic AC verbatim + References); `2-11-layout-display-scaling-gate` → ready-for-dev.
+# 2026-04-15: create-story workflow — Story 2.1 spec merged (epics §2.1 AC refresh); 2-1-app-shell-navigation-themes was ready-for-dev for tracking; superseded by create session alignment.
+# 2026-04-15: BMAD code review (1-5) — patch/defer findings recorded in story + deferred-work; sprint remains review.
+# 2026-04-15: Party mode dev session 2/2 (1-5) — assign+whitespace name + Files-in-batch label tests; upload preview comment; 1-5-upload-confirm-receipt remains review.
+# 2026-04-15: Party mode dev session 1/2 (1-5) — uploadImportCloseBlocked + TestUpload_importCloseBlocked_policy; close policy automated, full window close UX still manual; 1-5-upload-confirm-receipt remains review.
+# 2026-04-15: Party mode create session 2/2 (1-5) — AC3/epic MVP create-only wording; upload close intercept includes collection step; story risks + manual QA; 1-5-upload-confirm-receipt remains review.
+# 2026-04-15: Party mode create session 1/2 (1-5) — AC5 preview strip + story Risks/DoD; 1-5-upload-confirm-receipt → review (aligned with story Status).
+# 2026-04-15: create-story workflow — Story 1.5 spec refresh (epics AC1–6 parity); 1-5-upload-confirm-receipt → ready-for-dev (story file Status remains review).
 # 2026-04-14: BMAD code review (3-5) — under-limit test + posture doc follow-ups; 3-5-share-cold-load-performance-abuse-posture → in-progress.
 # 2026-04-14: BMAD code review (3-4) — package HTML caption privacy vs Story 3.4 tasks; decision + test follow-up; 3-4-share-page-privacy-wcag-2-1-level-a → in-progress.
 # 2026-04-14: BMAD code review (3-3) — slog err attachment patch item; story + sprint → in-progress.
@@ -113,9 +140,10 @@ last_updated: "2026-04-14"
 # 2026-04-14: Party mode dev session 1/2 (2-3) — simulated Amelia/Sally/Winston/Mary; cached page-query failure (one slog + no SQLite retry storm); `review_grid.go` + story record; 2-3-thumbnail-grid-rating-badges remains done.
 # 2026-04-14: Party mode dev session 2/2 (2-1) — nav `setNavSelection` + Refresh; theme test primary≠warning; story risks/record; 2-1 remains done.
 # 2026-04-14: Party mode dev session 1/2 (1-8) deepen — dropBlockedDialogInfo + classify stat-error test + empty-uris comment; manual QA "drop during import"; 1-8-drag-drop-upload remains review.
+# 2026-04-15: bmad-sprint-planning — inventory vs epics.md (26 stories, 4 epics); added epic-2/3/4-retrospective (optional); metadata keys aligned to workflow (NOKEY, file-system); preserved prior statuses (no downgrades).
 project: photo-tool
-project_key: photo-tool
-tracking_system: file
+project_key: NOKEY
+tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
@@ -140,13 +168,16 @@ development_status:
   2-8-collections-list-detail: review
   2-9-collection-crud-multi-assign: in-progress
   2-10-quick-collection-assign: review
-  2-11-layout-display-scaling-gate: ready-for-dev
+  2-11-layout-display-scaling-gate: review
   2-12-empty-states-error-tone: in-progress
+  epic-2-retrospective: optional
   epic-3: in-progress
   3-1-share-preview-snapshot-mint: review
   3-2-loopback-http-server-token-resolution: review
   3-3-read-only-share-html-page: in-progress
   3-4-share-page-privacy-wcag-2-1-level-a: in-progress
   3-5-share-cold-load-performance-abuse-posture: in-progress
+  epic-3-retrospective: optional
   epic-4: in-progress
   4-1-multi-asset-snapshot-packages: review
+  epic-4-retrospective: optional

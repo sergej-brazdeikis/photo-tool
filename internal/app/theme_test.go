@@ -53,6 +53,18 @@ func TestPhotoToolTheme_cautionDistinctFromPrimary(t *testing.T) {
 	}
 }
 
+// Primary action must not read as destructive (UX-DR1 / AC5 semantic roles).
+func TestPhotoToolTheme_primaryDistinctFromDestructive(t *testing.T) {
+	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
+		th := NewPhotoToolTheme(v)
+		prim := th.Color(theme.ColorNamePrimary, v)
+		errC := th.Color(theme.ColorNameError, v)
+		if prim == errC {
+			t.Fatalf("variant %v: primary and destructive (error) must differ", v)
+		}
+	}
+}
+
 // Story 2.7 manual QA substitute: destructive (delete) buttons must stay visible on the app background in light and dark.
 func TestPhotoToolTheme_destructiveDistinctFromBackground(t *testing.T) {
 	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
@@ -97,7 +109,55 @@ func TestPhotoToolTheme_focusDistinctFromBackground(t *testing.T) {
 		f := th.Color(theme.ColorNameFocus, v)
 		bg := th.Color(theme.ColorNameBackground, v)
 		if f == bg {
-			t.Fatalf("variant %v: focus color must differ from background for visible focus (AC9)", v)
+			t.Fatalf("variant %v: focus color must differ from background for visible focus (AC10)", v)
+		}
+	}
+}
+
+// Focus ring must not use the same chroma as the primary action color (both are often blue-adjacent in light themes).
+func TestPhotoToolTheme_focusDistinctFromPrimary(t *testing.T) {
+	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
+		th := NewPhotoToolTheme(v)
+		f := th.Color(theme.ColorNameFocus, v)
+		prim := th.Color(theme.ColorNamePrimary, v)
+		if f == prim {
+			t.Fatalf("variant %v: focus and primary must differ (keyboard focus vs default action — AC10 baseline)", v)
+		}
+	}
+}
+
+// Reject/caution uses Warning importance; focus must not collapse into the same swatch when palette is retuned (AC10 + UX-DR5).
+func TestPhotoToolTheme_focusDistinctFromWarning(t *testing.T) {
+	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
+		th := NewPhotoToolTheme(v)
+		f := th.Color(theme.ColorNameFocus, v)
+		warn := th.Color(theme.ColorNameWarning, v)
+		if f == warn {
+			t.Fatalf("variant %v: focus and warning (caution) must differ", v)
+		}
+	}
+}
+
+// Destructive (Error) must not match focus — keyboard users tabbing past delete-adjacent controls need a visible ring (AC10 baseline).
+func TestPhotoToolTheme_focusDistinctFromError(t *testing.T) {
+	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
+		th := NewPhotoToolTheme(v)
+		f := th.Color(theme.ColorNameFocus, v)
+		errC := th.Color(theme.ColorNameError, v)
+		if f == errC {
+			t.Fatalf("variant %v: focus and destructive (error) must differ", v)
+		}
+	}
+}
+
+// AC8: border/divider roles must remain visible against background in both variants (shell separators, filter chrome).
+func TestPhotoToolTheme_separatorDistinctFromBackground(t *testing.T) {
+	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
+		th := NewPhotoToolTheme(v)
+		sep := th.Color(theme.ColorNameSeparator, v)
+		bg := th.Color(theme.ColorNameBackground, v)
+		if sep == bg {
+			t.Fatalf("variant %v: separator must differ from background", v)
 		}
 	}
 }

@@ -508,6 +508,7 @@ So that **ultrawide and laptop both work**.
 - **Given** 125% and 150% OS scaling on macOS and Windows, **when** checked each major milestone, **then** NFR-07 checklist is updated.
 - **And** failures become tracked defects with UX/layout owner.
 - **And** evidence captures **UX-DR16** thresholds where applicable: **min thumb edge** (grid), **min loupe image region**, **combined nav+filter height budget**, plus **UX-DR19**: at **minimum** window, **primary** actions **not clipped** and **Tab** order has **no** focus trap on **hidden** widgets.
+- **And** each recorded threshold cites a **measurement anchor** (e.g. full window vs inner content pane) and **lifecycle moment** (e.g. initial layout vs after thumbnail decode vs after cache hit), consistent with [architecture.md](architecture.md) §3.8.1 and [initiative-fyne-image-first-phase1-party-2026-04-15.md](initiative-fyne-image-first-phase1-party-2026-04-15.md).
 
 **Implements:** NFR-01, NFR-07; UX-DR16, UX-DR19.
 

@@ -29,12 +29,25 @@ func PrimaryNavLabels() []string {
 	return out
 }
 
+// PrimaryNavKeys returns internal panel keys in the same order as PrimaryNavLabels (exported for regression tests).
+func PrimaryNavKeys() []string {
+	out := make([]string, len(primaryNavItems))
+	for i, it := range primaryNavItems {
+		out[i] = it.key
+	}
+	return out
+}
+
 // NewMainShell builds persistent navigation (UX-DR13 order) and a swappable content region.
 // Upload embeds the existing ingest flow. Review, Collections, and Rejected mount the real
 // Epic 2 panels (Stories 2.2+); Story 2.1 originally shipped placeholders — see story history.
 // shareLoop starts the loopback share HTTP server on first successful mint (Story 3.2); nil disables URLs in tests.
+//
+// The left-rail “Semantic roles (preview)” demo strip is omitted in production builds so the
+// shipping UI matches user-facing UX (see ux_layout_invariants_test). Tests that need the strip
+// for theme/NFR layout calls should use [newMainShell] with omitSemanticStylePreview false.
 func NewMainShell(win fyne.Window, db *sql.DB, libraryRoot string, shareLoop *share.Loopback) fyne.CanvasObject {
-	return newMainShell(win, db, libraryRoot, false, shareLoop)
+	return newMainShell(win, db, libraryRoot, true, shareLoop)
 }
 
 // newMainShell is the shell constructor. When omitSemanticStylePreview is true, the
@@ -58,13 +71,18 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 	var setNavSelection func(int)
 
 	gotoReview := func() {
+		nextKey := keyByLabel[labels[1]]
+		// Match nav button prelude order: undo-clear uses prior prevNavKey; then commit prevNavKey
+		// before selectPanel so synchronous panel code never sees a stale transition (party create 2/2).
+		// collectionsNavShouldResetToList(_, nextKey) is always false when nextKey=="review" (AC12).
+		clearReviewUndoIfLeftReview(prevNavKey, nextKey, clearReviewUndo)
+		prevNavKey = nextKey
 		if setNavSelection != nil {
 			setNavSelection(1)
 		}
 		if selectPanel != nil {
-			selectPanel(keyByLabel[labels[1]])
+			selectPanel(nextKey)
 		}
-		prevNavKey = keyByLabel[labels[1]]
 	}
 
 	var reloadReviewCollectionsFromCollectionsTab func()
@@ -76,6 +94,7 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 
 	gotoUpload := func() {
 		nextKey := keyByLabel[labels[0]]
+		// Same prelude order as nav OnTapped: Collections AC12 reset, then undo-clear, then commit selection/panel.
 		if collectionsNavShouldResetToList(prevNavKey, nextKey) {
 			collectionsView.ResetToList()
 		}
@@ -102,6 +121,11 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 		"review":      container.NewScroll(review),
 		"collections": collectionsView.CanvasObject(),
 		"rejected":    container.NewScroll(rejected),
+	}
+	for _, it := range primaryNavItems {
+		if panels[it.key] == nil {
+			panic("app: shell missing panel for primary nav key " + it.key)
+		}
 	}
 
 	selectPanel = func(key string) {
@@ -155,8 +179,9 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 		left.Add(newSemanticStylePreviewStrip())
 	}
 
-	// Border: persistent chrome + content (AC1–2). Buttons always fire OnTapped (vs RadioGroup same-item no-op),
-	// which unlocks Collections list reset on re-tap (Story 2.8 AC12).
+	// Border: persistent chrome + content (AC1–2). Epic §2.1 “compact row / rail” is this **vertical** rail
+	// (Direction A); buttons always fire OnTapped (vs RadioGroup same-item no-op), which unlocks Collections
+	// list reset on re-tap (Story 2.8 AC12).
 	return container.NewBorder(nil, nil, left, nil, center)
 }
 
@@ -177,7 +202,7 @@ func collectionsNavShouldResetToList(prevPanelKey, nextPanelKey string) bool {
 }
 
 func newSemanticStylePreviewStrip() fyne.CanvasObject {
-	// Enabled, no-op taps so Fyne renders true Danger/Warning chrome (AC8). Disabled
+	// Enabled, no-op taps so Fyne renders true Danger/Warning chrome (AC9). Disabled
 	// buttons reuse disabled styling and can collapse the distinction we need to prove.
 	destructive := widget.NewButton("Destructive (preview)", func() {})
 	destructive.Importance = widget.DangerImportance

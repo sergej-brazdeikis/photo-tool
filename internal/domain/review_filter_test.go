@@ -2,6 +2,18 @@ package domain
 
 import "testing"
 
+// FR-16 headline covers collection + rating; the third strip slot still defaults to “any tag”
+// (nil TagID) per Story 2.2 / epic §2.2 — all-nil means no extra predicates.
+func TestReviewFilters_FR16DefaultMeansUnconstrained(t *testing.T) {
+	var f ReviewFilters
+	if f.CollectionID != nil || f.MinRating != nil || f.TagID != nil {
+		t.Fatalf("zero value should mean unconstrained on all dimensions: %#v", f)
+	}
+	if err := f.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestReviewFilters_Validate(t *testing.T) {
 	if err := (ReviewFilters{}).Validate(); err != nil {
 		t.Fatal(err)

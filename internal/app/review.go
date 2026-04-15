@@ -188,6 +188,7 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 
 	var dismissLoupe func()
 	var grid *reviewAssetGrid
+	var gridScroll *container.Scroll
 	var refreshBulkTagUI func()
 
 	syncUndoUI := func() {
@@ -215,10 +216,10 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 	}
 
 	refreshReviewData := func() {
-		tagStripSyncErr := false
+		var tagStripSyncErr error
 		if err := syncTagStrip(); err != nil {
 			slog.Error("review: sync tag strip", "err", err)
-			tagStripSyncErr = true
+			tagStripSyncErr = err
 		}
 		cols, colErr := store.ListCollections(db)
 		if colErr != nil {
@@ -315,15 +316,16 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		n, qerr := store.CountAssetsForReview(db, f)
 		if qerr != nil {
 			msg := fmt.Sprintf("Matching assets: — (%s)", libraryErrText(qerr))
-			if tagStripSyncErr {
-				msg += "; could not refresh tag list"
-			}
 			if listErr != nil {
-				msg += "; " + libraryErrText(listErr)
+				msg += "; collections unavailable — " + libraryErrText(listErr)
+			}
+			if tagStripSyncErr != nil {
+				msg += "; tags unavailable — " + libraryErrText(tagStripSyncErr)
 			}
 			countLabel.SetText(msg)
 			emptyBlock.Hide()
 			grid.reset(f, 0)
+			grid.syncGridScrollVisible(gridScroll, false)
 			if refreshBulkTagUI != nil {
 				refreshBulkTagUI()
 			}
@@ -333,8 +335,8 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		if listErr != nil {
 			msg += " (collections unavailable — " + libraryErrText(listErr) + ")"
 		}
-		if tagStripSyncErr {
-			msg += " — Could not refresh tag list"
+		if tagStripSyncErr != nil {
+			msg += " (tags unavailable — " + libraryErrText(tagStripSyncErr) + ")"
 		}
 		if f.TagID != nil && n == 0 {
 			msg += " — No photos with this tag"
@@ -363,6 +365,7 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 			emptyBlock.Hide()
 		}
 		grid.reset(f, n)
+		grid.syncGridScrollVisible(gridScroll, n > 0)
 		if refreshBulkTagUI != nil {
 			refreshBulkTagUI()
 		}
@@ -803,6 +806,8 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		tagSummaryLabel,
 	)
 
+	gridScroll = container.NewScroll(grid.canvasObject())
+
 	refreshAll()
 
 	undoCluster := container.NewVBox(undoRejectBtn, undoSessionHint)
@@ -810,7 +815,7 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 	body := container.NewBorder(
 		countRow,
 		nil, nil, nil,
-		container.NewVBox(emptyBlock, container.NewScroll(grid.canvasObject())),
+		container.NewVBox(emptyBlock, gridScroll),
 	)
 	return container.NewPadded(container.NewVBox(strip, widget.NewSeparator(), tagBar, widget.NewSeparator(), body))
 }

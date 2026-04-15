@@ -39,7 +39,9 @@ func NFR01Epic2MatrixCells() []NFR01MatrixCell {
 }
 
 // NFR07Epic2DefaultSubsetCellIDs is the documented subset for NFR-07 when the full
-// matrix is time-boxed (Story 2.11 / nfr-07-os-scaling-checklist.md).
+// matrix is time-boxed (Story 2.11 / nfr-07-os-scaling-checklist.md). It is intentionally
+// mid-only for schedule; nfr-07-os-scaling-checklist.md documents expanding to min cells if
+// any subset row fails under 125%/150% scaling.
 func NFR07Epic2DefaultSubsetCellIDs() []string {
 	return []string{
 		"S-mid", "S-mid-L",

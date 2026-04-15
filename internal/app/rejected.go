@@ -61,7 +61,11 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		}
 	})
 	backToReview.Hide()
-	emptyRow := container.NewHBox(emptyHint, layout.NewSpacer(), backToReview)
+	// Full-width wrapped hint + CTA row (HBox+spacer beside the label squeezed it to one character per line).
+	emptyState := container.NewVBox(
+		emptyHint,
+		container.NewHBox(layout.NewSpacer(), backToReview),
+	)
 
 	var colSel, minRatingSel, tagsSel *widget.Select
 	var suspendTagSelectRefresh bool
@@ -145,6 +149,7 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 	}
 
 	var grid *reviewAssetGrid
+	var gridScroll *container.Scroll
 
 	syncBulkDeleteUI := func() {
 		if grid == nil {
@@ -158,33 +163,92 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 	}
 
 	refreshRejectedData := func() {
-		tagStripSyncErr := false
+		var tagStripSyncErr error
 		if err := syncTagStrip(); err != nil {
 			slog.Error("rejected: sync tag strip", "err", err)
-			tagStripSyncErr = true
+			tagStripSyncErr = err
+		}
+		cols, colErr := store.ListCollections(db)
+		if colErr != nil {
+			listErr = colErr
+			collectionIDs = []*int64{nil}
+			collectionOpts = []string{reviewCollectionSentinel}
+			if colSel != nil {
+				suspendColSelectRefresh = true
+				colSel.Options = collectionOpts
+				colSel.SetSelected(reviewCollectionSentinel)
+				suspendColSelectRefresh = false
+			}
+		} else {
+			listErr = nil
+			var prevID *int64
+			if colSel != nil && colSel.Selected != "" {
+				for i, opt := range collectionOpts {
+					if opt == colSel.Selected && i < len(collectionIDs) {
+						prevID = collectionIDs[i]
+						break
+					}
+				}
+			}
+			collectionIDs = []*int64{nil}
+			collectionOpts = []string{reviewCollectionSentinel}
+			for i := range cols {
+				c := cols[i]
+				id := c.ID
+				collectionIDs = append(collectionIDs, &id)
+				collectionOpts = append(collectionOpts, c.Name)
+			}
+			if colSel != nil {
+				colSel.Options = collectionOpts
+				newSel := reviewCollectionSentinel
+				if prevID != nil {
+					found := false
+					for i, idPtr := range collectionIDs {
+						if idPtr != nil && *idPtr == *prevID {
+							newSel = collectionOpts[i]
+							found = true
+							break
+						}
+					}
+					if !found {
+						newSel = reviewCollectionSentinel
+					}
+				}
+				suspendColSelectRefresh = true
+				colSel.SetSelected(newSel)
+				suspendColSelectRefresh = false
+			}
 		}
 		f := buildFilters()
 		n, qerr := store.CountRejectedForReview(db, f)
 		if qerr != nil {
 			msg := fmt.Sprintf("Hidden assets: — (%s)", libraryErrText(qerr))
-			if tagStripSyncErr {
-				msg += "; could not refresh tag list"
-			}
 			if listErr != nil {
-				msg += "; " + libraryErrText(listErr)
+				msg += "; collections unavailable — " + libraryErrText(listErr)
+			}
+			if tagStripSyncErr != nil {
+				msg += "; tags unavailable — " + libraryErrText(tagStripSyncErr)
 			}
 			countLabel.SetText(msg)
 			emptyHint.Hide()
-			backToReview.Hide()
+			backToReview.Show()
+			backToReview.Importance = widget.MediumImportance
+			backToReview.SetText("Back to Review")
+			backToReview.OnTapped = func() {
+				if onGotoReview != nil {
+					onGotoReview()
+				}
+			}
 			grid.reset(f, 0)
+			grid.syncGridScrollVisible(gridScroll, false)
 			return
 		}
 		msg := fmt.Sprintf("Hidden assets: %d", n)
 		if listErr != nil {
 			msg += " (collections unavailable — " + libraryErrText(listErr) + ")"
 		}
-		if tagStripSyncErr {
-			msg += " — Could not refresh tag list"
+		if tagStripSyncErr != nil {
+			msg += " (tags unavailable — " + libraryErrText(tagStripSyncErr) + ")"
 		}
 		countLabel.SetText(msg)
 		if n == 0 {
@@ -214,6 +278,7 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 			backToReview.Importance = widget.MediumImportance
 		}
 		grid.reset(f, n)
+		grid.syncGridScrollVisible(gridScroll, n > 0)
 	}
 
 	refreshAll := func() {
@@ -321,6 +386,8 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		container.NewHBox(widget.NewLabel(segLabels[2]), tagsSel),
 	)
 
+	gridScroll = container.NewScroll(grid.canvasObject())
+
 	refreshAll()
 
 	bulkBar := container.NewVBox(
@@ -331,7 +398,7 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 	body := container.NewBorder(
 		countLabel,
 		nil, nil, nil,
-		container.NewVBox(emptyRow, container.NewScroll(grid.canvasObject())),
+		container.NewVBox(emptyState, gridScroll),
 	)
 	return container.NewPadded(container.NewVBox(strip, widget.NewSeparator(), bulkBar, widget.NewSeparator(), body))
 }

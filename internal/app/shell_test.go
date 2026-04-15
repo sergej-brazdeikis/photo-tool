@@ -12,6 +12,19 @@ func TestPrimaryNavLabels_UXDR13_order(t *testing.T) {
 	}
 }
 
+func TestPrimaryNavKeys_matchItemsAndLabels(t *testing.T) {
+	labels := PrimaryNavLabels()
+	keys := PrimaryNavKeys()
+	if len(labels) != len(keys) {
+		t.Fatalf("len(labels)=%d len(keys)=%d", len(labels), len(keys))
+	}
+	for i, it := range primaryNavItems {
+		if labels[i] != it.label || keys[i] != it.key {
+			t.Fatalf("index %d: labels=%q keys=%q want label=%q key=%q", i, labels[i], keys[i], it.label, it.key)
+		}
+	}
+}
+
 func TestPrimaryNavItems_keysMatchLabels(t *testing.T) {
 	seen := make(map[string]struct{}, len(primaryNavItems))
 	for _, it := range primaryNavItems {

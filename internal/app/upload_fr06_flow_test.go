@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
@@ -116,6 +118,132 @@ func linkCount(t *testing.T, db *sql.DB) int {
 		t.Fatal(err)
 	}
 	return n
+}
+
+func countCanvasImagesDeep(t *testing.T, o fyne.CanvasObject) int {
+	t.Helper()
+	var n int
+	var walk func(fyne.CanvasObject)
+	walk = func(x fyne.CanvasObject) {
+		if x == nil {
+			return
+		}
+		switch v := x.(type) {
+		case *canvas.Image:
+			n++
+		case *container.Scroll:
+			walk(v.Content)
+		case *widget.Accordion:
+			for _, it := range v.Items {
+				if it != nil {
+					walk(it.Detail)
+				}
+			}
+		case *fyne.Container:
+			for _, ch := range v.Objects {
+				walk(ch)
+			}
+		}
+	}
+	walk(o)
+	return n
+}
+
+// FR-06: "Assign to collection" selected but name cleared → same as skip (no collection row).
+func TestUpload_flow_assignRadioButNameCleared_noCollection(t *testing.T) {
+	test.NewTempApp(t)
+
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	srcDir := filepath.Join(t.TempDir(), "src")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	src := filepath.Join(srcDir, "cleared.jpg")
+	writeJPEGUploadTest(t, src, 0x7A)
+	if err := os.Chtimes(src, time.Now(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	win := test.NewTempWindow(t, nil)
+	view := NewUploadViewWithOptions(win, db, libRoot, UploadViewOptions{
+		SeedPaths:             []string{src},
+		SkipCompletionDialogs: true,
+		SynchronousIngest:     true,
+	})
+
+	test.Tap(findButtonByText(t, view, "Import selected files"))
+
+	rg := firstRadioGroup(t, view)
+	rg.Selected = "Assign to collection"
+	if rg.OnChanged != nil {
+		rg.OnChanged(rg.Selected)
+	}
+	rg.Refresh()
+
+	ent := firstEntry(t, view)
+	if strings.TrimSpace(ent.Text) == "" {
+		t.Fatal("want default collection name after choosing Assign")
+	}
+	ent.SetText("   ")
+
+	test.Tap(findButtonByText(t, view, "Confirm"))
+
+	if n := collectionCount(t, db); n != 0 {
+		t.Fatalf("collections: got %d want 0 (empty name must not create collection)", n)
+	}
+}
+
+// Receipt shows batch scale copy after ingest (UX spec / Story 1.5 AC5).
+func TestUpload_flow_receiptShowsFilesInBatchCount(t *testing.T) {
+	test.NewTempApp(t)
+
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	srcDir := filepath.Join(t.TempDir(), "src")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	var paths []string
+	for i := range 3 {
+		p := filepath.Join(srcDir, fmt.Sprintf("batchcnt%d.jpg", i))
+		writeJPEGUploadTest(t, p, byte(0x30+i))
+		if err := os.Chtimes(p, time.Now(), time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, p)
+	}
+
+	win := test.NewTempWindow(t, nil)
+	view := NewUploadViewWithOptions(win, db, libRoot, UploadViewOptions{
+		SeedPaths:             paths,
+		SkipCompletionDialogs: true,
+		SynchronousIngest:     true,
+	})
+
+	test.Tap(findButtonByText(t, view, "Import selected files"))
+
+	want := "Files in this batch: 3"
+	var found bool
+	for _, lb := range collectLabelsDeep(view) {
+		if lb.Text == want {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("want label %q among receipt labels", want)
+	}
 }
 
 // FR-06 / P0: Confirm with "Skip collection" does not create a collection row.
@@ -468,5 +596,149 @@ func TestUpload_flow_duplicatePathsInBatch_singleLinkRow(t *testing.T) {
 	}
 	if linksN != 1 {
 		t.Fatalf("asset_collections: got %d want 1", linksN)
+	}
+}
+
+// AC5 / Direction E: confirm step shows a horizontal strip of large(ish) previews from source paths.
+func TestUpload_flow_confirmStep_showsBatchPreviewStrip(t *testing.T) {
+	test.NewTempApp(t)
+
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	srcDir := filepath.Join(t.TempDir(), "src")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	var paths []string
+	for i := range 2 {
+		p := filepath.Join(srcDir, fmt.Sprintf("preview%d.jpg", i))
+		writeJPEGUploadTest(t, p, byte(0x20+i))
+		if err := os.Chtimes(p, time.Now(), time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, p)
+	}
+
+	win := test.NewTempWindow(t, nil)
+	view := NewUploadViewWithOptions(win, db, libRoot, UploadViewOptions{
+		SeedPaths:             paths,
+		SkipCompletionDialogs: true,
+		SynchronousIngest:     true,
+	})
+
+	test.Tap(findButtonByText(t, view, "Import selected files"))
+
+	if n := countCanvasImagesDeep(t, view); n < 2 {
+		t.Fatalf("batch preview: want >= 2 *canvas.Image, got %d", n)
+	}
+}
+
+// AC5: strip shows at most uploadPreviewStripMaxItems thumbnails; overflow copy references the file list.
+func TestUpload_flow_previewStrip_capsAtSixWithOverflowLabel(t *testing.T) {
+	test.NewTempApp(t)
+
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	srcDir := filepath.Join(t.TempDir(), "src")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	var paths []string
+	for i := range 8 {
+		p := filepath.Join(srcDir, fmt.Sprintf("many%d.jpg", i))
+		writeJPEGUploadTest(t, p, byte(0x40+i))
+		if err := os.Chtimes(p, time.Now(), time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, p)
+	}
+
+	win := test.NewTempWindow(t, nil)
+	view := NewUploadViewWithOptions(win, db, libRoot, UploadViewOptions{
+		SeedPaths:             paths,
+		SkipCompletionDialogs: true,
+		SynchronousIngest:     true,
+	})
+
+	test.Tap(findButtonByText(t, view, "Import selected files"))
+
+	if n := countCanvasImagesDeep(t, view); n != uploadPreviewStripMaxItems {
+		t.Fatalf("batch preview: want %d thumbnails, got %d", uploadPreviewStripMaxItems, n)
+	}
+	var overflow string
+	for _, lb := range collectLabelsDeep(view) {
+		if strings.Contains(lb.Text, "+ 2 more") {
+			overflow = lb.Text
+			break
+		}
+	}
+	if overflow == "" {
+		t.Fatal("want overflow label containing \"+ 2 more\"")
+	}
+}
+
+func TestUpload_importCloseBlocked_policy(t *testing.T) {
+	tests := []struct {
+		name                     string
+		importInFlight           bool
+		awaitingPostImportStep   bool
+		wantBlock                bool
+		wantTitlePrefix, wantMsg string
+	}{
+		{
+			name:            "idle",
+			wantBlock:       false,
+			wantTitlePrefix: "",
+			wantMsg:         "",
+		},
+		{
+			name:            "import in flight",
+			importInFlight:  true,
+			wantBlock:       true,
+			wantTitlePrefix: "Import in progress",
+			wantMsg:         "Wait for the current import to finish",
+		},
+		{
+			name:                   "collection step pending",
+			awaitingPostImportStep: true,
+			wantBlock:              true,
+			wantTitlePrefix:        "Collection step pending",
+			wantMsg:                "Confirm or cancel the collection assignment",
+		},
+		{
+			name:                   "import takes precedence when both set",
+			importInFlight:         true,
+			awaitingPostImportStep: true,
+			wantBlock:              true,
+			wantTitlePrefix:        "Import in progress",
+			wantMsg:                "Wait for the current import to finish",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			title, msg, block := uploadImportCloseBlocked(tt.importInFlight, tt.awaitingPostImportStep)
+			if block != tt.wantBlock {
+				t.Fatalf("block: got %v want %v", block, tt.wantBlock)
+			}
+			if tt.wantTitlePrefix != "" && !strings.HasPrefix(title, tt.wantTitlePrefix) {
+				t.Fatalf("title: got %q want prefix %q", title, tt.wantTitlePrefix)
+			}
+			if tt.wantMsg != "" && !strings.Contains(msg, tt.wantMsg) {
+				t.Fatalf("msg: got %q want substring %q", msg, tt.wantMsg)
+			}
+			if !tt.wantBlock && (title != "" || msg != "") {
+				t.Fatalf("want empty title/msg when not blocked; got title=%q msg=%q", title, msg)
+			}
+		})
 	}
 }

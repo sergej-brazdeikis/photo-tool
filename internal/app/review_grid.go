@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -24,11 +26,25 @@ import (
 const (
 	reviewGridPageSize = 48
 	reviewGridColumns  = 4
+	// reviewGridThumbMin is the minimum logical size for each thumbnail preview. Without this,
+	// canvas.Image reports a tiny MinSize before/without pixels and widget.List rows collapse
+	// to slivers (Review, Rejected, album detail grids).
+	reviewGridThumbMin = 120
 
 	// User-facing only — must stay free of driver/SQL fragments (Story 2.3 AC3–AC4).
 	reviewGridMsgPageLoadFail = "Can't load this page — library read failed. Try changing the filter or restarting the app."
 	reviewGridMsgDecodeFail   = "Can't preview — file missing or unsupported format."
 )
+
+// reviewGridListRowCount is Fyne List row count for a paged thumbnail grid (Story 2.3 / UX-DR18).
+// When there are no matching assets, the list must report zero rows so the shell empty state is not
+// undermined by blank grid chrome.
+func reviewGridListRowCount(total int64) int {
+	if total <= 0 {
+		return 0
+	}
+	return int((total + reviewGridColumns - 1) / reviewGridColumns)
+}
 
 // errReviewGridPageFailed is returned when a paged list query failed for this page.
 // It carries no driver/SQL text (Story 2.3 AC4); the first failure is logged once with the real error.
@@ -116,6 +132,7 @@ func newReviewGridCell() *reviewGridCell {
 	bg.CornerRadius = 4
 	img := canvas.NewImageFromFile("")
 	img.FillMode = canvas.ImageFillContain
+	img.SetMinSize(fyne.NewSize(reviewGridThumbMin, reviewGridThumbMin))
 	failIcon := widget.NewIcon(theme.ErrorIcon())
 	failIcon.Hide()
 	failLbl := widget.NewLabel("")
@@ -174,6 +191,8 @@ type reviewAssetGrid struct {
 	// thumbnailBinding maps each cell's *canvas.Image to the asset id last bound there;
 	// async thumbnail completion checks this to ignore stale results after scroll/recycle.
 	thumbnailBinding sync.Map
+	// thumbGen bumps on reset/invalidatePages so in-flight decodes never touch cells after a grid refresh (Fyne safety).
+	thumbGen atomic.Uint64
 
 	list *widget.List
 }
@@ -195,10 +214,7 @@ func newReviewAssetGrid(win fyne.Window, db *sql.DB, libraryRoot string, onLoupe
 		func() int {
 			g.mu.Lock()
 			defer g.mu.Unlock()
-			if g.total == 0 {
-				return 0
-			}
-			return int((g.total + reviewGridColumns - 1) / reviewGridColumns)
+			return reviewGridListRowCount(g.total)
 		},
 		func() fyne.CanvasObject {
 			cells := make([]fyne.CanvasObject, reviewGridColumns)
@@ -212,12 +228,30 @@ func newReviewAssetGrid(win fyne.Window, db *sql.DB, libraryRoot string, onLoupe
 		},
 	)
 	g.list.HideSeparators = true
+	// PHOTO_TOOL_UX_JOURNEY_TEST=1 scopes registration to the capture test / bundle subprocess only
+	// (avoid parallel package tests seeing PHOTO_TOOL_UX_CAPTURE_DIR alone and clobbering this pointer).
+	if os.Getenv("PHOTO_TOOL_UX_CAPTURE_DIR") != "" && os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" && g.onLoupeOpen != nil {
+		registerUXCaptureReviewGrid(g)
+	}
 	return g
 }
 
 func (g *reviewAssetGrid) canvasObject() fyne.CanvasObject { return g.list }
 
+// syncGridScrollVisible shows or hides the shell scroll around the thumbnail list (Story 2.3 UX-DR18).
+func (g *reviewAssetGrid) syncGridScrollVisible(scroll *container.Scroll, show bool) {
+	if g == nil || scroll == nil {
+		return
+	}
+	if show {
+		scroll.Show()
+		return
+	}
+	scroll.Hide()
+}
+
 func (g *reviewAssetGrid) invalidatePages() {
+	g.thumbGen.Add(1)
 	g.mu.Lock()
 	g.pages = make(map[int][]store.ReviewGridRow)
 	g.pageFailed = nil
@@ -226,6 +260,7 @@ func (g *reviewAssetGrid) invalidatePages() {
 }
 
 func (g *reviewAssetGrid) reset(f domain.ReviewFilters, total int64) {
+	g.thumbGen.Add(1)
 	g.mu.Lock()
 	g.filters = f
 	g.total = total
@@ -517,10 +552,14 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 	wantID := row.ID
 	imgRef := c.img
 	g.thumbnailBinding.Store(imgRef, wantID)
+	gen := g.thumbGen.Load()
 
 	go func() {
 		err := WriteThumbnailJPEG(srcAbs, cacheAbs)
 		fyne.Do(func() {
+			if g.thumbGen.Load() != gen {
+				return
+			}
 			v, ok := g.thumbnailBinding.Load(imgRef)
 			if !ok || v.(int64) != wantID {
 				return
