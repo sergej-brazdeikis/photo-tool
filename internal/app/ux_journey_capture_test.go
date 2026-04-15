@@ -2,9 +2,11 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,11 +20,12 @@ import (
 	"photo-tool/internal/store"
 )
 
-// UX journey screenshots for local judge bundles. Run (or use scripts/assemble-judge-bundle.sh):
+// UX journey screenshots for local judge bundles — full primary flows (Upload, Review+loupe+share+filters,
+// Collections list/detail/grouping/dialog, Rejected, then a second shell pass for FR-06 import).
 //
 //	PHOTO_TOOL_UX_JOURNEY_TEST=1 PHOTO_TOOL_UX_CAPTURE_DIR=/path/to/bundle/ui go test ./internal/app -run TestUXJourneyCapture -count=1
 //
-// PHOTO_TOOL_UX_JOURNEY_TEST scopes loupe registration to this subprocess so a stray CAPTURE_DIR env does not affect other tests.
+// Shell upload seeding (phase 2 only): newline-separated absolute paths in PHOTO_TOOL_UX_UPLOAD_SEED_PATHS (set by this test).
 func TestUXJourneyCapture(t *testing.T) {
 	dir := os.Getenv("PHOTO_TOOL_UX_CAPTURE_DIR")
 	if dir == "" {
@@ -45,9 +48,13 @@ func TestUXJourneyCapture(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
+	srcDir := filepath.Join(t.TempDir(), "ux-cap-src")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
 	now := time.Now().Unix()
-	// Default Review filter is "No assigned collection" — grid needs at least one asset that matches.
-	_, err = store.InsertAssetWithCamera(db, "ux-cap-free", "2026/04/15/ux-cap-free.jpg", now, now, "", "")
+	aidFree, err := store.InsertAssetWithCamera(db, "ux-cap-free", "2026/04/15/ux-cap-free.jpg", now, now, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,33 +76,52 @@ func TestUXJourneyCapture(t *testing.T) {
 	if _, err := store.RejectAsset(db, aidRejected, now+1); err != nil {
 		t.Fatal(err)
 	}
+	tid, err := store.FindOrCreateTagByLabel(db, "UXCapTag")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.LinkTagToAssets(db, tid, []int64{aidFree}); err != nil {
+		t.Fatal(err)
+	}
+
 	writeTinyJPEG(t, filepath.Join(root, "2026", "04", "15", "ux-cap-free.jpg"))
 	writeTinyJPEG(t, filepath.Join(root, "2026", "04", "15", "ux-cap-in.jpg"))
 	writeTinyJPEG(t, filepath.Join(root, "2026", "04", "15", "ux-cap-rej.jpg"))
 
+	uploadA := filepath.Join(srcDir, "ux_journey_new_a.jpg")
+	uploadB := filepath.Join(srcDir, "ux_journey_new_b.jpg")
+	writeJPEGUploadTest(t, uploadA, 0x11)
+	writeJPEGUploadTest(t, uploadB, 0x22)
+
 	win := test.NewTempWindow(t, nil)
 	win.Resize(fyne.NewSize(1280, 800))
-	test.ApplyTheme(t, NewPhotoToolTheme(theme.VariantDark))
-
-	shell := NewMainShell(win, db, root, nil)
-	win.SetContent(shell)
+	applyTestPhotoToolTheme(t, theme.VariantDark)
+	// Drain async grid thumbnail callbacks before other package tests reuse the Fyne test driver (parallel runs).
+	t.Cleanup(func() {
+		win.SetContent(nil)
+		time.Sleep(450 * time.Millisecond)
+	})
 
 	type stepMeta struct {
 		ID     string `json:"id"`
+		Flow   string `json:"flow"`
 		File   string `json:"file"`
 		Intent string `json:"intent"`
 	}
 	var steps []stepMeta
+	stepN := 1
 
-	capture := func(id, file, intent string) {
+	capture := func(flow, id, intent string) {
 		t.Helper()
 		if c := win.Content(); c != nil {
 			win.Canvas().Refresh(c)
 		}
 		img := win.Canvas().Capture()
 		if img == nil {
-			t.Fatalf("capture %s: Canvas().Capture() returned nil (driver may not support capture)", file)
+			t.Fatalf("capture %s: Canvas().Capture() returned nil (driver may not support capture)", id)
 		}
+		file := fmt.Sprintf("%02d_%s.png", stepN, id)
+		stepN++
 		path := filepath.Join(dir, file)
 		f, err := os.Create(path)
 		if err != nil {
@@ -108,45 +134,151 @@ func TestUXJourneyCapture(t *testing.T) {
 		if err := f.Close(); err != nil {
 			t.Fatalf("close %s: %v", path, err)
 		}
-		steps = append(steps, stepMeta{ID: id, File: file, Intent: intent})
+		steps = append(steps, stepMeta{ID: id, Flow: flow, File: file, Intent: intent})
 	}
 
-	capture("upload_default", "01_upload_default.png", "Upload tab: drop zone and import actions")
+	mountShell := func() fyne.CanvasObject {
+		t.Helper()
+		clearUXCaptureReviewGrid()
+		sh := NewMainShell(win, db, root, nil)
+		win.SetContent(sh)
+		uxCaptureSettle()
+		return sh
+	}
+
+	// —— Phase 1: library fixture, empty upload ——
+	t.Setenv("PHOTO_TOOL_UX_UPLOAD_SEED_PATHS", "")
+	shell := mountShell()
+
+	capture("upload", "upload_empty", "Upload: empty list, drop zone, Add/Clear/Import (import disabled)")
 	tapPanel(t, shell, "Review")
-	capture("review_default", "02_review_default.png", "Review: filter strip and grid with at least one asset")
+	capture("review", "review_grid_default_filters", "Review: filter strip, bulk row, grid with ≥1 asset (no assigned collection)")
 
 	if !uxCaptureOpenReviewLoupeAt(0) {
-		t.Fatal("loupe: review grid not registered (need PHOTO_TOOL_UX_JOURNEY_TEST=1 and PHOTO_TOOL_UX_CAPTURE_DIR before shell build — this test sets the former via t.Setenv)")
+		t.Fatal("loupe: review grid not registered")
 	}
-	time.Sleep(50 * time.Millisecond) // let loupe overlay layout settle
-	capture("review_loupe", "03_review_loupe.png", "Review loupe: image area and primary chrome")
+	uxCaptureSettle()
+	capture("review", "review_loupe", "Review loupe: image band + Prev/Next/Close, ratings, tags, albums, Reject, Share…")
+
+	tapLoupeShareButton(t, win)
+	uxCaptureSettle()
+	capture("review", "review_loupe_share_preview", "Share preview dialog: Create link / Cancel (loopback share UX)")
+
+	tapButtonInSharePreviewOverlay(t, win, "Cancel")
+	uxCaptureSettle()
 
 	closeBtn := findLoupeCloseButton(t, win)
 	test.Tap(closeBtn)
-	time.Sleep(30 * time.Millisecond)
+	uxCaptureSettle()
+
+	setSelectAt(t, shell, 0, "UXCaptureAlbum")
+	capture("review", "review_filter_collection_album", "Review: Collection filter set to UXCaptureAlbum (in-album asset visible if any)")
+
+	setSelectAt(t, shell, 1, "5")
+	capture("review", "review_filter_min_rating_no_matches", "Review: Minimum rating 5 with zero matches — empty-state / guidance")
+
+	// Do not tap "Reset filters" here: Fyne test driver can panic on grid rebind (placeholder image decode).
+	setSelectAt(t, shell, 0, reviewCollectionSentinel)
+	setSelectAt(t, shell, 1, reviewRatingAny)
+	uxCaptureSettle()
+
+	setSelectAt(t, shell, 2, "UXCapTag")
+	capture("review", "review_filter_tag_uxcaptag", "Review: Tags filter = UXCapTag (tagged asset)")
+
+	setSelectAt(t, shell, 2, reviewTagAny)
+	setSelectAt(t, shell, 0, reviewCollectionSentinel)
+	setSelectAt(t, shell, 1, reviewRatingAny)
+	uxCaptureSettle()
+	capture("review", "review_filters_fr16_reset", "Review: filters back to defaults (Any / sentinel)")
 
 	tapPanel(t, shell, "Collections")
-	capture("collections_list", "04_collections_list.png", "Collections: album list chrome")
+	capture("collections", "collections_album_list", "Collections: album list + New album / Rename / Delete")
+
+	test.Tap(findButtonByText(t, shell, "New album"))
+	uxCaptureSettle()
+	capture("collections", "collections_new_album_form", "Collections: New album dialog (Name / Display date / Cancel / Save)")
+
+	tapButtonInOverlays(t, win, "Cancel")
+	uxCaptureSettle()
+
 	lists := collectLists(shell)
 	if len(lists) < 1 {
-		t.Fatal("expected album list on Collections panel")
+		t.Fatal("expected album list")
 	}
 	lists[0].Select(0)
-	capture("collections_album_detail", "05_collections_album_detail.png", "Collections: open first album (grid / detail chrome)")
+	uxCaptureSettle()
+	capture("collections", "collections_album_detail_stars", "Collections: album detail — Back, Edit, Delete, Group photos (Stars default), grid")
+
+	rg := firstRadioGroup(t, shell)
+	rg.Selected = "By day"
+	if rg.OnChanged != nil {
+		rg.OnChanged("By day")
+	}
+	rg.Refresh()
+	uxCaptureSettle()
+	capture("collections", "collections_album_group_by_day", "Collections: detail grouping = By day")
+
+	rg.Selected = "By camera"
+	if rg.OnChanged != nil {
+		rg.OnChanged("By camera")
+	}
+	rg.Refresh()
+	uxCaptureSettle()
+	capture("collections", "collections_album_group_by_camera", "Collections: detail grouping = By camera")
+
+	rg.Selected = "Stars"
+	if rg.OnChanged != nil {
+		rg.OnChanged("Stars")
+	}
+	rg.Refresh()
+	uxCaptureSettle()
+
+	test.Tap(findButtonByText(t, shell, "Back"))
+	uxCaptureSettle()
+	capture("collections", "collections_back_to_album_list", "Collections: returned to album list chrome")
 
 	tapPanel(t, shell, "Rejected")
-	capture("rejected_default", "06_rejected_default.png", "Rejected / hidden surface")
+	capture("rejected", "rejected_hidden_grid", "Rejected: filters + hidden count + bulk delete + grid")
+
+	setSelectAt(t, shell, 1, "5")
+	uxCaptureSettle()
+	capture("rejected", "rejected_filter_min_rating_empty", "Rejected: narrow filter (e.g. 5★) with no matching hidden rows")
+
+	setSelectAt(t, shell, 1, reviewRatingAny)
+	uxCaptureSettle()
+
+	// —— Phase 2: upload FR-06 with fresh shell + seeded paths ——
+	t.Setenv("PHOTO_TOOL_UX_UPLOAD_SEED_PATHS", strings.Join([]string{uploadA, uploadB}, "\n"))
+	shell = mountShell()
+	capture("upload", "upload_paths_staged", "Upload: two files staged, Import enabled, path list + post-import area")
+
+	test.Tap(findButtonByText(t, shell, "Import selected files"))
+	uxCaptureSettle()
+	capture("upload", "upload_fr06_collection_assign", "FR-06: after import — receipt + Skip collection / Assign + Confirm / Cancel")
+
+	test.Tap(findButtonByText(t, shell, "Confirm"))
+	uxCaptureSettle()
+	capture("upload", "upload_after_confirm_idle", "Upload: batch cleared after Confirm (Skip collection); ready for next add")
 
 	manifest := struct {
+		Flows        []string   `json:"flows"`
 		Steps        []stepMeta `json:"steps"`
 		CaptureTool  string     `json:"capture_tool"`
 		GoTestTarget string     `json:"go_test_target"`
 		Omissions    []string   `json:"omissions"`
 	}{
-		Steps:        steps,
-		CaptureTool:  "PHOTO_TOOL_UX_JOURNEY_TEST=1 PHOTO_TOOL_UX_CAPTURE_DIR=<dir> go test ./internal/app -run TestUXJourneyCapture -count=1",
+		Flows: []string{
+			"upload", "review", "collections", "rejected",
+		},
+		Steps: steps,
+		CaptureTool: "PHOTO_TOOL_UX_JOURNEY_TEST=1 PHOTO_TOOL_UX_CAPTURE_DIR=<dir> " +
+			"[optional phase 2: PHOTO_TOOL_UX_UPLOAD_SEED_PATHS=newlines] go test ./internal/app -run TestUXJourneyCapture -count=1",
 		GoTestTarget: "TestUXJourneyCapture",
-		Omissions:    []string{},
+		Omissions: []string{
+			"Native file picker and real OS DPI not captured",
+			"CLI scan/import and browser share URL not captured",
+			"Library trash / delete-confirm dialogs not exercised in this harness",
+		},
 	}
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {

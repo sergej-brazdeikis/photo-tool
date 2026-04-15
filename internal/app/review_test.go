@@ -168,7 +168,7 @@ func TestReviewFilterStrip_tabFocusOrder_matchesSelectLayoutOrder(t *testing.T) 
 
 	win := test.NewTempWindow(t, view)
 	win.Resize(fyne.NewSize(900, 400))
-	test.ApplyTheme(t, NewPhotoToolTheme(theme.VariantDark))
+	applyTestPhotoToolTheme(t, theme.VariantDark)
 
 	c := win.Canvas()
 	for i := range strip {

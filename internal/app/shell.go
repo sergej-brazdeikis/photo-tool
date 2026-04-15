@@ -2,13 +2,45 @@ package app
 
 import (
 	"database/sql"
+	"image/color"
+	"os"
+	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
 	"photo-tool/internal/share"
 )
+
+// newShellUploadView is the Upload panel for [newMainShell]. When PHOTO_TOOL_UX_JOURNEY_TEST=1 and
+// PHOTO_TOOL_UX_UPLOAD_SEED_PATHS is set (newline-separated absolute paths), uses [NewUploadViewWithOptions]
+// so [TestUXJourneyCapture] can screenshot the import / FR-06 flow without a file picker.
+func newShellUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasObject {
+	if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") != "1" {
+		return NewUploadView(win, db, libraryRoot)
+	}
+	raw := strings.TrimSpace(os.Getenv("PHOTO_TOOL_UX_UPLOAD_SEED_PATHS"))
+	if raw == "" {
+		return NewUploadView(win, db, libraryRoot)
+	}
+	var paths []string
+	for _, line := range strings.Split(raw, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			paths = append(paths, line)
+		}
+	}
+	if len(paths) == 0 {
+		return NewUploadView(win, db, libraryRoot)
+	}
+	return NewUploadViewWithOptions(win, db, libraryRoot, UploadViewOptions{
+		SeedPaths:             paths,
+		SkipCompletionDialogs: true,
+		SynchronousIngest:     true,
+	})
+}
 
 // primaryNavItems are UX-DR13 destinations in fixed order (label → internal panel key).
 var primaryNavItems = []struct {
@@ -54,7 +86,7 @@ func NewMainShell(win fyne.Window, db *sql.DB, libraryRoot string, shareLoop *sh
 // left-rail “Semantic roles (preview)” demo block is omitted so NFR-01 structural
 // tests can stress 1024px width without non-shipping chrome crowding Review.
 func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticStylePreview bool, shareLoop *share.Loopback) fyne.CanvasObject {
-	upload := NewUploadView(win, db, libraryRoot)
+	upload := newShellUploadView(win, db, libraryRoot)
 
 	var clearReviewUndo func()
 
@@ -179,10 +211,15 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 		left.Add(newSemanticStylePreviewStrip())
 	}
 
+	// Minimum rail width so primary nav (including Upload) stays visible beside wide panels (Collections list/detail).
+	railFloor := canvas.NewRectangle(color.Transparent)
+	railFloor.SetMinSize(fyne.NewSize(168, 1))
+	leftRail := container.NewStack(railFloor, left)
+
 	// Border: persistent chrome + content (AC1–2). Epic §2.1 “compact row / rail” is this **vertical** rail
 	// (Direction A); buttons always fire OnTapped (vs RadioGroup same-item no-op), which unlocks Collections
 	// list reset on re-tap (Story 2.8 AC12).
-	return container.NewBorder(nil, nil, left, nil, center)
+	return container.NewBorder(nil, nil, leftRail, nil, center)
 }
 
 // clearReviewUndoIfLeftReview invokes clear when primary navigation leaves Review (Story 2.6 AC6).

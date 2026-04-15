@@ -449,16 +449,18 @@ func (v *CollectionsView) showAlbumForm(collectionID int64) {
 	save := widget.NewButton("Save", nil)
 	cancel := widget.NewButton("Cancel", nil)
 
+	// Full-width rows read better than a narrow Form inside small dialogs (UX: new album ergonomics).
 	body := container.NewVBox(
-		widget.NewForm(
-			&widget.FormItem{Text: "Name", Widget: nameEntry},
-			&widget.FormItem{Text: "Display date", Widget: dateEntry},
-		),
+		widget.NewLabelWithStyle("Name", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		nameEntry,
+		widget.NewLabelWithStyle("Display date", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		dateEntry,
 		errLbl,
 		container.NewHBox(layout.NewSpacer(), cancel, save),
 	)
 
 	pop := dialog.NewCustomWithoutButtons(title, body, v.win)
+	pop.Resize(fyne.NewSize(520, 420))
 
 	save.OnTapped = func() {
 		errLbl.SetText("")
@@ -663,13 +665,13 @@ func (g *collectionSectionGrid) bindGridRow(rowIdx int, o fyne.CanvasObject) {
 			}
 			slog.Error("collection grid: page query", "err", err)
 			for _, c := range cells {
-				c.showUserFailure(reviewGridMsgPageLoadFail)
+				c.showUserFailure(&g.thumbnailBinding, reviewGridMsgPageLoadFail)
 			}
 			return
 		}
 		if !have {
 			for j := col; j < reviewGridColumns; j++ {
-				cells[j].clear()
+				cells[j].clear(&g.thumbnailBinding)
 			}
 			return
 		}
@@ -708,7 +710,7 @@ func (c *reviewGridCell) bindCollectionThumbnail(g *collectionSectionGrid, row s
 				return
 			}
 			if err != nil {
-				c.showUserFailure(reviewGridMsgDecodeFail)
+				c.showUserFailure(&g.thumbnailBinding, reviewGridMsgDecodeFail)
 				return
 			}
 			c.failIcon.Hide()

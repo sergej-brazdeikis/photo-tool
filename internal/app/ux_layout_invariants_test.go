@@ -31,7 +31,7 @@ func TestReleaseShell_hasNoSemanticStylePreviewStrip(t *testing.T) {
 
 	win := test.NewTempWindow(t, nil)
 	win.Resize(fyne.NewSize(1120, 600))
-	test.ApplyTheme(t, NewPhotoToolTheme(theme.VariantDark))
+	applyTestPhotoToolTheme(t, theme.VariantDark)
 
 	shell := NewMainShell(win, db, root, nil)
 	win.SetContent(shell)

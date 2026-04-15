@@ -136,15 +136,18 @@ func newReviewGridCell() *reviewGridCell {
 	failIcon := widget.NewIcon(theme.ErrorIcon())
 	failIcon.Hide()
 	failLbl := widget.NewLabel("")
-	failLbl.Wrapping = fyne.TextWrapWord
+	// Word wrap can panic in Fyne when the cell has not been laid out yet (async decode path).
+	failLbl.Wrapping = fyne.TextWrapOff
 	failLbl.Hide()
 	rating := widget.NewLabel("")
 	rejectBadge := widget.NewLabel("")
 	rejectBadge.Importance = widget.WarningImportance
-	restoreBtn := widget.NewButton("Restore photo", nil)
+	restoreBtn := widget.NewButton("Restore", nil)
 	restoreBtn.Hide()
 	thumb := container.NewStack(bg, img, failIcon, failLbl)
-	meta := container.NewHBox(rating, layout.NewSpacer(), rejectBadge, restoreBtn)
+	ratingRow := container.NewHBox(rating, layout.NewSpacer(), rejectBadge)
+	// Full cell width so "Restore" is not clipped in narrow Rejected columns (NFR-01 / 4-up grid).
+	meta := container.NewVBox(ratingRow, container.NewMax(restoreBtn))
 	tap := newTapLayer(thumb)
 	c := &reviewGridCell{
 		tap:         tap,
@@ -361,6 +364,19 @@ func (g *reviewAssetGrid) ensurePageLocked(pageIdx int) error {
 	return nil
 }
 
+// gridMetaRestoreButton finds the per-cell Restore control under optional layout wrappers (e.g. Max).
+func gridMetaRestoreButton(o fyne.CanvasObject) (*widget.Button, bool) {
+	switch v := o.(type) {
+	case *widget.Button:
+		return v, true
+	case *fyne.Container:
+		if len(v.Objects) == 1 {
+			return gridMetaRestoreButton(v.Objects[0])
+		}
+	}
+	return nil, false
+}
+
 func (g *reviewAssetGrid) rowAt(i int) (store.ReviewGridRow, bool, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -392,7 +408,23 @@ func parseReviewGridCell(root *fyne.Container) (*reviewGridCell, bool) {
 		return nil, false
 	}
 	meta, ok := root.Objects[1].(*fyne.Container)
-	if !ok || len(meta.Objects) < 4 {
+	if !ok || len(meta.Objects) != 2 {
+		return nil, false
+	}
+	ratingRow, ok := meta.Objects[0].(*fyne.Container)
+	if !ok || len(ratingRow.Objects) < 3 {
+		return nil, false
+	}
+	ratingLbl, ok := ratingRow.Objects[0].(*widget.Label)
+	if !ok {
+		return nil, false
+	}
+	rejectLbl, ok := ratingRow.Objects[2].(*widget.Label)
+	if !ok {
+		return nil, false
+	}
+	restore, ok := gridMetaRestoreButton(meta.Objects[1])
+	if !ok {
 		return nil, false
 	}
 	return &reviewGridCell{
@@ -402,9 +434,9 @@ func parseReviewGridCell(root *fyne.Container) (*reviewGridCell, bool) {
 		img:         thumbStack.Objects[1].(*canvas.Image),
 		failIcon:    thumbStack.Objects[2].(*widget.Icon),
 		failLbl:     thumbStack.Objects[3].(*widget.Label),
-		rating:      meta.Objects[0].(*widget.Label),
-		rejectBadge: meta.Objects[2].(*widget.Label),
-		restoreBtn:  meta.Objects[3].(*widget.Button),
+		rating:      ratingLbl,
+		rejectBadge: rejectLbl,
+		restoreBtn:  restore,
 	}, true
 }
 
@@ -431,13 +463,13 @@ func (g *reviewAssetGrid) bindGridRow(rowIdx int, o fyne.CanvasObject) {
 		assetRow, have, err := g.rowAt(idx)
 		if err != nil {
 			for _, c := range cells {
-				c.showUserFailure(reviewGridMsgPageLoadFail)
+				c.showUserFailure(&g.thumbnailBinding, reviewGridMsgPageLoadFail)
 			}
 			return
 		}
 		if !have {
 			for j := col; j < reviewGridColumns; j++ {
-				cells[j].clear()
+				cells[j].clear(&g.thumbnailBinding)
 			}
 			return
 		}
@@ -475,27 +507,35 @@ func (g *reviewAssetGrid) bindGridRow(rowIdx int, o fyne.CanvasObject) {
 	}
 }
 
-func (c *reviewGridCell) clear() {
+func (c *reviewGridCell) clear(thumbBind *sync.Map) {
+	if thumbBind != nil {
+		thumbBind.Delete(c.img)
+	}
 	if c.tap != nil {
 		c.tap.Handler = nil
 		c.tap.SecondaryHandler = nil
 	}
-	c.bg.FillColor = theme.Color(theme.ColorNameInputBackground)
+	// Slightly dimmer than a real thumbnail cell so empty grid slots do not read as “filled”.
+	c.bg.FillColor = theme.Color(theme.ColorNameBackground)
 	c.img.File = ""
 	c.img.Resource = nil
 	c.img.Show()
+	c.img.Refresh()
 	c.failIcon.Hide()
 	c.failLbl.Hide()
 	c.failLbl.SetText("")
 	c.rating.SetText("")
 	c.rejectBadge.SetText("")
-	c.rejectBadge.Show()
+	c.rejectBadge.Hide()
 	c.restoreBtn.Hide()
 	c.restoreBtn.OnTapped = nil
 }
 
 // showUserFailure is decode/page failure UX (AC3–AC4): icon + short copy, no raw errors.
-func (c *reviewGridCell) showUserFailure(msg string) {
+func (c *reviewGridCell) showUserFailure(thumbBind *sync.Map, msg string) {
+	if thumbBind != nil {
+		thumbBind.Delete(c.img)
+	}
 	c.bg.FillColor = theme.Color(theme.ColorNameInputBackground)
 	c.img.File = ""
 	c.img.Resource = nil
@@ -506,9 +546,10 @@ func (c *reviewGridCell) showUserFailure(msg string) {
 	c.failLbl.Show()
 	c.rating.SetText("")
 	c.rejectBadge.SetText("")
-	c.rejectBadge.Show()
+	c.rejectBadge.Hide()
 	c.restoreBtn.Hide()
 	c.restoreBtn.OnTapped = nil
+	c.img.Refresh()
 }
 
 func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
@@ -534,18 +575,25 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 	} else {
 		c.restoreBtn.Hide()
 		c.restoreBtn.OnTapped = nil
-		c.rejectBadge.Show()
 		if lbl := rejectBadgeLabel(row.Rejected); lbl != "" {
 			c.rejectBadge.SetText(lbl)
+			c.rejectBadge.Show()
 		} else {
 			c.rejectBadge.SetText("")
+			c.rejectBadge.Hide()
 		}
 	}
 
 	// Pending decode (UX-DR3): distinguish from final image and from failed-decode (ErrorIcon path).
 	c.img.File = ""
-	c.img.Resource = theme.MediaPhotoIcon()
+	c.img.Resource = nil
 	c.img.Refresh()
+	c.img.Resource = theme.MediaPhotoIcon()
+	// Fyne test driver: decoding built-in MediaPhotoIcon in Refresh can panic during grid rebind
+	// (UX journey capture runs with PHOTO_TOOL_UX_JOURNEY_TEST=1). Real JPEG refresh below still runs.
+	if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") != "1" {
+		c.img.Refresh()
+	}
 
 	srcAbs := filepath.Join(g.libraryRoot, filepath.FromSlash(row.RelPath))
 	cacheAbs := ThumbnailCachePath(g.libraryRoot, row.ID, row.ContentHash)
@@ -565,7 +613,7 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 				return
 			}
 			if err != nil {
-				c.showUserFailure(reviewGridMsgDecodeFail)
+				c.showUserFailure(&g.thumbnailBinding, reviewGridMsgDecodeFail)
 				return
 			}
 			c.failIcon.Hide()

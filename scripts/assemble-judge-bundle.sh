@@ -31,7 +31,7 @@ cat >"${OUT}/ui/README.md" <<'UIREAD'
 
 PNG files and `steps.json` are produced by `TestUXJourneyCapture` when `PHOTO_TOOL_UX_CAPTURE_DIR` points at this directory **and** `PHOTO_TOOL_UX_JOURNEY_TEST=1` (see `scripts/assemble-judge-bundle.sh`).
 
-**Manual overrides:** If headless capture fails for a step on your platform, add or replace `NN_*.png` and edit `steps.json` so `steps[].file` matches. Keep filenames sorted for the judge prompt. Re-run the bundle script so `manifest.json` picks up the updated `steps.json`.
+**Manual overrides:** If headless capture fails for a step on your platform, add or replace `NN_*.png` and edit `steps.json` so `steps[].file`, `flow`, and `intent` stay accurate for [judge-prompt-v2-screenshots.md](../judge-prompt-v2-screenshots.md). Keep numeric prefixes in order. Re-run the bundle script so `manifest.json` picks up the updated `steps.json`.
 UIREAD
 
 CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -135,6 +135,7 @@ manifest = {
     "judge_prompt_v1": "_bmad-output/test-artifacts/judge-prompt-v1.md",
     "judge_prompt_v2_screenshots": "_bmad-output/test-artifacts/judge-prompt-v2-screenshots.md",
     "fix_prompt_v1": "_bmad-output/test-artifacts/ux-fix-from-judge-prompt-v1.md",
+    "post_fix_code_review_loop": "_bmad-output/test-artifacts/ux-post-fix-code-review-loop.md",
     "ui_steps_file": "ui/steps.json",
     "steps": steps_meta,
     "capture_manifest": capture_meta,

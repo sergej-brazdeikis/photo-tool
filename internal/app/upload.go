@@ -74,6 +74,8 @@ func NewUploadViewWithOptions(win fyne.Window, db *sql.DB, libraryRoot string, o
 
 func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadViewOptions) fyne.CanvasObject {
 	root := filepath.Clean(libraryRoot)
+	libraryPathLabel := widget.NewLabelWithStyle(fmt.Sprintf("Library: %s", root), fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
+	libraryPathLabel.Wrapping = fyne.TextWrapWord
 
 	showImportComplete := func(title, msg string) {
 		if opts.SkipCompletionDialogs {
@@ -96,22 +98,35 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 
 	pathList := widget.NewList(
 		func() int { return len(paths) },
-		func() fyne.CanvasObject { return widget.NewLabel("") },
+		func() fyne.CanvasObject {
+			l := widget.NewLabel("")
+			l.Wrapping = fyne.TextWrapOff
+			return l
+		},
 		func(id widget.ListItemID, o fyne.CanvasObject) {
 			o.(*widget.Label).SetText(paths[id])
 		},
 	)
+	pathListScroll := container.NewScroll(pathList)
+	// Enough height for multiple staged paths to read as a list (journey: two-file staging).
+	pathListScroll.SetMinSize(fyne.NewSize(100, 168))
+	stagedHeader := widget.NewLabelWithStyle("Files staged for import", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	stagedBlock := container.NewVBox(stagedHeader, pathListScroll)
 
-	addedLab := widget.NewLabel("Added: —")
-	dupLab := widget.NewLabel("Skipped duplicate: —")
+	addedLab := widget.NewLabel("New library rows: —")
+	dupLab := widget.NewLabel("Already in library (skipped): —")
 	failLab := widget.NewLabel("Failed: —")
 	updatedLab := widget.NewLabel("Updated: —")
 	updatedRow := container.NewHBox(updatedLab)
+	receiptHint := widget.NewLabel("")
+	receiptHint.Wrapping = fyne.TextWrapWord
+	receiptHint.Hide()
 
 	batchCountLab := widget.NewLabel("")
 	batchCountLab.Hide()
 	receiptBody := container.NewVBox(
 		batchCountLab,
+		receiptHint,
 		addedLab,
 		dupLab,
 		failLab,
@@ -182,6 +197,7 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 	postImport.Hide()
 	importStatusLab := widget.NewLabel("")
 	importStatusLab.Hide()
+	var uploadIdleChrome *fyne.Container
 
 	confirmCollectionBtn := widget.NewButton("Confirm", nil)
 	confirmCollectionBtn.Importance = widget.HighImportance
@@ -197,10 +213,19 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		}
 	}
 
-	showReceipt := func(sum domain.OperationSummary) {
-		addedLab.SetText(fmt.Sprintf("Added: %d", sum.Added))
-		dupLab.SetText(fmt.Sprintf("Skipped duplicate: %d", sum.SkippedDuplicate))
+	showReceipt := func(sum domain.OperationSummary, batchFileCount int) {
+		addedLab.SetText(fmt.Sprintf("New library rows: %d", sum.Added))
+		dupLab.SetText(fmt.Sprintf("Already in library (skipped): %d", sum.SkippedDuplicate))
 		failLab.SetText(fmt.Sprintf("Failed: %d", sum.Failed))
+		if batchFileCount > 0 && sum.Added == 0 && sum.SkippedDuplicate > 0 && sum.Failed == 0 {
+			receiptHint.SetText("Every picked file matched an existing library photo — “skipped” counts those duplicates. This is different from how many files you chose above.")
+			receiptHint.Show()
+		} else if batchFileCount > 0 && sum.Added == 0 && sum.Failed > 0 {
+			receiptHint.SetText("No new library rows were added — check failures below, then retry any problem files.")
+			receiptHint.Show()
+		} else {
+			receiptHint.Hide()
+		}
 		if sum.Updated != 0 {
 			updatedLab.SetText(fmt.Sprintf("Updated: %d", sum.Updated))
 			updatedRow.Show()
@@ -223,11 +248,16 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		nameEntry.SetText("")
 		nameEntry.Disable()
 		postImport.Hide()
+		libraryPathLabel.Show()
+		uploadIdleChrome.Show()
+		stagedBlock.Show()
 		importStatusLab.SetText("")
 		importStatusLab.Hide()
-		addedLab.SetText("Added: —")
-		dupLab.SetText("Skipped duplicate: —")
+		addedLab.SetText("New library rows: —")
+		dupLab.SetText("Already in library (skipped): —")
 		failLab.SetText("Failed: —")
+		receiptHint.SetText("")
+		receiptHint.Hide()
 		updatedRow.Hide()
 		batchCountLab.SetText("")
 		batchCountLab.Hide()
@@ -256,6 +286,30 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		fcd.Show()
 	}
 
+	assignForm := container.NewVBox(
+		widget.NewLabelWithStyle("Collection (after import)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabel("Choose whether to attach this run’s imported assets to an album. Confirm or cancel below — this step stays on-screen until you decide."),
+		assignRadio,
+		widget.NewForm(&widget.FormItem{Text: "Name", Widget: nameEntry}),
+		container.NewHBox(confirmCollectionBtn, cancelCollectionBtn),
+	)
+
+	// Receipt + batch preview scroll; FR-06 assign/confirm stays fixed above so it cannot scroll out of view
+	// (journey + narrow layouts were capturing only the idle upload chrome).
+	receiptPreview := container.NewVBox(
+		receiptAcc,
+		widget.NewSeparator(),
+		previewBlock,
+	)
+	postImportScroll := container.NewScroll(receiptPreview)
+	postImportScroll.SetMinSize(fyne.NewSize(100, 280))
+	postImportBody := container.NewVBox(
+		assignForm,
+		widget.NewSeparator(),
+		postImportScroll,
+	)
+	postImport.Add(postImportBody)
+
 	applyImportResult := func(sum domain.OperationSummary, ids []int64, batchFileCount int, batchPaths []string) {
 		importInFlight = false
 		importStatusLab.SetText("")
@@ -263,9 +317,9 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		lastSummary = sum
 		lastAssetIDs = ids
 		updateBatchPreview(batchPaths)
-		showReceipt(sum)
+		showReceipt(sum, batchFileCount)
 		if batchFileCount > 0 {
-			batchCountLab.SetText(fmt.Sprintf("Files in this batch: %d", batchFileCount))
+			batchCountLab.SetText(fmt.Sprintf("Source files in this import: %d", batchFileCount))
 			batchCountLab.Show()
 		} else {
 			batchCountLab.SetText("")
@@ -275,8 +329,14 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		assignRadio.Refresh()
 		nameEntry.SetText("")
 		nameEntry.Disable()
+		stagedBlock.Hide()
+		uploadIdleChrome.Hide()
+		libraryPathLabel.Hide()
 		postImport.Show()
 		postImport.Refresh()
+		fyne.Do(func() {
+			postImportScroll.ScrollToTop()
+		})
 		awaitingPostImportStep = true
 		if addBtn != nil {
 			addBtn.Disable()
@@ -364,21 +424,6 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		resetBatchUI()
 	}
 
-	assignForm := container.NewVBox(
-		widget.NewLabel("Collection (after import)"),
-		assignRadio,
-		widget.NewForm(&widget.FormItem{Text: "Name", Widget: nameEntry}),
-		container.NewHBox(confirmCollectionBtn, cancelCollectionBtn),
-	)
-
-	postImport.Add(previewBlock)
-	postImport.Add(widget.NewSeparator())
-	postImport.Add(receiptAcc)
-	postImport.Add(widget.NewSeparator())
-	postImport.Add(assignForm)
-
-	header := widget.NewLabelWithStyle(fmt.Sprintf("Library: %s", root), fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
-
 	dropTitle := widget.NewLabelWithStyle("Drop images here", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	dropBody := widget.NewLabel("Release files on this area to add them to the list and run import immediately — same pipeline as “Add images…” + “Import selected files”.")
 	dropBody.Wrapping = fyne.TextWrapWord
@@ -392,15 +437,22 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 	dropBG.CornerRadius = 4
 	dropZone := container.NewStack(dropBG, dropPad)
 
-	top := container.NewVBox(
-		header,
-		widget.NewLabel("Add one or more images (each pick adds to the list). Then run Import, or drop files on the target below."),
+	idleIntro := widget.NewLabel("Add one or more images (each pick adds to the list). Then run Import, or drop files on the target below.")
+	idleIntro.Wrapping = fyne.TextWrapWord
+	// Hide staging chrome during FR-06 so collection confirm + receipt are the only focus (UX judge: no overlap with drop zone).
+	uploadIdleChrome = container.NewVBox(
+		idleIntro,
 		dropZone,
 		container.NewVBox(
 			container.NewHBox(addBtn, clearBtn, importBtn),
 			importStatusLab,
 		),
-		pathList,
+	)
+
+	top := container.NewVBox(
+		libraryPathLabel,
+		uploadIdleChrome,
+		stagedBlock,
 		postImport,
 	)
 

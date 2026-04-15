@@ -49,7 +49,7 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 
 	countLabel := widget.NewLabel("Hidden assets: —")
 	deleteSelectedBtn := widget.NewButton("Delete selected…", nil)
-	deleteSelectedBtn.Importance = widget.DangerImportance
+	deleteSelectedBtn.Importance = widget.MediumImportance
 	deleteSelectedBtn.Disable()
 	bulkHint := widget.NewLabel("Cmd/Ctrl+click thumbnails to select multiple hidden photos for bulk delete.")
 	emptyHint := widget.NewLabel("")
@@ -157,9 +157,12 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		}
 		if len(grid.SelectedAssetIDs()) > 0 {
 			deleteSelectedBtn.Enable()
+			deleteSelectedBtn.Importance = widget.DangerImportance
 		} else {
 			deleteSelectedBtn.Disable()
+			deleteSelectedBtn.Importance = widget.MediumImportance
 		}
+		deleteSelectedBtn.Refresh()
 	}
 
 	refreshRejectedData := func() {
@@ -241,6 +244,9 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 			}
 			grid.reset(f, 0)
 			grid.syncGridScrollVisible(gridScroll, false)
+			if gridScroll != nil {
+				gridScroll.ScrollToTop()
+			}
 			return
 		}
 		msg := fmt.Sprintf("Hidden assets: %d", n)
@@ -279,6 +285,9 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		}
 		grid.reset(f, n)
 		grid.syncGridScrollVisible(gridScroll, n > 0)
+		if gridScroll != nil {
+			gridScroll.ScrollToTop()
+		}
 	}
 
 	refreshAll := func() {

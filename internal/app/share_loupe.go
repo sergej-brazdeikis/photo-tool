@@ -134,7 +134,9 @@ func buildLoupeSharePreview(libraryRoot string, row store.ReviewGridRow) fyne.Ca
 	lbl.Wrapping = fyne.TextWrapWord
 	hint := widget.NewLabel("A link is created only after you tap Create link. Nothing is saved before that.")
 	hint.Wrapping = fyne.TextWrapWord
-	return container.NewVBox(img, lbl, hint)
+	hintScroll := container.NewVScroll(hint)
+	hintScroll.SetMinSize(fyne.NewSize(440, 76))
+	return container.NewVBox(img, lbl, hintScroll)
 }
 
 func showLoupeShareMintSuccess(win fyne.Window, loop *share.Loopback, rawToken string) {

@@ -63,7 +63,7 @@ func TestE2E_shell_primaryNav_Upload_Review_Collections_Rejected(t *testing.T) {
 	win := test.NewTempWindow(t, nil)
 	// Wide enough that primary nav buttons (incl. "Rejected") stay on-canvas with semantic preview rail.
 	win.Resize(fyne.NewSize(1120, 600))
-	test.ApplyTheme(t, NewPhotoToolTheme(theme.VariantDark))
+	applyTestPhotoToolTheme(t, theme.VariantDark)
 	shell := newMainShell(win, db, root, false, nil)
 	win.SetContent(shell)
 

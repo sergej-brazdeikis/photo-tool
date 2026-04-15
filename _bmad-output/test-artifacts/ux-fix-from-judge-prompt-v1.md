@@ -9,13 +9,13 @@ You are the **implementer**. Read the judge verdict and **minimal** UX/layout fi
 ## Inputs
 
 - `BUNDLE/verdict/judge-output.md` — gaps and per-step failures
-- `BUNDLE/ui/steps.json` — which screens were captured
+- `BUNDLE/ui/steps.json` — which screens were captured (`flow`, `id`, `intent`, `file` per step)
 - Planning context (as needed): `_bmad-output/planning-artifacts/ux-design-specification.md`, `epics-v2-ux-aligned-2026-04-14.md`
 
 ## Requirements
 
 1. Implement **smallest** changes that address **Blocker** and **Major** items first; then **Minor** if time allows.
-2. Prefer [`internal/app/upload.go`](../../internal/app/upload.go), [`internal/app/shell.go`](../../internal/app/shell.go), [`internal/app/review.go`](../../internal/app/review.go), [`internal/app/review_grid.go`](../../internal/app/review_grid.go), [`internal/app/review_loupe.go`](../../internal/app/review_loupe.go), [`internal/app/collections.go`](../../internal/app/collections.go) — do not refactor unrelated packages.
+2. Prefer [`internal/app/upload.go`](../../internal/app/upload.go), [`internal/app/shell.go`](../../internal/app/shell.go), [`internal/app/review.go`](../../internal/app/review.go), [`internal/app/review_grid.go`](../../internal/app/review_grid.go), [`internal/app/review_loupe.go`](../../internal/app/review_loupe.go), [`internal/app/share_loupe.go`](../../internal/app/share_loupe.go), [`internal/app/collections.go`](../../internal/app/collections.go), [`internal/app/rejected.go`](../../internal/app/rejected.go) — do not refactor unrelated packages.
 3. Run from repo root:
 
    ```bash

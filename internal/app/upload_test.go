@@ -42,13 +42,13 @@ func TestUX_upload_initialCopy_dropZoneAndReceiptPlaceholders(t *testing.T) {
 	}
 	var sawAddedDash bool
 	for _, lb := range collectLabelsDeep(view) {
-		if lb.Text == "Added: —" {
+		if lb.Text == "New library rows: —" {
 			sawAddedDash = true
 			break
 		}
 	}
 	if !sawAddedDash {
-		t.Fatal(`want initial receipt label "Added: —"`)
+		t.Fatal(`want initial receipt label "New library rows: —"`)
 	}
 }
 

@@ -233,7 +233,7 @@ func TestUpload_flow_receiptShowsFilesInBatchCount(t *testing.T) {
 
 	test.Tap(findButtonByText(t, view, "Import selected files"))
 
-	want := "Files in this batch: 3"
+	want := "Source files in this import: 3"
 	var found bool
 	for _, lb := range collectLabelsDeep(view) {
 		if lb.Text == want {
