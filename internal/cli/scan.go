@@ -53,6 +53,10 @@ func RunScan(cmd *cobra.Command, _ []string) error {
 	}
 
 	var sum domain.OperationSummary
+	var drySeen map[string]struct{}
+	if dryRun {
+		drySeen = make(map[string]struct{})
+	}
 	var nSeen int
 	logEvery := 1000
 
@@ -68,10 +72,10 @@ func RunScan(cmd *cobra.Command, _ []string) error {
 		if !ingest.IsSupportedScanExt(filepath.Ext(path)) {
 			return nil
 		}
-		ingest.IngestPath(db, libRoot, path, &sum, dryRun)
+		ingest.IngestPath(db, libRoot, path, &sum, dryRun, drySeen)
 		nSeen++
 		if logEvery > 0 && nSeen%logEvery == 0 {
-			slog.Info("scan progress", "files", nSeen, "added", sum.Added, "skipped_duplicate", sum.SkippedDuplicate, "failed", sum.Failed)
+			slog.Info("scan progress", "files", nSeen, "added", sum.Added, "skipped_duplicate", sum.SkippedDuplicate, "updated", sum.Updated, "failed", sum.Failed)
 		}
 		return nil
 	}

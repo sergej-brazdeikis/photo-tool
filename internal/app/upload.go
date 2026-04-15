@@ -26,10 +26,41 @@ import (
 // imageOpenFilter limits the picker to the same extension set as CLI scan ([ingest.PickerFilterExtensions]).
 var imageOpenFilter = storage.NewExtensionFileFilter(ingest.PickerFilterExtensions())
 
+// UploadViewOptions configures [NewUploadViewWithOptions]. Zero value matches [NewUploadView] behavior.
+type UploadViewOptions struct {
+	// SeedPaths prepopulates the upload list (absolute paths). Enables headless tests without a file picker.
+	SeedPaths []string
+	// SkipCompletionDialogs omits success/info dialogs after Confirm/Cancel on the collection step (tests only).
+	SkipCompletionDialogs bool
+	// SynchronousIngest runs [ingest.IngestWithAssetIDs] on the caller goroutine (tests only).
+	// The fyne test driver does not queue [fyne.Do] across Tap boundaries; without this, Tap(Import) then
+	// Tap(Confirm) races the background ingest (UX-DR17 production path uses a worker + [fyne.Do]).
+	SynchronousIngest bool
+	// DisableImportCloseIntercept skips [fyne.Window.SetCloseIntercept] for import-in-flight guarding
+	// (e.g. tests or when another owner already manages window close).
+	DisableImportCloseIntercept bool
+}
+
 // NewUploadView builds the desktop upload flow: multi-file pick (accumulated via repeated open),
 // ingest + receipt, optional collection confirm (FR-06). No SQL in widgets — only calls to ingest/store.
 func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasObject {
+	return newUploadView(win, db, libraryRoot, UploadViewOptions{})
+}
+
+// NewUploadViewWithOptions is like [NewUploadView] with extra options for tests (seeded paths, dialog skipping).
+func NewUploadViewWithOptions(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadViewOptions) fyne.CanvasObject {
+	return newUploadView(win, db, libraryRoot, opts)
+}
+
+func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadViewOptions) fyne.CanvasObject {
 	root := filepath.Clean(libraryRoot)
+
+	showImportComplete := func(title, msg string) {
+		if opts.SkipCompletionDialogs {
+			return
+		}
+		dialog.ShowInformation(title, msg, win)
+	}
 
 	paths := []string{}
 	var batchStart time.Time
@@ -37,6 +68,10 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 	var lastAssetIDs []int64
 	// True while post-import receipt UI is shown; blocks re-entrant batch ingest.
 	awaitingPostImportStep := false
+	// True while a batch ingest goroutine is running (UX-DR17: work off UI thread).
+	importInFlight := false
+	// Mixed-drop unsupported lines; flushed in applyImportResult after ingest completes.
+	var pendingDropSkipLines []string
 	var addBtn, clearBtn, importBtn *widget.Button
 
 	pathList := widget.NewList(
@@ -52,6 +87,18 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 	failLab := widget.NewLabel("Failed: —")
 	updatedLab := widget.NewLabel("Updated: —")
 	updatedRow := container.NewHBox(updatedLab)
+
+	batchCountLab := widget.NewLabel("")
+	batchCountLab.Hide()
+	receiptBody := container.NewVBox(
+		batchCountLab,
+		addedLab,
+		dupLab,
+		failLab,
+		updatedRow,
+	)
+	receiptAcc := widget.NewAccordion(widget.NewAccordionItem("Receipt", receiptBody))
+	receiptAcc.Open(0)
 
 	assignRadio := widget.NewRadioGroup([]string{"Skip collection", "Assign to collection"}, nil)
 	assignRadio.Selected = "Skip collection"
@@ -71,6 +118,8 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 
 	postImport := container.NewVBox()
 	postImport.Hide()
+	importStatusLab := widget.NewLabel("")
+	importStatusLab.Hide()
 
 	confirmCollectionBtn := widget.NewButton("Confirm", nil)
 	confirmCollectionBtn.Importance = widget.HighImportance
@@ -100,6 +149,8 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 
 	resetBatchUI := func() {
 		awaitingPostImportStep = false
+		importInFlight = false
+		pendingDropSkipLines = nil
 		paths = paths[:0]
 		refreshPaths()
 		lastAssetIDs = nil
@@ -110,10 +161,15 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 		nameEntry.SetText("")
 		nameEntry.Disable()
 		postImport.Hide()
+		importStatusLab.SetText("")
+		importStatusLab.Hide()
 		addedLab.SetText("Added: —")
 		dupLab.SetText("Skipped duplicate: —")
 		failLab.SetText("Failed: —")
 		updatedRow.Hide()
+		batchCountLab.SetText("")
+		batchCountLab.Hide()
+		receiptAcc.Open(0)
 		if addBtn != nil {
 			addBtn.Enable()
 			clearBtn.Enable()
@@ -137,16 +193,20 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 		fcd.Show()
 	}
 
-	runImportBatch := func() {
-		if len(paths) == 0 {
-			return
-		}
-		// Default collection label date: local calendar day when this batch ingest starts (PRD FR-05).
-		batchStart = time.Now()
-		sum, ids := ingest.IngestWithAssetIDs(db, root, paths)
+	applyImportResult := func(sum domain.OperationSummary, ids []int64, batchFileCount int) {
+		importInFlight = false
+		importStatusLab.SetText("")
+		importStatusLab.Hide()
 		lastSummary = sum
 		lastAssetIDs = ids
 		showReceipt(sum)
+		if batchFileCount > 0 {
+			batchCountLab.SetText(fmt.Sprintf("Files in this batch: %d", batchFileCount))
+			batchCountLab.Show()
+		} else {
+			batchCountLab.SetText("")
+			batchCountLab.Hide()
+		}
 		assignRadio.Selected = "Skip collection"
 		assignRadio.Refresh()
 		nameEntry.SetText("")
@@ -159,6 +219,36 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 			clearBtn.Disable()
 			importBtn.Disable()
 		}
+		if lines, ok := takePendingStringSlice(&pendingDropSkipLines); ok {
+			dialog.ShowInformation("Some items were skipped", droppedSkipSummaryForDialog(lines), win)
+		}
+	}
+
+	runImportBatch := func() {
+		if len(paths) == 0 || importInFlight {
+			return
+		}
+		// Default collection label date: local calendar day when this batch ingest starts (PRD FR-05).
+		batchStart = time.Now()
+		pathsCopy := append([]string(nil), paths...)
+		importInFlight = true
+		importStatusLab.SetText("Importing…")
+		importStatusLab.Show()
+		if addBtn != nil {
+			addBtn.Disable()
+			clearBtn.Disable()
+			importBtn.Disable()
+		}
+		nFiles := len(pathsCopy)
+		if opts.SynchronousIngest {
+			sum, ids := ingest.IngestWithAssetIDs(db, root, pathsCopy)
+			applyImportResult(sum, ids, nFiles)
+			return
+		}
+		go func() {
+			sum, ids := ingest.IngestWithAssetIDs(db, root, pathsCopy)
+			fyne.Do(func() { applyImportResult(sum, ids, nFiles) })
+		}()
 	}
 
 	importBtn = widget.NewButton("Import selected files", func() {
@@ -190,27 +280,23 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 		}
 
 		// FR-06 / Story 1.5 AC3: do not create an empty collection when every ingest failed (no asset IDs).
+		// Create + link in one transaction so a successful insert never leaves an orphan collection if linking fails.
 		var actuallyLinked bool
 		if wantedAssign && len(link) > 0 {
 			displayISO := batchStart.In(time.Local).Format("2006-01-02")
-			cid, err := store.CreateCollection(db, name, displayISO)
-			if err != nil {
-				dialog.ShowError(errors.New(userFacingDialogErrText(err)), win)
-				return
-			}
-			if err := store.LinkAssetsToCollection(db, cid, link); err != nil {
+			if _, err := store.CreateCollectionAndLinkAssets(db, name, displayISO, link); err != nil {
 				dialog.ShowError(errors.New(userFacingDialogErrText(err)), win)
 				return
 			}
 			actuallyLinked = true
 		}
 
-		dialog.ShowInformation("Import complete", summarizeDoneMessage(lastSummary, wantedAssign, actuallyLinked), win)
+		showImportComplete("Import complete", summarizeDoneMessage(lastSummary, wantedAssign, actuallyLinked))
 		resetBatchUI()
 	}
 
 	cancelCollectionBtn.OnTapped = func() {
-		dialog.ShowInformation("Collection skipped", "Files remain in the library; no collection was created.", win)
+		showImportComplete("Collection skipped", "Files remain in the library; no collection was created.")
 		resetBatchUI()
 	}
 
@@ -222,11 +308,7 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 	)
 
 	postImport.Add(widget.NewSeparator())
-	postImport.Add(widget.NewLabelWithStyle("Receipt", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-	postImport.Add(addedLab)
-	postImport.Add(dupLab)
-	postImport.Add(failLab)
-	postImport.Add(updatedRow)
+	postImport.Add(receiptAcc)
 	postImport.Add(widget.NewSeparator())
 	postImport.Add(assignForm)
 
@@ -249,7 +331,10 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 		header,
 		widget.NewLabel("Add one or more images (each pick adds to the list). Then run Import, or drop files on the target below."),
 		dropZone,
-		container.NewHBox(addBtn, clearBtn, importBtn),
+		container.NewVBox(
+			container.NewHBox(addBtn, clearBtn, importBtn),
+			importStatusLab,
+		),
 		pathList,
 		postImport,
 	)
@@ -261,15 +346,16 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 	// The drop target lives inside a [container.Scroll]; the driver’s absolute position for [dropZone]
 	// includes scroll offset on supported platforms (macOS baseline — re-check Windows/Linux in QA).
 	win.SetOnDropped(func(absPos fyne.Position, uris []fyne.URI) {
+		// Empty payload: treat as no-op (no dialog). Some platforms may deliver an empty slice;
+		// there is nothing actionable to explain without inventing failure copy.
 		if len(uris) == 0 {
 			return
 		}
 		if !dropHitTest(absPos, dropZone) {
 			return
 		}
-		if awaitingPostImportStep {
-			dialog.ShowInformation("Finish collection step",
-				"Confirm or cancel the upload collection step before dropping more files.", win)
+		if title, msg, blocked := dropBlockedDialogInfo(awaitingPostImportStep, importInFlight); blocked {
+			dialog.ShowInformation(title, msg, win)
 			return
 		}
 		res := classifyDroppedURIs(uris, os.Stat)
@@ -310,11 +396,33 @@ func NewUploadView(win fyne.Window, db *sql.DB, libraryRoot string) fyne.CanvasO
 		if len(paths) > 0 {
 			importBtn.Enable()
 		}
-		runImportBatch()
 		if len(res.Unsupported) > 0 {
-			dialog.ShowInformation("Some items were skipped", droppedSkipSummaryForDialog(res.Unsupported), win)
+			pendingDropSkipLines = append([]string(nil), res.Unsupported...)
 		}
+		runImportBatch()
 	})
+
+	for _, p := range opts.SeedPaths {
+		if tryAddUniquePath(&paths, filepath.Clean(p)) {
+			refreshPaths()
+		}
+	}
+	if len(paths) > 0 {
+		importBtn.Enable()
+	}
+
+	if !opts.DisableImportCloseIntercept {
+		// Avoid tearing down the window while a worker still schedules [fyne.Do] (UX-DR17).
+		// If the shell adds its own close intercept later, chain that handler here instead of replacing it.
+		win.SetCloseIntercept(func() {
+			if importInFlight {
+				dialog.ShowInformation("Import in progress",
+					"Wait for the current import to finish before closing the window.", win)
+				return
+			}
+			win.Close()
+		})
+	}
 
 	return scroll
 }

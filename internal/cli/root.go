@@ -24,7 +24,7 @@ func Execute() error {
 		Long: `Discover supported images under --dir with the same extensions and ingest pipeline as the GUI.
 
 Only files directly in --dir are scanned unless --recursive is set. Use --dry-run to classify outcomes
-(added / skipped duplicate / failed) without copying files or writing the database.
+(added / skipped duplicate / updated / failed) without copying files or writing the database.
 
 Exits with status 1 when any files fail during the run (after printing the summary).`,
 		RunE: RunScan,
@@ -40,7 +40,8 @@ Exits with status 1 when any files fail during the run (after printing the summa
 		Long: `Sync the database with image files that already live under the library root (register-in-place).
 
 Unlike scan, import does not copy from external folders: --dir must be inside the configured library tree
-(after resolving symlinks, so a symlink cannot bypass that rule).
+(after resolving symlinks, so a symlink cannot bypass that rule). You may pass the library root itself
+as --dir (use --recursive to include nested canonical day folders).
 Use this after manual file operations so assets rows, hashes, and capture time stay aligned.
 
 Use --dry-run to classify outcomes (added / skipped duplicate / updated / failed) without writing the database.

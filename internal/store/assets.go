@@ -35,12 +35,14 @@ func FindAssetByContentHash(db *sql.DB, contentHash string) (bool, error) {
 
 // InsertAsset inserts a new active asset row. createdAtUnix is typically time.Now().Unix().
 func InsertAsset(db *sql.DB, contentHash, relPath string, captureTimeUnix, createdAtUnix int64) error {
-	return InsertAssetWithCamera(db, contentHash, relPath, captureTimeUnix, createdAtUnix, "", "")
+	_, err := InsertAssetWithCamera(db, contentHash, relPath, captureTimeUnix, createdAtUnix, "", "")
+	return err
 }
 
 // InsertAssetWithCamera inserts a new active asset row with optional EXIF camera fields (Story 2.8).
 // Empty strings after trim are stored as NULL; camera_label is derived via [CameraLabelFromParts].
-func InsertAssetWithCamera(db *sql.DB, contentHash, relPath string, captureTimeUnix, createdAtUnix int64, cameraMake, cameraModel string) error {
+// On success it returns the new row id (SQLite last_insert_rowid).
+func InsertAssetWithCamera(db *sql.DB, contentHash, relPath string, captureTimeUnix, createdAtUnix int64, cameraMake, cameraModel string) (int64, error) {
 	makeNS := sql.NullString{}
 	if strings.TrimSpace(cameraMake) != "" {
 		makeNS = sql.NullString{String: NormalizeCameraField(cameraMake), Valid: true}
@@ -51,15 +53,19 @@ func InsertAssetWithCamera(db *sql.DB, contentHash, relPath string, captureTimeU
 	}
 	labelNS := CameraLabelForStorage(cameraMake, cameraModel)
 
-	_, err := db.Exec(`
+	res, err := db.Exec(`
 INSERT INTO assets (content_hash, rel_path, capture_time_unix, created_at_unix, camera_make, camera_model, camera_label)
 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		contentHash, relPath, captureTimeUnix, createdAtUnix,
 		ScanStringPtr(makeNS), ScanStringPtr(modelNS), ScanStringPtr(labelNS))
 	if err != nil {
-		return fmt.Errorf("insert asset: %w", err)
+		return 0, fmt.Errorf("insert asset: %w", err)
 	}
-	return nil
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("insert asset last id: %w", err)
+	}
+	return id, nil
 }
 
 // ActiveAssetByRelPath returns the active (non-deleted) row at rel_path, if any.

@@ -4,12 +4,62 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"photo-tool/internal/config"
 )
+
+func TestOpen_requiresPhototoolDir(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Open(root)
+	if err == nil {
+		t.Fatal("expected error when .phototool is missing")
+	}
+	if !strings.Contains(err.Error(), ".phototool") {
+		t.Fatalf("error should mention metadata dir: %v", err)
+	}
+}
+
+func TestOpen_rejectsEmptyLibraryRoot(t *testing.T) {
+	_, err := Open("")
+	if err == nil {
+		t.Fatal("expected error for empty library root")
+	}
+}
+
+func TestOpen_sqlitePragmas(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	var fk int
+	if err := db.QueryRow(`PRAGMA foreign_keys`).Scan(&fk); err != nil {
+		t.Fatal(err)
+	}
+	if fk != 1 {
+		t.Fatalf("PRAGMA foreign_keys: got %d want 1", fk)
+	}
+	var busy int
+	if err := db.QueryRow(`PRAGMA busy_timeout`).Scan(&busy); err != nil {
+		t.Fatal(err)
+	}
+	if busy != 5000 {
+		t.Fatalf("PRAGMA busy_timeout: got %d want 5000", busy)
+	}
+}
 
 func TestOpen_migratesFreshLibrary(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "lib")
@@ -26,8 +76,8 @@ func TestOpen_migratesFreshLibrary(t *testing.T) {
 	if err := db.QueryRow(`SELECT version FROM schema_meta WHERE singleton = 1`).Scan(&v); err != nil {
 		t.Fatal(err)
 	}
-	if v != 7 {
-		t.Fatalf("schema version: got %d want 7", v)
+	if v != TargetSchemaVersion {
+		t.Fatalf("schema version: got %d want %d", v, TargetSchemaVersion)
 	}
 
 	for _, tbl := range []string{"assets", "collections", "asset_collections", "tags", "asset_tags", "share_links", "share_link_members"} {
@@ -127,8 +177,8 @@ func TestCollections_createLinkIdempotentDelete(t *testing.T) {
 	if err := db.QueryRow(`SELECT version FROM schema_meta WHERE singleton = 1`).Scan(&v); err != nil {
 		t.Fatal(err)
 	}
-	if v != 7 {
-		t.Fatalf("schema version: got %d want 7", v)
+	if v != TargetSchemaVersion {
+		t.Fatalf("schema version: got %d want %d", v, TargetSchemaVersion)
 	}
 
 	now := time.Now().Unix()
@@ -331,6 +381,166 @@ func TestLinkAssetsToCollection_invalidReferences(t *testing.T) {
 	}
 	if err := LinkAssetsToCollection(db, 999999, []int64{aid}); err == nil {
 		t.Fatal("expected error for missing collection id")
+	}
+}
+
+func TestLinkAssetsToCollection_rollsBackOnPartialFailure(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	collID, err := CreateCollection(db, "Partial", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Unix()
+	if err := InsertAsset(db, "hash-partial", "2024/p.jpg", now, now); err != nil {
+		t.Fatal(err)
+	}
+	var aid int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = 'hash-partial'`).Scan(&aid); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkAssetsToCollection(db, collID, []int64{aid, 999999}); err == nil {
+		t.Fatal("expected error when batch contains invalid asset id")
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM asset_collections WHERE collection_id = ?`, collID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("expected rollback (no junction rows), got %d", n)
+	}
+}
+
+func TestMigrate_fromV1_appliesCollectionsAndRest(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(root, ".phototool", "library.sqlite")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`PRAGMA busy_timeout = 5000`); err != nil {
+		t.Fatal(err)
+	}
+	if err := applyMigration(db, "migrations/001_initial.sql", 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db2, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db2.Close() })
+
+	var v int
+	if err := db2.QueryRow(`SELECT version FROM schema_meta WHERE singleton = 1`).Scan(&v); err != nil {
+		t.Fatal(err)
+	}
+	if v != TargetSchemaVersion {
+		t.Fatalf("after upgrade from v1: got version %d want %d", v, TargetSchemaVersion)
+	}
+	for _, tbl := range []string{"collections", "asset_collections"} {
+		var n int
+		if err := db2.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, tbl).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != 1 {
+			t.Fatalf("expected table %q after forward migrate", tbl)
+		}
+	}
+}
+
+func TestLinkAssetsToCollection_emptyAssetIDsNoop(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if err := LinkAssetsToCollection(db, 999999, nil); err != nil {
+		t.Fatalf("empty batch should not error or touch DB: %v", err)
+	}
+	if err := LinkAssetsToCollection(db, 999999, []int64{}); err != nil {
+		t.Fatalf("empty batch should not error or touch DB: %v", err)
+	}
+}
+
+func TestDeleteCollection_secondDeleteNotFound(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	cid, err := CreateCollection(db, "Once", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteCollection(db, cid); err != nil {
+		t.Fatal(err)
+	}
+	err = DeleteCollection(db, cid)
+	if err == nil || !errors.Is(err, ErrCollectionNotFound) {
+		t.Fatalf("second delete: want ErrCollectionNotFound, got %v", err)
+	}
+}
+
+func TestLinkAssetsToCollection_duplicateAssetIDsInBatch(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	collID, err := CreateCollection(db, "DupBatch", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Unix()
+	if err := InsertAsset(db, "hash-dup", "2024/d.jpg", now, now); err != nil {
+		t.Fatal(err)
+	}
+	var aid int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = 'hash-dup'`).Scan(&aid); err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkAssetsToCollection(db, collID, []int64{aid, aid, aid}); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM asset_collections WHERE collection_id = ? AND asset_id = ?`, collID, aid).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("duplicate ids in one batch should yield one row, got %d", n)
 	}
 }
 

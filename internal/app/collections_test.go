@@ -26,7 +26,7 @@ func TestCollectionsView_zeroAlbums_emptyStateHidesList(t *testing.T) {
 	test.NewTempApp(t)
 	w := test.NewTempWindow(t, nil)
 
-	v := NewCollectionsView(w, db, root, nil)
+	v := NewCollectionsView(w, db, root, nil, nil)
 	if !strings.Contains(v.listMsg.Text, "No albums yet") {
 		t.Fatalf("listMsg: %q", v.listMsg.Text)
 	}
@@ -56,7 +56,7 @@ func TestStory212_CollectionsDetail_emptyAlbum_CTAs(t *testing.T) {
 
 	w := test.NewTempWindow(t, nil)
 	var reviewCalls int32
-	v := NewCollectionsView(w, db, root, func() { atomic.AddInt32(&reviewCalls, 1) })
+	v := NewCollectionsView(w, db, root, func() { atomic.AddInt32(&reviewCalls, 1) }, nil)
 	v.openDetail(cid, "EmptyAlbum")
 
 	rootObj := v.CanvasObject()

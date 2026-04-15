@@ -23,7 +23,12 @@ import (
 )
 
 func testScanCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "scan", RunE: RunScan}
+	cmd := &cobra.Command{
+		Use:           "scan",
+		RunE:          RunScan,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
 	cmd.Flags().String("dir", "", "directory to scan")
 	_ = cmd.MarkFlagRequired("dir")
 	cmd.Flags().Bool("recursive", false, "include subdirectories")
@@ -67,6 +72,7 @@ func TestRunScan_exitErrorWhenFileFails(t *testing.T) {
 	if !strings.Contains(buf.String(), "Failed: 1") {
 		t.Fatalf("out:\n%s", buf.String())
 	}
+	assertOperationReceiptLineOrder(t, buf.String())
 }
 
 func TestRunScan_nonRecursive_ingestsFlatFiles(t *testing.T) {
@@ -365,6 +371,126 @@ func TestRunScan_dryRun_countsMatch_liveSeparateLibraries_recursive(t *testing.T
 		t.Fatalf("recursive dry %+v vs live %+v", sumDry, sumLive)
 	}
 	if sumLive.Added != 3 || sumLive.SkippedDuplicate != 0 || sumLive.Failed != 0 {
+		t.Fatalf("unexpected live summary: %+v", sumLive)
+	}
+}
+
+// TestRunScan_dryRun_countsMatch_liveSeparateLibraries_partialFailures deepens AC2: when some candidates
+// fail (here: unreadable file), dry-run classification must still match a live run on a fresh library.
+func TestRunScan_dryRun_countsMatch_liveSeparateLibraries_partialFailures(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 0 unreadable file behavior is Unix-specific")
+	}
+	scanDir := filepath.Join(t.TempDir(), "scan")
+	if err := os.MkdirAll(scanDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mt := time.Date(2010, 1, 2, 3, 4, 5, 0, time.UTC)
+	okPath := filepath.Join(scanDir, "ok.jpg")
+	if err := writeJPEGGray(okPath, 0x2A); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(okPath, mt, mt); err != nil {
+		t.Fatal(err)
+	}
+	badPath := filepath.Join(scanDir, "locked.jpg")
+	if err := writeJPEGGray(badPath, 0x3B); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(badPath, mt, mt); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(badPath, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(badPath, 0o644) })
+
+	libDry := filepath.Join(t.TempDir(), "lib-dry-partial")
+	libLive := filepath.Join(t.TempDir(), "lib-live-partial")
+	for _, lr := range []string{libDry, libLive} {
+		if err := config.EnsureLibraryLayout(lr); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Setenv(config.EnvLibraryRoot, libDry)
+	cmdDry := testScanCommand()
+	cmdDry.SetArgs([]string{"--dir", scanDir, "--dry-run"})
+	var bufDry bytes.Buffer
+	cmdDry.SetOut(&bufDry)
+	errDry := cmdDry.Execute()
+	sumDry := scanSummaryFromOutput(t, bufDry.String())
+
+	t.Setenv(config.EnvLibraryRoot, libLive)
+	cmdLive := testScanCommand()
+	cmdLive.SetArgs([]string{"--dir", scanDir})
+	var bufLive bytes.Buffer
+	cmdLive.SetOut(&bufLive)
+	errLive := cmdLive.Execute()
+	sumLive := scanSummaryFromOutput(t, bufLive.String())
+
+	if errDry == nil || errLive == nil {
+		t.Fatalf("want non-nil errors when Failed>0 (dry err=%v live err=%v)", errDry, errLive)
+	}
+
+	if sumDry != sumLive {
+		t.Fatalf("partial-failure dry %+v vs live %+v", sumDry, sumLive)
+	}
+	if sumLive.Added != 1 || sumLive.SkippedDuplicate != 0 || sumLive.Failed != 1 || sumLive.Updated != 0 {
+		t.Fatalf("unexpected summary: %+v", sumLive)
+	}
+}
+
+// TestRunScan_dryRun_countsMatch_liveSeparateLibraries_sameBytesTwoFiles: AC2 must hold when two distinct
+// paths share identical bytes in one tree—live inserts then dedups; dry-run cannot rely on DB alone.
+func TestRunScan_dryRun_countsMatch_liveSeparateLibraries_sameBytesTwoFiles(t *testing.T) {
+	scanDir := filepath.Join(t.TempDir(), "scan")
+	if err := os.MkdirAll(scanDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mt := time.Date(2009, 12, 11, 10, 9, 8, 0, time.UTC)
+	for _, name := range []string{"first.jpg", "second.jpg"} {
+		p := filepath.Join(scanDir, name)
+		if err := writeJPEGGray(p, 0x5C); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(p, mt, mt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	libDry := filepath.Join(t.TempDir(), "lib-dry-dup")
+	libLive := filepath.Join(t.TempDir(), "lib-live-dup")
+	for _, lr := range []string{libDry, libLive} {
+		if err := config.EnsureLibraryLayout(lr); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Setenv(config.EnvLibraryRoot, libDry)
+	cmdDry := testScanCommand()
+	cmdDry.SetArgs([]string{"--dir", scanDir, "--dry-run"})
+	var bufDry bytes.Buffer
+	cmdDry.SetOut(&bufDry)
+	if err := cmdDry.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	sumDry := scanSummaryFromOutput(t, bufDry.String())
+
+	t.Setenv(config.EnvLibraryRoot, libLive)
+	cmdLive := testScanCommand()
+	cmdLive.SetArgs([]string{"--dir", scanDir})
+	var bufLive bytes.Buffer
+	cmdLive.SetOut(&bufLive)
+	if err := cmdLive.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	sumLive := scanSummaryFromOutput(t, bufLive.String())
+
+	if sumDry != sumLive {
+		t.Fatalf("same-bytes dry %+v vs live %+v", sumDry, sumLive)
+	}
+	if sumLive.Added != 1 || sumLive.SkippedDuplicate != 1 || sumLive.Failed != 0 || sumLive.Updated != 0 {
 		t.Fatalf("unexpected live summary: %+v", sumLive)
 	}
 }

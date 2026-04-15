@@ -30,7 +30,8 @@ func PrimaryNavLabels() []string {
 }
 
 // NewMainShell builds persistent navigation (UX-DR13 order) and a swappable content region.
-// Upload embeds the existing flow; other sections are placeholders only (Story 2.1 AC4).
+// Upload embeds the existing ingest flow. Review, Collections, and Rejected mount the real
+// Epic 2 panels (Stories 2.2+); Story 2.1 originally shipped placeholders — see story history.
 // shareLoop starts the loopback share HTTP server on first successful mint (Story 3.2); nil disables URLs in tests.
 func NewMainShell(win fyne.Window, db *sql.DB, libraryRoot string, shareLoop *share.Loopback) fyne.CanvasObject {
 	return newMainShell(win, db, libraryRoot, false, shareLoop)
@@ -66,7 +67,12 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 		prevNavKey = keyByLabel[labels[1]]
 	}
 
-	collectionsView := NewCollectionsView(win, db, libraryRoot, gotoReview)
+	var reloadReviewCollectionsFromCollectionsTab func()
+	collectionsView := NewCollectionsView(win, db, libraryRoot, gotoReview, func() {
+		if reloadReviewCollectionsFromCollectionsTab != nil {
+			reloadReviewCollectionsFromCollectionsTab()
+		}
+	})
 
 	gotoUpload := func() {
 		nextKey := keyByLabel[labels[0]]
@@ -85,7 +91,9 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 
 	review := NewReviewView(win, db, libraryRoot, func(clear func()) {
 		clearReviewUndo = clear
-	}, gotoUpload, shareLoop)
+	}, gotoUpload, shareLoop, func(reload func()) {
+		reloadReviewCollectionsFromCollectionsTab = reload
+	})
 
 	rejected := NewRejectedView(win, db, libraryRoot, gotoReview)
 
@@ -130,6 +138,7 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 			} else {
 				b.Importance = widget.MediumImportance
 			}
+			b.Refresh()
 		}
 	}
 	setNavSelection(0)

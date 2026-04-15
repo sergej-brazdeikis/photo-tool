@@ -1,6 +1,6 @@
 # Story 3.4: Share page privacy and WCAG 2.1 Level A
 
-Status: review
+Status: in-progress
 
 <!-- Sprint key: `3-4-share-page-privacy-wcag-2-1-level-a` → this spec (`3-4-share-privacy-wcag.md`). -->
 <!-- Party mode dev session 1/2 (2026-04-14): simulated Dev/TEA/UX/Arch — 404 must not emit Referrer-Policy (AC1 successful-only); skip-link `:focus` + `:focus:not(:focus-visible)` reset; `TestShareHTTP_404_noReferrerPolicyHeader` + inlined CSS substring. -->
@@ -138,6 +138,14 @@ Cursor AI agent — BMAD dev-story workflow (2026-04-14).
 - `internal/store/share.go` — payload parse godoc.
 - `_bmad-output/implementation-artifacts/3-4-share-privacy-wcag.md` — tasks, Dev Agent Record, status.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — story `3-4-share-page-privacy-wcag-2-1-level-a` → review.
+
+### Review Findings
+
+_BMAD code-review (2026-04-14), scoped to Epic 3 Story 3.4; headless run — patch/decision handling left to implementer._
+
+- [ ] [Review][Decision] **Package share HTML exposes filename and internal asset id in captions** — Story 3.4 Tasks/Subtasks require tracing template fields and confirming no `filename`, `asset_id`, or `rel_path` in markup for successful `GET /s/{token}` HTML. `servePackageHTML` builds captions with `pathpkg.Base(relPath)`, numeric `asset id`, and capture date (`internal/share/handler.go` ~239–251). `TestShareHTTP_packageHTMLAndSnapshotImage404AfterReject` asserts captions still contain `id %d` (`internal/share/http_test.go` ~1057–1058`). This matches Epic 4.1 snapshot UX but conflicts with the 3.4 privacy-audit checklist and DoD “no identifier … leaks”. **Needs product call:** neutralize package captions (e.g. “Photo 1 of N” only) vs keep identifiers for package shares and revise Story 3.4 scope/tasks.
+
+- [ ] [Review][Patch] **Extend privacy tests to package HTML once decision above is made** — If captions stay identifier-rich, update Story 3.4 tasks/DoD to carve out package shares and add a test that documents allowed patterns; if captions are stripped, add `TestShareHTTP_packageHTML_doesNotLeakIdentifiers` mirroring `TestShareHTTP_HTML_doesNotLeakIdentifiers` and adjust package regression tests.
 
 ## Change Log
 

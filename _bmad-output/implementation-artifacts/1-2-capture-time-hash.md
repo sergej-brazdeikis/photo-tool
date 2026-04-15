@@ -1,6 +1,6 @@
 # Story 1.2: Capture time and content hash for ingestion
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -27,6 +27,8 @@ So that **placement and deduplication match the PRD and architecture**.
 - [x] Implement `internal/filehash`: `SumHex`, `ReaderHex` — **SHA-256**, **lowercase hex** over full bytes (AC: 3, NFR-03).
 - [x] Unit tests: EXIF-backed capture (synthetic JPEG + EXIF blob) and no-EXIF → mtime fallback (AC: 4).
 - [x] **Review closure:** resolve any findings from `review` status; add tests if gaps appear (e.g. `SourceMtimeExifUnusable`, `ReaderHex` usage parity with ingest).
+- [x] **Party mode dev 1/2 (2026-04-14):** `%w` error context on non-`ErrNoExif` extract + mtime `Stat`; IFD0 `DateTime` / `DateTimeOriginal` coverage + Exif-vs-IFD0 precedence test (AC 1, 4; architecture §4.2–4.3).
+- [x] **Party mode dev 2/2 (2026-04-14):** Challenge session 1 — MVP tag/time limits + decode-vs-mtime policy in package doc; malformed EXIF datetime → mtime; empty-file SHA-256 vector; `ReaderHex` read errors use `filehash: read` `%w` chain (AC 2–4, NFR-03).
 - [x] **Scope boundary:** wiring capture + hash into the ingest pipeline is **Story 1.3** — do not expand this story into full ingest.
 
 ## Dev Notes
@@ -99,6 +101,10 @@ Cursor agent (implementation); verify pass via `scripts/bmad-story-workflow.sh -
 - `go test ./...` and `go build .` pass locally; `github.com/dsoprea/go-exif/v3` is a direct module dependency.
 - Ingest wiring to `exifmeta` / `filehash` deferred to a later story (per verify notes).
 - **Review closure (2026-04-13):** Added `TestReadCapture_exifWithoutDateTimeUsesMtimeUnusable` for `SourceMtimeExifUnusable`; added `TestReaderHex_matchesSumHex` and `TestReaderHex_matchesSumHex_afterSeekFromEnd` so `ReaderHex` on `*os.File` matches `SumHex` and matches the ingest pattern (seek then hash). Scope boundary unchanged: no additional ingest wiring in this story.
+- **Party mode dev session 1/2 (2026-04-14):** Simulated dev round (John / Sally / Winston / Amelia) → align `exifmeta` with architecture error-wrapping, close IFD0 fallback/precedence test gaps, keep ingest wiring deferred to 1.3.
+- **Review closure (2026-04-14):** `SumHex` now wraps `os.Open` with `fmt.Errorf("filehash: open %q: %w", path, err)` (parity with `ReaderHex` `%w` chain). Added `TestSumHex_openErrorWraps` asserting `errors.Is(..., os.ErrNotExist)`.
+- **Party patch (2026-04-14):** `ReadCapture` wraps non-`ErrNoExif` extract errors and `mtimeResult` `Stat` errors; tests for unreadable-file extract wrap (skipped on Windows where `chmod` is not a reliable read-deny probe), IFD0 datetime sources, and Exif `DateTimeOriginal` precedence over IFD0 `DateTime`.
+- **Party mode dev 2/2 (2026-04-14):** Documented MVP exclusions (offset tags, sub-second, `DateTimeDigitized` / `CreateDate`) and intentional mtime fallback when internal EXIF decode fails or datetime strings do not parse; `TestReadCapture_malformedDateTimeOriginalFallsBackToMtime`; `TestSumHex_emptyFile`; `TestReaderHex_readErrorWraps`; `ReaderHex` error prefix aligned with `SumHex` (`filehash: read: %w`).
 
 ### File List
 
@@ -110,12 +116,16 @@ Cursor agent (implementation); verify pass via `scripts/bmad-story-workflow.sh -
 
 ### Change Log
 
+- **2026-04-14:** Party mode dev 2/2 — `exifmeta` package doc (MVP tag/decode policy) + malformed-datetime test; `filehash` empty digest + `ReaderHex` read-wrap test; story → `done`; sprint `1-2-capture-time-hash` → `done`.
+- **2026-04-14:** Party mode dev 1/2 — `exifmeta` extract/stat `%w` wraps + IFD0 + precedence tests; story + sprint note; status remains `review`.
+- **2026-04-14:** BMAD dev-story — `SumHex` open-error `%w` wrap + `TestSumHex_openErrorWraps`; review finding closed; story status → `review`; sprint `1-2-capture-time-hash` → `review`.
 - **2026-04-13:** Review-closure tests — `SourceMtimeExifUnusable` path and `ReaderHex` parity with `SumHex` / ingest-style seek; story tasks completed; sprint status → `review`.
 - **2026-04-13:** BMAD code review — findings appended under Review Findings; status → `in-progress` until patch items addressed.
 
 ### Review Findings
 
-- [ ] [Review][Patch] Wrap `os.Open` errors in `SumHex` for consistent `%w` error chain like `ReaderHex` — `internal/filehash/filehash.go:12-18`
+- [x] [Review][Patch] Wrap `os.Open` errors in `SumHex` for consistent `%w` error chain like `ReaderHex` — `internal/filehash/filehash.go:12-18`
 - [x] [Review][Defer] `ReadCapture` drops underlying EXIF parse/collect errors when falling back to mtime (`SourceMtimeExifUnusable`); callers only see provenance via `Source`, not the root failure — `internal/exifmeta/capture.go:59-64` — deferred, MVP acceptable; revisit for observability/ingest logging
 - [x] [Review][Defer] No use of `OffsetTimeOriginal` / sub-second EXIF fields; local-wall → UTC rule can disagree with camera-reported offset for placement — `internal/exifmeta/capture.go` — deferred, document MVP limitation or schedule follow-up if PRD requires
 - [x] [Review][Defer] Dependency `SearchFileAndExtractExif` reads from detected EXIF start to EOF (large allocations on big files) — upstream `go-exif` behavior — deferred, monitor NFR/memory if needed
+- [x] [Review][Patch] Wrap non-`ErrNoExif` `SearchFileAndExtractExif` failures and mtime `Stat` with `%w` + path context — `internal/exifmeta/capture.go` (party dev 1/2)

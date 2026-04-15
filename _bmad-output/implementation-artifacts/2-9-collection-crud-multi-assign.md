@@ -1,6 +1,6 @@
 # Story 2.9: Collection CRUD, multi-assign, and safe collection delete
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- create-story workflow (2026-04-13): spec from epics §Story 2.9, PRD FR-18–FR-20, UX form patterns, brownfield store (CreateCollection, LinkAssetsToCollection, DeleteCollection), Story 2.8 CollectionsView + loupe shell. -->
@@ -211,3 +211,13 @@ Cursor agent (Claude) — dev-story workflow 2026-04-13.
 - [Source: `internal/store/migrations/002_collections.sql` — schema + CASCADE]
 - [Source: `internal/store/collections.go` — `CreateCollection`, `CreateCollectionAndLinkAssets`, `DeleteCollection`, `LinkAssetsToCollection`]
 - [Source: `_bmad-output/implementation-artifacts/2-8-collections-list-detail.md` — prior CollectionsView + loupe constraints]
+
+### Review Findings
+
+_Code review (BMAD adversarial layers), 2026-04-14. Headless run: patches left as action items._
+
+- [ ] [Review][Patch] Review filter strip stays stale after album CRUD on Collections — `NewReviewView` only calls `refreshAll` at construction and when filters change; `NewMainShell` does not refresh Review when switching panels. After creating/renaming/deleting an album on the Collections tab, the Review “Collection” and bulk-assign dropdowns can list outdated albums until some other refresh runs (e.g. loupe membership change). Violates story AC6 / cross-surface refresh task. [`internal/app/shell.go` nav + `internal/app/review.go` `refreshReviewData`]
+
+- [x] [Review][Defer] Duplicate album names make Fyne `Select` / checklist labels ambiguous (first matching label wins) — called out in story risks and `review.go` comment; no uniqueness constraint in schema. [`internal/app/review.go`, `internal/app/collections.go`, `internal/app/review_loupe.go`] — deferred, pre-existing product/data-quality choice
+
+- [x] [Review][Defer] `LinkAssetsToCollection` with empty `assetIDs` returns success without verifying `collectionID` exists — documented API footgun for callers, not an end-user path. [`internal/store/collections.go`]

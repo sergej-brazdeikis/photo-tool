@@ -5,14 +5,19 @@
 //
 // Timezone rule (used with paths.CanonicalDayDir): EXIF ASCII date/time tags (DateTimeOriginal,
 // DateTime) do not include a time zone. Values are parsed as local wall time (time.Local), then
-// converted to UTC for the returned instant.
+// converted to UTC for the returned instant. MVP does not read OffsetTimeOriginal, sub-second
+// fields, DateTimeDigitized, or CreateDate; cameras that only encode offset-aware or alternate
+// tags may fall through to filesystem mtime (see [Result].Source).
 //
 // Fallback chain (each path is explicit in [Result].Source — never silent):
 //  1. Exif sub-IFD — DateTimeOriginal
 //  2. IFD0 — DateTimeOriginal
 //  3. IFD0 — DateTime
-//  4. Filesystem modification time — when there is no EXIF blob, EXIF cannot be parsed, or no
-//     usable datetime tag / value is present.
+//  4. Filesystem modification time — when there is no EXIF blob, EXIF cannot be parsed, no
+//     usable datetime tag / value is present, or a tag value is present but does not parse as
+//     "2006:01:02 15:04:05". When EXIF bytes exist but internal decode fails, MVP still prefers
+//     mtime for placement (SourceMtimeExifUnusable) rather than surfacing the decode error; see
+//     ingest logging stories for stricter observability.
 //
 // Content hashing is not implemented here; use [photo-tool/internal/filehash.SumHex] (or
 // [photo-tool/internal/filehash.ReaderHex] with a single [os.File] if you need one open).
@@ -20,6 +25,7 @@ package exifmeta
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -47,13 +53,15 @@ type Result struct {
 }
 
 // ReadCapture returns the capture instant for path using the documented EXIF → mtime fallback chain.
+// Errors from EXIF extraction (other than [exif.ErrNoExif]) and from Stat on mtime fallback include
+// path context and unwrap to the underlying failure ([fmt.Errorf] with %w).
 func ReadCapture(path string) (Result, error) {
 	raw, err := exif.SearchFileAndExtractExif(path)
 	if err != nil {
 		if errors.Is(err, exif.ErrNoExif) {
 			return mtimeResult(path, SourceMtimeNoExif)
 		}
-		return Result{}, err
+		return Result{}, fmt.Errorf("exifmeta: extract exif %q: %w", path, err)
 	}
 
 	res, ok, err := captureFromExifBytes(raw)
@@ -69,7 +77,7 @@ func ReadCapture(path string) (Result, error) {
 func mtimeResult(path string, src Source) (Result, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
-		return Result{}, err
+		return Result{}, fmt.Errorf("exifmeta: stat %q: %w", path, err)
 	}
 	return Result{UTC: fi.ModTime().UTC(), Source: src}, nil
 }

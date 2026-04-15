@@ -42,7 +42,8 @@ func ReviewFilterStripSegmentLabels() []string {
 // leaves Review via primary nav (Story 2.6 AC6).
 // onGotoUpload switches primary nav to Upload for the library-empty CTA (UX-DR9 / Story 2.12).
 // shareLoop enables loopback share URLs after mint (Story 3.2); nil keeps token-only success UI (tests).
-func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndoClear func(clear func()), onGotoUpload func(), shareLoop *share.Loopback) fyne.CanvasObject {
+// registerCollectionsStripReload, when non-nil, receives refreshReviewData so other panels can reload cached album lists (Story 2.9 AC6).
+func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndoClear func(clear func()), onGotoUpload func(), shareLoop *share.Loopback, registerCollectionsStripReload func(reload func())) fyne.CanvasObject {
 	if db == nil {
 		return newReviewViewWithoutDB()
 	}
@@ -93,7 +94,9 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 	tagAddBtn := widget.NewButton("Add tag to selection", nil)
 	tagRemBtn := widget.NewButton("Remove tag from selection", nil)
 	tagSummaryLabel := widget.NewLabel("")
+	tagSummaryLabel.Wrapping = fyne.TextWrapWord
 	bulkHint := widget.NewLabel("Cmd/Ctrl+click thumbnails to select multiple photos for bulk tagging.")
+	bulkHint.Wrapping = fyne.TextWrapWord
 	assignTargetSel := widget.NewSelect([]string{}, func(string) {
 		if suspendAssignTargetRefresh {
 			return
@@ -102,8 +105,10 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 	assignToColBtn := widget.NewButton("Assign selection to album", nil)
 	assignBulkHint := widget.NewLabel("")
 	assignBulkHint.TextStyle = fyne.TextStyle{Italic: true}
-	assignBulkHint.Wrapping = fyne.TextWrapWord
+	assignBulkHint.Wrapping = fyne.TextWrapWord // long album/assign hints must not force NFR-01 min width overflow
 
+	// Fyne Select resolves by visible label. Duplicate collection or tag names map to the first
+	// matching option (ambiguous; treat as data-quality until names are disambiguated in store/UI).
 	buildFilters := func() domain.ReviewFilters {
 		var f domain.ReviewFilters
 		if colSel != nil && colSel.Selected != "" {
@@ -363,6 +368,10 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		}
 	}
 
+	if registerCollectionsStripReload != nil {
+		registerCollectionsStripReload(refreshReviewData)
+	}
+
 	refreshAll := func() {
 		if dismissLoupe != nil {
 			dismissLoupe()
@@ -379,7 +388,7 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		collRows, err := store.ListCollections(db)
 		if err != nil {
 			slog.Error("review: list collections for quick assign", "err", err)
-			dialog.ShowError(errors.New("Album list is unavailable — try again after the library loads."), win)
+			dialog.ShowError(errors.New("album list is unavailable — try again after the library loads"), win)
 			return
 		}
 		if len(collRows) == 0 {
@@ -766,12 +775,29 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		container.NewHBox(widget.NewLabel(segLabels[2]), tagsSel),
 	)
 
-	assignBar := container.NewHBox(widget.NewLabel("Assign selection"), assignTargetSel, assignToColBtn)
-	pkgShareRow := container.NewHBox(sharePkgSelBtn, sharePkgFilterBtn)
+	// Stack assign controls vertically so NFR-01 min width (1024) keeps album target + button on-screen
+	// without horizontal shell scroll (Story 2.11).
+	assignTargetScroll := container.NewHScroll(assignTargetSel)
+	assignBar := container.NewVBox(
+		widget.NewLabel("Assign selection"),
+		assignTargetScroll,
+		assignToColBtn,
+	)
+	// Break bulk/tag/share rows so 1024px windows do not clip primary actions (NFR-01 floor).
+	pkgShareRow := container.NewVBox(
+		container.NewHBox(sharePkgSelBtn),
+		container.NewHBox(sharePkgFilterBtn),
+	)
+	tagEntryScroll := container.NewHScroll(tagEntry)
+	tagRow := container.NewVBox(
+		container.NewHBox(tagAddBtn, tagRemBtn),
+		tagEntryScroll,
+		container.NewHBox(rejectSelectedBtn, deleteSelectedBtn),
+	)
 	tagBar := container.NewVBox(
 		bulkHint,
 		pkgShareRow,
-		container.NewHBox(tagEntry, tagAddBtn, tagRemBtn, rejectSelectedBtn, deleteSelectedBtn),
+		tagRow,
 		assignBar,
 		assignBulkHint,
 		tagSummaryLabel,

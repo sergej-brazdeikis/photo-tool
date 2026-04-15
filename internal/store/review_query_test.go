@@ -139,7 +139,7 @@ func TestReviewFilterWhereSuffix_collectionAndRatingArgOrder(t *testing.T) {
 	three := 3
 	suf, args, err := ReviewFilterWhereSuffix(domain.ReviewFilters{
 		CollectionID: &cid,
-		MinRating:      &three,
+		MinRating:    &three,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -537,4 +537,120 @@ func TestReviewFilterWhereSuffix_tagArgOrderWithCollection(t *testing.T) {
 	if len(args) != 2 || args[0] != cid || args[1] != tid {
 		t.Fatalf("args: %#v", args)
 	}
+}
+
+// Locks placeholder order for Count/List/ListIDs/Rejected: collection id, min rating, tag id.
+// A refactor that reorders SQL fragments without reordering args breaks every review query at once.
+func TestReviewFilterWhereSuffix_collectionMinRatingTagArgOrder(t *testing.T) {
+	cid := int64(11)
+	three := 3
+	tid := int64(17)
+	suf, args, err := ReviewFilterWhereSuffix(domain.ReviewFilters{
+		CollectionID: &cid,
+		MinRating:    &three,
+		TagID:        &tid,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(suf, "asset_collections") || !strings.Contains(suf, "rating >=") || !strings.Contains(suf, "asset_tags") {
+		t.Fatalf("suffix: %q", suf)
+	}
+	if len(args) != 3 {
+		t.Fatalf("args: %#v", args)
+	}
+	if args[0] != cid || args[1] != three || args[2] != tid {
+		t.Fatalf("arg order: %#v", args)
+	}
+}
+
+// ListAssetIDsForReview backs filtered package/share selection; it must stay cardinality- and order-locked
+// to CountAssetsForReview and ListAssetsForReview (same WHERE + ORDER BY), or multi-select flows silently disagree with the grid count.
+func TestListAssetIDsForReview_matchesCountAndListAssetsForReviewOrder(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	ins := func(rel, hash string, capUnix int64, rating int) int64 {
+		t.Helper()
+		res, err := db.Exec(`
+INSERT INTO assets (content_hash, rel_path, capture_time_unix, created_at_unix, rejected, deleted_at_unix, rating)
+VALUES (?, ?, ?, 1, 0, NULL, ?)`, hash, rel, capUnix, rating)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id, err := res.LastInsertId()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+
+	aNewer := ins("a/newer.jpg", "h1", 200, 4)
+	aOlder := ins("a/older.jpg", "h2", 100, 5)
+	aExcluded := ins("a/low.jpg", "h3", 50, 2)
+
+	collID, err := CreateCollection(db, "Trip", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []int64{aNewer, aOlder, aExcluded} {
+		if err := LinkAssetsToCollection(db, collID, []int64{id}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t1, err := FindOrCreateTagByLabel(db, "keep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := LinkTagToAssets(db, t1, []int64{aNewer, aOlder}); err != nil {
+		t.Fatal(err)
+	}
+
+	three := 3
+	f := domain.ReviewFilters{
+		CollectionID: &collID,
+		MinRating:    &three,
+		TagID:        &t1,
+	}
+
+	n, err := CountAssetsForReview(db, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("count: got %d want 2 (older excluded by min rating)", n)
+	}
+
+	ids, err := ListAssetIDsForReview(db, f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(len(ids)) != n {
+		t.Fatalf("ids len: got %d want %d", len(ids), n)
+	}
+
+	rows, err := ListAssetsForReview(db, f, int(n), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != int(n) {
+		t.Fatalf("rows len: got %d want %d", len(rows), n)
+	}
+	for i := range ids {
+		if rows[i].ID != ids[i] {
+			t.Fatalf("order mismatch at %d: list row id=%d ids id=%d", i, rows[i].ID, ids[i])
+		}
+	}
+	if ids[0] != aNewer || ids[1] != aOlder {
+		t.Fatalf("expected capture_time_unix DESC: got %#v", ids)
+	}
+	_ = aExcluded
 }

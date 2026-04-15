@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	user32            = syscall.NewLazyDLL("user32.dll")
+	user32              = syscall.NewLazyDLL("user32.dll")
 	procGetDpiForSystem = user32.NewProc("GetDpiForSystem")
 )
 

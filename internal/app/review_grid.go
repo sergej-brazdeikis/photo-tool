@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 	"path/filepath"
 	"strconv"
@@ -28,6 +29,10 @@ const (
 	reviewGridMsgPageLoadFail = "Can't load this page — library read failed. Try changing the filter or restarting the app."
 	reviewGridMsgDecodeFail   = "Can't preview — file missing or unsupported format."
 )
+
+// errReviewGridPageFailed is returned when a paged list query failed for this page.
+// It carries no driver/SQL text (Story 2.3 AC4); the first failure is logged once with the real error.
+var errReviewGridPageFailed = errors.New("review grid: page load failed")
 
 func ratingBadgeText(r *int) string {
 	if r == nil {
@@ -160,6 +165,9 @@ type reviewAssetGrid struct {
 	filters domain.ReviewFilters
 	total   int64
 	pages   map[int][]store.ReviewGridRow
+	// pageFailed records pages whose list query failed; avoids hammering SQLite and duplicate slog
+	// lines while the user scrolls the same broken window (cleared on reset / invalidatePages).
+	pageFailed map[int]struct{}
 	// selected holds asset ids chosen with Cmd/Ctrl+click for bulk tagging (plain tap clears and opens loupe).
 	selected map[int64]struct{}
 
@@ -212,6 +220,7 @@ func (g *reviewAssetGrid) canvasObject() fyne.CanvasObject { return g.list }
 func (g *reviewAssetGrid) invalidatePages() {
 	g.mu.Lock()
 	g.pages = make(map[int][]store.ReviewGridRow)
+	g.pageFailed = nil
 	g.mu.Unlock()
 	fyne.Do(func() { g.list.Refresh() })
 }
@@ -221,6 +230,7 @@ func (g *reviewAssetGrid) reset(f domain.ReviewFilters, total int64) {
 	g.filters = f
 	g.total = total
 	g.pages = make(map[int][]store.ReviewGridRow)
+	g.pageFailed = nil
 	g.selected = nil
 	fn := g.onSelectionChange
 	g.mu.Unlock()
@@ -289,6 +299,11 @@ func (g *reviewAssetGrid) ensurePageLocked(pageIdx int) error {
 	if g.pages[pageIdx] != nil {
 		return nil
 	}
+	if g.pageFailed != nil {
+		if _, ok := g.pageFailed[pageIdx]; ok {
+			return errReviewGridPageFailed
+		}
+	}
 	offset := pageIdx * reviewGridPageSize
 	var rows []store.ReviewGridRow
 	var err error
@@ -298,7 +313,14 @@ func (g *reviewAssetGrid) ensurePageLocked(pageIdx int) error {
 		rows, err = store.ListAssetsForReview(g.db, g.filters, reviewGridPageSize, offset)
 	}
 	if err != nil {
-		return err
+		if g.pageFailed == nil {
+			g.pageFailed = make(map[int]struct{})
+		}
+		if _, dup := g.pageFailed[pageIdx]; !dup {
+			g.pageFailed[pageIdx] = struct{}{}
+			slog.Error("review grid: page query", "page", pageIdx, "rejected_mode", g.rejectedMode, "err", err)
+		}
+		return errReviewGridPageFailed
 	}
 	g.pages[pageIdx] = rows
 	return nil
@@ -373,7 +395,6 @@ func (g *reviewAssetGrid) bindGridRow(rowIdx int, o fyne.CanvasObject) {
 		idx := rowIdx*reviewGridColumns + col
 		assetRow, have, err := g.rowAt(idx)
 		if err != nil {
-			slog.Error("review grid: page query", "err", err)
 			for _, c := range cells {
 				c.showUserFailure(reviewGridMsgPageLoadFail)
 			}
@@ -486,8 +507,9 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 		}
 	}
 
+	// Pending decode (UX-DR3): distinguish from final image and from failed-decode (ErrorIcon path).
 	c.img.File = ""
-	c.img.Resource = nil
+	c.img.Resource = theme.MediaPhotoIcon()
 	c.img.Refresh()
 
 	srcAbs := filepath.Join(g.libraryRoot, filepath.FromSlash(row.RelPath))
@@ -510,6 +532,7 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 			c.failIcon.Hide()
 			c.failLbl.Hide()
 			c.img.Show()
+			c.img.Resource = nil
 			c.img.File = cacheAbs
 			c.img.Refresh()
 		})

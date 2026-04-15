@@ -1,275 +1,291 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Photo Tool — UX design directions</title>
+  <title>photo-tool — UX design directions (wireframe study)</title>
   <style>
     :root {
-      --page-bg: #0f1218;
-      --card-bg: #161b24;
+      --bg: #12141a;
+      --panel: #1c1f28;
       --text: #e8eaef;
       --muted: #8b93a7;
       --accent: #5b8cff;
-      --border: #2a3142;
+      --caution: #c9a227;
+      --bad: #e05555;
+      --thumb: linear-gradient(135deg, #2a3142 0%, #3d465c 100%);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--page-bg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
-      padding: 24px 20px 64px;
+      line-height: 1.45;
     }
     header {
-      max-width: 1200px;
-      margin: 0 auto 28px;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #2a3142;
+      position: sticky;
+      top: 0;
+      background: rgba(18, 20, 26, 0.92);
+      backdrop-filter: blur(8px);
+      z-index: 2;
     }
-    h1 { font-size: 1.5rem; font-weight: 650; margin: 0 0 8px; }
-    header p { margin: 0; color: var(--muted); max-width: 72ch; }
-    .grid {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      gap: 20px;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    header h1 { margin: 0 0 0.25rem; font-size: 1.15rem; }
+    header p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 70ch; }
+    .grid-wrap { padding: 1rem 1.25rem 2rem; display: grid; gap: 1.25rem; }
+    @media (min-width: 900px) {
+      .grid-wrap { grid-template-columns: repeat(2, 1fr); }
     }
-    .dir {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      background: var(--card-bg);
+    @media (min-width: 1400px) {
+      .grid-wrap { grid-template-columns: repeat(3, 1fr); }
     }
-    .dir h2 {
-      margin: 0 0 4px;
-      font-size: 1rem;
+    .card {
+      background: var(--panel);
+      border-radius: 10px;
+      border: 1px solid #2f3545;
+      overflow: hidden;
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
     }
-    .badge {
-      font-size: 0.7rem;
-      font-weight: 700;
+    .card h2 {
+      margin: 0;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.82rem;
+      text-transform: uppercase;
       letter-spacing: 0.04em;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #2a3142;
+      color: var(--muted);
+      border-bottom: 1px solid #2f3545;
+    }
+    .card .meta {
+      padding: 0.5rem 0.85rem 0.75rem;
+      font-size: 0.8rem;
       color: var(--muted);
     }
-    .chosen-pill {
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: #1e3a5f;
-      color: #93c5fd;
-      border: 1px solid #3b82f6;
-    }
-    .dir.selected {
-      outline: 2px solid #3b82f6;
-      outline-offset: 2px;
-    }
-    .dir .tagline { margin: 0 0 12px; font-size: 0.85rem; color: var(--muted); }
     .mock {
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid var(--border);
+      padding: 0.65rem;
+      flex: 1;
       min-height: 200px;
-      position: relative;
     }
-    .mock:hover { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .mock .bar {
+    .bar {
       display: flex;
+      gap: 4px;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      font-size: 11px;
+      padding: 4px 6px;
+      background: #252a38;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 9px;
+      color: var(--muted);
     }
-    .mock .filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; font-size: 10px; }
-    .chip { padding: 4px 8px; border-radius: 6px; border: 1px solid; }
-    .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; }
-    .thumb {
+    .bar span.pill {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #333948;
+      color: var(--text);
+    }
+    .bar span.on { background: var(--accent); color: #fff; }
+    .strip {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .strip .f {
+      font-size: 8px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: #2c3242;
+      color: var(--muted);
+    }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    .cell {
       aspect-ratio: 1;
       border-radius: 4px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: flex-end;
-      padding: 4px;
-      font-size: 9px;
+      background: var(--thumb);
+      position: relative;
+      border: 1px solid #3d465c;
     }
-    .stars { opacity: 0.9; }
+    .cell::after {
+      content: "★3";
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      font-size: 7px;
+      background: rgba(0,0,0,0.55);
+      padding: 1px 3px;
+      border-radius: 2px;
+      color: #fff;
+    }
+    .cell.big { grid-column: span 2; grid-row: span 2; }
+    .loupe {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 4px;
+      height: 100%;
+      min-height: 180px;
+    }
+    .loupe-main {
+      background: var(--thumb);
+      border-radius: 6px;
+      border: 1px solid #3d465c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .film {
+      display: flex;
+      gap: 3px;
+      overflow: hidden;
+    }
+    .film .cell { flex: 0 0 18%; aspect-ratio: 1; }
+    .side {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 6px;
+      height: 100%;
+      min-height: 180px;
+    }
+    .rail {
+      background: #252a38;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px;
+      font-size: 7px;
+      color: var(--muted);
+      align-items: center;
+    }
+    .rail b { color: var(--text); }
+    .badge-rec { color: var(--caution); }
+    .badge-del { color: var(--bad); }
+    .rec {
+      outline: 2px solid var(--accent);
+    }
     footer {
-      max-width: 1200px;
-      margin: 32px auto 0;
-      padding-top: 20px;
-      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem 2rem;
       color: var(--muted);
       font-size: 0.85rem;
+      border-top: 1px solid #2a3142;
     }
-    footer ul { margin: 8px 0 0; padding-left: 1.2rem; }
-    /* Direction themes */
-    .d1 { --m-bg: #1a1f2e; --m-bar: #222838; --m-t1: #3d4558; --m-t2: #4a5568; --m-accent: #5b8cff; --m-warn: #e7a23d; --m-bad: #e05d5d; }
-    .d2 { --m-bg: #f4f5f8; --m-bar: #ffffff; --m-t1: #dde1ea; --m-t2: #cfd6e3; --m-accent: #2563eb; --m-warn: #d97706; --m-bad: #dc2626; color: #111827; }
-    .d2 .dir .tagline, .d2 h2 { color: #111827; }
-    .d3 { --m-bg: #0a0a0a; --m-bar: #141414; --m-t1: #2a2a2a; --m-t2: #333; --m-accent: #fbbf24; --m-warn: #f97316; --m-bad: #ef4444; }
-    .d4 { --m-bg: #1e293b; --m-bar: #0f172a; --m-t1: #334155; --m-t2: #475569; --m-accent: #38bdf8; --m-warn: #facc15; --m-bad: #fb7185; }
-    .d5 { --m-bg: #25232a; --m-bar: #312e38; --m-t1: #4a4658; --m-t2: #5c5669; --m-accent: #a78bfa; --m-warn: #fbbf24; --m-bad: #f87171; }
-    .d6 { --m-bg: #eef2f6; --m-bar: #e2e8f0; --m-t1: #cbd5e1; --m-t2: #94a3b8; --m-accent: #0d9488; --m-warn: #ca8a04; --m-bad: #b91c1c; color: #0f172a; }
-    .d6 .dir .tagline, .d6 h2 { color: #0f172a; }
-    .mock.d1, .mock.d2, .mock.d3, .mock.d4, .mock.d5, .mock.d6 {
-      background: var(--m-bg);
-    }
-    .mock.d1 .bar, .mock.d2 .bar, .mock.d3 .bar, .mock.d4 .bar, .mock.d5 .bar, .mock.d6 .bar {
-      background: var(--m-bar);
-      border-bottom: 1px solid rgba(0,0,0,0.15);
-    }
-    .mock.d2 .bar, .mock.d6 .bar { border-bottom-color: rgba(0,0,0,0.08); }
-    .mock.d1 .chip { border-color: var(--m-t2); color: var(--muted); }
-    .mock.d2 .chip { border-color: #94a3b8; color: #475569; }
-    .mock.d3 .chip { border-color: #444; color: #a3a3a3; }
-    .mock.d4 .chip { border-color: #475569; color: #cbd5e1; }
-    .mock.d5 .chip { border-color: #5c5669; color: #d4d0dd; }
-    .mock.d6 .chip { border-color: #94a3b8; color: #334155; }
-    .t-a { background: linear-gradient(135deg, var(--m-t1), var(--m-t2)); }
-    .t-sel { box-shadow: 0 0 0 2px var(--m-accent); }
+    footer strong { color: var(--text); }
   </style>
 </head>
 <body>
   <header>
-    <h1>Photo Tool — design direction explorations</h1>
+    <h1>photo-tool — design direction wireframes</h1>
     <p>
-      <strong>Non-production showcase only.</strong> The real app UI is <strong>Fyne</strong> (Go); this HTML file exists solely to compare palette/density ideas in a browser before you map choices into a <code>fyne.Theme</code> and tokens. It is not a UI stack decision for the desktop client.
-      Six static wireframes for <strong>bulk review</strong> (filters + thumbnail grid). Open in a browser, pick a direction (or combine traits), then record the choice in <code>ux-design-specification.md</code> (Design Direction Decision).
-      <br /><strong style="color:#93c5fd">Locked for product:</strong> Direction 1 <strong>Dark DAM default</strong> + full <strong>light/white</strong> Fyne theme (documented in the spec).
+      Six low-fidelity layout directions for the <strong>image-first</strong> revision. Open this file in a browser.
+      These are <strong>not</strong> Fyne-accurate pixels—only <strong>hierarchy</strong> and <strong>chrome-vs-photo</strong> balance.
     </p>
   </header>
 
-  <div class="grid">
-    <section class="dir d1 selected">
-      <h2><span class="badge">1</span> Dark DAM default <span class="chosen-pill">CHOSEN</span></h2>
-      <p class="tagline">High-contrast dark surfaces, blue primary—closest to “pro workstation” / Lightroom night. Ship with a matched <strong>light/white</strong> theme (same roles, Fyne).</p>
-      <div class="mock d1" title="Hover: focus ring demo">
-        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review · <span style="opacity:.7">⌨ 1–5</span></div>
-        <div class="filters">
-          <span class="chip">Collection ▾</span>
-          <span class="chip">Min rating ▾</span>
-          <span class="chip">Tags ▾</span>
-          <span class="chip" style="border-color:var(--m-warn);color:var(--m-warn)">Reject ✕</span>
+  <div class="grid-wrap">
+    <article class="card rec">
+      <h2>A — Recommended: minimal top + collapsible filters + hero grid</h2>
+      <div class="meta">Thin nav; filter strip collapses to a row or chip; <strong>grid is the app</strong>.</div>
+      <div class="mock">
+        <div class="bar">
+          <span class="pill on">Review</span>
+          <span class="pill">Upload</span>
+          <span class="pill">Collections</span>
+          <span class="pill">Rejected</span>
         </div>
-        <div class="thumbs">
-          <div class="thumb t-a t-sel"><span class="stars" style="color:var(--m-accent)">★★★★☆</span></div>
-          <div class="thumb t-a"><span class="stars" style="color:#888">☆☆☆☆☆</span></div>
-          <div class="thumb t-a"><span style="color:var(--m-warn)">R</span></div>
-          <div class="thumb t-a"></div>
+        <div class="strip">
+          <span class="f">Collection ▾</span>
+          <span class="f">Min rating ▾</span>
+          <span class="f">Tags ▾</span>
+          <span class="f" style="margin-left:auto">Filters ⌄</span>
+        </div>
+        <div class="photo-grid">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
         </div>
       </div>
-    </section>
+    </article>
 
-    <section class="dir d2">
-      <h2><span class="badge">2</span> Light clinical</h2>
-      <p class="tagline">Bright neutral, airy spacing—calm “Apple-adjacent” clarity for long sessions in daylight.</p>
-      <div class="mock d2">
-        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review</div>
-        <div class="filters">
-          <span class="chip">Collection ▾</span>
-          <span class="chip">Min rating ▾</span>
-          <span class="chip">Tags ▾</span>
-        </div>
-        <div class="thumbs" style="gap:10px">
-          <div class="thumb t-a t-sel"><span class="stars" style="color:var(--m-accent)">★★★★★</span></div>
-          <div class="thumb t-a"></div>
-          <div class="thumb t-a"></div>
-          <div class="thumb t-a"></div>
+    <article class="card">
+      <h2>B — Narrow left rail + maximum grid width</h2>
+      <div class="meta">Icons-only or short labels; avoids top-heavy bars; watch <strong>focus order</strong>.</div>
+      <div class="mock">
+        <div class="side">
+          <div class="rail"><b>PT</b>↑<br/>Rv<br/>Up<br/>Col<br/>Re</div>
+          <div>
+            <div class="strip"><span class="f">Filters…</span></div>
+            <div class="photo-grid">
+              <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+              <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+    </article>
 
-    <section class="dir d3">
-      <h2><span class="badge">3</span> OLED contrast</h2>
-      <p class="tagline">Near-black canvas, amber primary—maximum separation for stars vs reject (gold vs orange).</p>
-      <div class="mock d3">
-        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review</div>
-        <div class="filters">
-          <span class="chip">Filters</span>
-          <span class="chip" style="border-color:var(--m-warn)">Reject</span>
+    <article class="card">
+      <h2>C — Edge-to-edge grid + floating filter chip</h2>
+      <div class="meta">Almost full-bleed thumbs; filters as <strong>overlay</strong>—strong immersion, needs clear dismiss.</div>
+      <div class="mock">
+        <div class="photo-grid" style="grid-template-columns: repeat(5,1fr);">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
         </div>
-        <div class="thumbs">
-          <div class="thumb t-a t-sel"><span style="color:var(--m-accent)">★★★</span></div>
-          <div class="thumb t-a"></div>
-          <div class="thumb t-a"><span style="color:var(--m-bad)">Del</span></div>
-          <div class="thumb t-a"></div>
+        <div class="bar" style="margin-top:6px; justify-content:center;">
+          <span class="pill on">Filters</span>
+          <span class="pill">Collection · Any rating</span>
         </div>
       </div>
-    </section>
+    </article>
 
-    <section class="dir d4">
-      <h2><span class="badge">4</span> Cool slate toolbar</h2>
-      <p class="tagline">Strong top bar, cyan accent—navigation weight reads “IDE / tool” not “gallery app.”</p>
-      <div class="mock d4">
-        <div class="bar" style="justify-content:space-between">
-          <span><strong style="color:var(--m-accent)">Photo Tool</strong></span>
-          <span style="opacity:.85">Upload · Review · Collections</span>
-        </div>
-        <div class="filters">
-          <span class="chip">Collection ▾</span>
-          <span class="chip">Min rating ▾</span>
-          <span class="chip">Tags ▾</span>
-        </div>
-        <div class="thumbs">
-          <div class="thumb t-a"></div>
-          <div class="thumb t-a t-sel"></div>
-          <div class="thumb t-a"></div>
-          <div class="thumb t-a"></div>
+    <article class="card">
+      <h2>D — Loupe split: main stage + filmstrip</h2>
+      <div class="meta">Emphasizes <strong>single-photo</strong> work; filmstrip keeps context—watch ultrawide clipping.</div>
+      <div class="mock">
+        <div class="loupe">
+          <div class="bar"><span class="pill">← →</span><span class="pill">1–5 ★</span><span class="pill badge-rec">Reject</span><span class="pill badge-del">Delete</span><span class="pill" style="margin-left:auto">Share</span></div>
+          <div class="loupe-main">Large letterboxed photo</div>
+          <div class="film"><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div></div>
         </div>
       </div>
-    </section>
+    </article>
 
-    <section class="dir d5">
-      <h2><span class="badge">5</span> Soft violet dense</h2>
-      <p class="tagline">Tighter grid, purple accent—higher information density for power culling.</p>
-      <div class="mock d5">
-        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Review <span style="margin-left:auto;opacity:.7">240 selected</span></div>
-        <div class="filters" style="padding:4px 8px">
-          <span class="chip" style="padding:2px 6px;font-size:9px">Collection ▾</span>
-          <span class="chip" style="padding:2px 6px;font-size:9px">Rating ▾</span>
-          <span class="chip" style="padding:2px 6px;font-size:9px">Tags ▾</span>
+    <article class="card">
+      <h2>E — Ingest-first: large previews + receipt strip</h2>
+      <div class="meta">Upload/scan moment: <strong>previews dominate</strong>; receipt compact below or side.</div>
+      <div class="mock">
+        <div class="bar"><span class="pill on">Upload</span><span class="pill">Pick files</span><span class="pill">Drop zone</span></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; margin-bottom:6px;">
+          <div class="cell big" style="grid-column:span 1; grid-row:span 1; aspect-ratio:4/3;"></div>
+          <div class="cell big" style="grid-column:span 1; grid-row:span 1; aspect-ratio:4/3;"></div>
+          <div class="cell big" style="grid-column:span 1; grid-row:span 1; aspect-ratio:4/3;"></div>
         </div>
-        <div class="thumbs" style="grid-template-columns:repeat(6,1fr);gap:4px;padding:6px">
-          <div class="thumb t-a" style="padding:2px"></div>
-          <div class="thumb t-a" style="padding:2px"></div>
-          <div class="thumb t-a t-sel" style="padding:2px"></div>
-          <div class="thumb t-a" style="padding:2px"></div>
-          <div class="thumb t-a" style="padding:2px"></div>
-          <div class="thumb t-a" style="padding:2px"></div>
-        </div>
+        <div class="bar"><span class="pill">Added 12 · Dup 3 · Failed 0</span><span class="pill">Confirm collection…</span></div>
       </div>
-    </section>
+    </article>
 
-    <section class="dir d6">
-      <h2><span class="badge">6</span> Teal minimal share-adjacent</h2>
-      <p class="tagline">Light gray chrome, teal primary—closest to a neutral “reader” that could extend to share pages.</p>
-      <div class="mock d6">
-        <div class="bar"><strong style="color:var(--m-accent)">Photo Tool</strong> · Shared link preview <span style="opacity:.6">(read-only)</span></div>
-        <div class="thumbs" style="grid-template-columns:1fr 2fr;gap:8px">
-          <div class="thumb t-a" style="grid-column:span 2;aspect-ratio:21/9;min-height:100px"></div>
-          <div class="thumb t-a"></div>
-          <div class="thumb t-a t-sel" style="display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--m-accent)">Prev / Next</div>
+    <article class="card">
+      <h2>F — Pro density: more cells, still no inspector wall</h2>
+      <div class="meta">Smaller cells but <strong>not flea-sized</strong>; metadata on hover/overlay only—risk on 4K readability.</div>
+      <div class="mock">
+        <div class="bar"><span class="pill on">Review</span><span class="pill">Compact</span></div>
+        <div class="photo-grid" style="grid-template-columns: repeat(6,1fr);">
+          <div class="cell" style="min-height:0;"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
         </div>
       </div>
-    </section>
+    </article>
   </div>
 
   <footer>
-    <strong>How to choose</strong>
-    <ul>
-      <li><strong>Layout intuitiveness</strong> — Does the filter strip + grid match your mental model?</li>
-      <li><strong>Density</strong> — Direction 5 is dense; 2 and 6 are airier.</li>
-      <li><strong>Reject vs delete vs stars</strong> — Direction 3 emphasizes separation; verify against your spec.</li>
-      <li><strong>Brand</strong> — None of these are final hex; they are <em>directions</em> to map into Fyne theme tokens.</li>
-    </ul>
-    <p style="margin-top:16px">File (exploration only, not shipped UI): <code>_bmad-output/planning-artifacts/ux-design-directions.html</code> · Implement in <strong>Fyne</strong>.</p>
+    <p><strong>How to use:</strong> Compare which layout keeps <strong>photos largest</strong> while preserving <strong>nav discoverability</strong> and <strong>filter access</strong>. Direction <strong>A</strong> is the default recommendation in <code>ux-design-specification.md</code> Step 9 until usability tests say otherwise.</p>
+    <p><strong>Evaluation checklist:</strong> layout intuitiveness · interaction style · visual weight · navigation · component fit · emotional alignment (calm, not admin UI).</p>
   </footer>
 </body>
 </html>

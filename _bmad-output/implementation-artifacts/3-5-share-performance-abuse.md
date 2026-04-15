@@ -1,6 +1,6 @@
 # Story 3.5: Share cold-load performance and abuse posture
 
-Status: review
+Status: in-progress
 
 <!-- Sprint key: `3-5-share-cold-load-performance-abuse-posture` → this spec (`3-5-share-performance-abuse.md`). -->
 <!-- create-story workflow (2026-04-14): Epic 3 Story 3.5 — NFR-05 measurable cold load + NFR-06 documented (and architecture-aligned) abuse posture. -->
@@ -124,7 +124,17 @@ Party mode create 1/2 + 2/2 (simulated headless); implementation: Cursor agent.
 - `_bmad-output/planning-artifacts/architecture.md`
 - `go.mod`, `go.sum`
 
+### Review Findings
+
+<!-- BMAD code-review workflow (2026-04-14): headless run; patch items left open. -->
+
+- [ ] [Review][Patch] Add an explicit **under-limit** rate-limit regression (default `NewHTTPHandler` limits): e.g. rapid sequential `GET /s/{token}` + `GET /i/{token}` both `200`, matching the story task’s under-limit vs over-limit pairing — today over-limit is covered in `ratelimit_test.go`, under-limit is only indirect via other suites [`internal/share/ratelimit_test.go`].
+- [ ] [Review][Patch] Extend **NFR-06 posture** with package / multi-image behavior: parallel browser `/i/` fetches on large galleries vs default **burst 80** (loopback-oriented); point operators to edge tuning if the listener is ever off-machine [`docs/share-abuse-posture.md`].
+- [x] [Review][Defer] **Visitor-map eviction** removes an arbitrary bucket at cap — a high-cardinality source-IP fanout can churn buckets; acceptable documented tradeoff for bounded memory vs LRU complexity [`internal/share/ratelimit.go:56-60`] — deferred, pre-existing design choice.
+- [x] [Review][Defer] **NFR-05 gate** remains a localhost, small-fixture median test; extreme CI contention or very large libraries may need more trials or staging replay — caveats already noted in `docs/share-cold-load-nfr05.md` [`internal/share/nfr05_cold_load_test.go`] — deferred, pre-existing scope limit.
+
 ## Change Log
 
+- 2026-04-14: BMAD code-review — two patch follow-ups (under-limit test, package/burst posture note); two deferred design/scope items; story **in-progress**; sprint synced.
 - 2026-04-14: Dev-story workflow — verified AC1–AC2 against codebase and CI; regression `go test ./...` / `go build .`; story remains **review** (implementation unchanged).
 - 2026-04-14: Party mode dev 1/2 — NFR-05 harness uses separate `httptest` client for `/i/`; `docs/share-cold-load-nfr05.md` caveat updated.

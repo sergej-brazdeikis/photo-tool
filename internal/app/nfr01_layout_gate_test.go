@@ -125,6 +125,38 @@ func assertReviewFilterStripOnScreen(t *testing.T, win fyne.Window, shell fyne.C
 	}
 }
 
+// assertReviewBulkActionsOnScreen checks primary Epic 2 bulk affordances stay on the window canvas
+// (Story 2.11 AC1 — grid may scroll internally; shell must not hide these controls).
+func assertReviewBulkActionsOnScreen(t *testing.T, win fyne.Window, shell fyne.CanvasObject) {
+	t.Helper()
+	for _, label := range []string{
+		"Reject selected photos",
+		"Delete selected…",
+		"Add tag to selection",
+		"Assign selection to album",
+	} {
+		b := findButtonByText(t, shell, label)
+		assertObjectInWindowCanvas(t, win, b)
+	}
+}
+
+func assertNFR01GateLoupeChromeOnScreen(t *testing.T, win fyne.Window, content fyne.CanvasObject, cimg *canvas.Image) {
+	t.Helper()
+	if cimg.FillMode != canvas.ImageFillContain {
+		t.Fatalf("loupe image fill mode: got %v want ImageFillContain", cimg.FillMode)
+	}
+	for _, text := range []string{
+		"← Prev", "Next →", "Close", "Reject photo", "Move to library trash…",
+		"1★", "5★",
+		"Add tag", "Remove tag", "New album…",
+	} {
+		b := findButtonByText(t, content, text)
+		assertObjectInWindowCanvas(t, win, b)
+	}
+	assertObjectInWindowCanvas(t, win, findLabelByText(t, content, "Albums"))
+	assertObjectInWindowCanvas(t, win, cimg)
+}
+
 func tapPanel(t *testing.T, shell fyne.CanvasObject, label string) {
 	t.Helper()
 	b := findButtonByText(t, shell, label)
@@ -149,20 +181,8 @@ func exerciseNFR01MatrixCell(t *testing.T, db *sql.DB, root string, cell domain.
 
 	if cell.IsLoupe {
 		content, cimg := newNFR01GateShippingLoupeBody(t)
-		if cimg.FillMode != canvas.ImageFillContain {
-			t.Fatalf("loupe image fill mode: got %v want ImageFillContain", cimg.FillMode)
-		}
 		win.SetContent(content)
-		for _, text := range []string{
-			"← Prev", "Next →", "Close", "Reject photo", "Move to library trash…",
-			"1★", "5★",
-			"Add tag", "Remove tag", "New album…",
-		} {
-			b := findButtonByText(t, content, text)
-			assertObjectInWindowCanvas(t, win, b)
-		}
-		assertObjectInWindowCanvas(t, win, findLabelByText(t, content, "Albums"))
-		assertObjectInWindowCanvas(t, win, cimg)
+		assertNFR01GateLoupeChromeOnScreen(t, win, content, cimg)
 		return
 	}
 
@@ -172,6 +192,9 @@ func exerciseNFR01MatrixCell(t *testing.T, db *sql.DB, root string, cell domain.
 	tapPanel(t, shell, "Review")
 	assertPrimaryNavVisible(t, win, shell)
 	assertReviewFilterStripOnScreen(t, win, shell)
+	assertReviewBulkActionsOnScreen(t, win, shell)
+	// Story 2.12 AC6 / NFR-01: library-empty primary CTA must stay on-screen at matrix sizes.
+	assertObjectInWindowCanvas(t, win, findButtonByText(t, shell, "Go to Upload"))
 
 	for _, panel := range []string{"Upload", "Collections", "Rejected"} {
 		tapPanel(t, shell, panel)
@@ -179,6 +202,8 @@ func exerciseNFR01MatrixCell(t *testing.T, db *sql.DB, root string, cell domain.
 	}
 	tapPanel(t, shell, "Review")
 	assertReviewFilterStripOnScreen(t, win, shell)
+	assertReviewBulkActionsOnScreen(t, win, shell)
+	assertObjectInWindowCanvas(t, win, findButtonByText(t, shell, "Go to Upload"))
 }
 
 func exerciseNFR07Epic2DefaultSubsetAndAC2(t *testing.T, db *sql.DB, root string) {
@@ -222,9 +247,17 @@ func exerciseNFR01ResizeSweepAC2(t *testing.T, db *sql.DB, root string, variant 
 		win.Resize(sz)
 		// AC2 / evidence protocol: idle dwell after each resize so transient layout can settle.
 		time.Sleep(1100 * time.Millisecond)
+
+		win.SetContent(shell)
 		tapPanel(t, shell, "Review")
 		assertPrimaryNavVisible(t, win, shell)
 		assertReviewFilterStripOnScreen(t, win, shell)
+		assertReviewBulkActionsOnScreen(t, win, shell)
+		assertObjectInWindowCanvas(t, win, findButtonByText(t, shell, "Go to Upload"))
+
+		loupeContent, cimg := newNFR01GateShippingLoupeBody(t)
+		win.SetContent(loupeContent)
+		assertNFR01GateLoupeChromeOnScreen(t, win, loupeContent, cimg)
 	}
 }
 

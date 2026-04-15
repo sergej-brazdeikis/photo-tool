@@ -1,3 +1,5 @@
+// HTTP E2E: canonical contract tests for loopback share (minted links, HTML/image responses, errors).
+// Extend this suite rather than duplicating flows under tests/e2e (see tests/e2e/README.md).
 package share
 
 import (
@@ -5,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1052,8 +1053,8 @@ func TestShareHTTP_packageHTMLAndSnapshotImage404AfterReject(t *testing.T) {
 	if !strings.Contains(string(bodyAfter), SharePackageMemberImagePath(raw, 1)) {
 		t.Fatalf("expected post-reject package HTML to still reference member 1: %q", truncate(string(bodyAfter), 500))
 	}
-	if !strings.Contains(string(bodyAfter), fmt.Sprintf("id %d", idB)) {
-		t.Fatalf("expected caption to retain rejected asset id in snapshot list: %q", truncate(string(bodyAfter), 500))
+	if !strings.Contains(string(bodyAfter), "Photo 2 of 2") {
+		t.Fatalf("expected post-reject package HTML to still list second snapshot slot: %q", truncate(string(bodyAfter), 500))
 	}
 
 	resp1, err := client.Get(srv.URL + SharePackageMemberImagePath(raw, 1))

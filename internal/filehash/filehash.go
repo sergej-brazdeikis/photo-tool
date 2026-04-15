@@ -12,7 +12,8 @@ import (
 func SumHex(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", fmt.Errorf("open: %w", err)
+		// Wrapped like ReaderHex (architecture logging/errors).
+		return "", fmt.Errorf("filehash: open %q: %w", path, err)
 	}
 	defer f.Close()
 	return ReaderHex(f)
@@ -22,7 +23,7 @@ func SumHex(path string) (string, error) {
 func ReaderHex(r io.Reader) (string, error) {
 	h := sha256.New()
 	if _, err := io.Copy(h, r); err != nil {
-		return "", fmt.Errorf("sha256: %w", err)
+		return "", fmt.Errorf("filehash: read: %w", err)
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }

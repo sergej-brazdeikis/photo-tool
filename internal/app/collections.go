@@ -22,10 +22,11 @@ import (
 
 // CollectionsView is the full-page collections list + album detail surface (Story 2.8).
 type CollectionsView struct {
-	win          fyne.Window
-	db           *sql.DB
-	libraryRoot  string
-	onGotoReview func()
+	win                  fyne.Window
+	db                   *sql.DB
+	libraryRoot          string
+	onGotoReview         func()
+	onCollectionsMutated func() // optional: e.g. reload Review filter strip (Story 2.9 AC6)
 
 	stack *fyne.Container
 
@@ -43,13 +44,15 @@ type CollectionsView struct {
 // NewCollectionsView builds list + detail state machine. Call [CollectionsView.ResetToList] from shell when
 // the Collections nav item is activated while already on Collections (Story 2.8 AC12).
 // onGotoReview switches primary nav to Review (Story 2.12 empty album detail CTA).
-func NewCollectionsView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoReview func()) *CollectionsView {
+// onCollectionsMutated runs after successful album create/edit/delete so other panels can reload cached ListCollections (Story 2.9 AC6).
+func NewCollectionsView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoReview func(), onCollectionsMutated func()) *CollectionsView {
 	v := &CollectionsView{
-		win:          win,
-		db:           db,
-		libraryRoot:  libraryRoot,
-		onGotoReview: onGotoReview,
-		grouping:     domain.CollectionGroupStars,
+		win:                  win,
+		db:                   db,
+		libraryRoot:          libraryRoot,
+		onGotoReview:         onGotoReview,
+		onCollectionsMutated: onCollectionsMutated,
+		grouping:             domain.CollectionGroupStars,
 	}
 	v.listMsg = widget.NewLabel("")
 	v.listMsg.Wrapping = fyne.TextWrapWord
@@ -88,6 +91,12 @@ func NewCollectionsView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoR
 
 // CanvasObject returns the root canvas object for the shell content region.
 func (v *CollectionsView) CanvasObject() fyne.CanvasObject { return v.stack }
+
+func (v *CollectionsView) notifyCollectionsMutated() {
+	if v.onCollectionsMutated != nil {
+		v.onCollectionsMutated()
+	}
+}
 
 // ResetToList pops collection detail and returns to the library list (Story 2.8 AC12).
 func (v *CollectionsView) ResetToList() {
@@ -427,6 +436,7 @@ func (v *CollectionsView) showAlbumForm(collectionID int64) {
 				}
 				v.reloadCollectionRows()
 				v.refreshListChrome()
+				v.notifyCollectionsMutated()
 				return
 			}
 			dialog.ShowError(errors.New(userFacingDialogErrText(err)), v.win)
@@ -466,6 +476,7 @@ func (v *CollectionsView) showAlbumForm(collectionID int64) {
 					}
 					v.reloadCollectionRows()
 					v.refreshListChrome()
+					v.notifyCollectionsMutated()
 					return
 				}
 				errLbl.SetText(userFacingCollectionWriteErrText(err))
@@ -480,6 +491,7 @@ func (v *CollectionsView) showAlbumForm(collectionID int64) {
 		pop.Hide()
 		v.reloadCollectionRows()
 		v.refreshListChrome()
+		v.notifyCollectionsMutated()
 		if v.detailCollectionID != 0 && v.detailCollectionID == collectionID {
 			d, err := store.GetCollection(v.db, collectionID)
 			if err == nil {
@@ -521,6 +533,7 @@ func (v *CollectionsView) confirmDeleteAlbum(id int64, name string) {
 				v.ResetToList()
 				v.showTransientListMessage("This album is no longer available.")
 			}
+			v.notifyCollectionsMutated()
 			return
 		}
 		v.reloadCollectionRows()
@@ -529,6 +542,7 @@ func (v *CollectionsView) confirmDeleteAlbum(id int64, name string) {
 			v.ResetToList()
 		}
 		v.showTransientListMessage("Album removed.")
+		v.notifyCollectionsMutated()
 	}, v.win)
 	cd.SetConfirmText("Delete album")
 	cd.SetConfirmImportance(widget.DangerImportance)

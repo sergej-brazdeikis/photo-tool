@@ -1,11 +1,42 @@
 package filehash
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestSumHex_openErrorWraps(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "nope.dat")
+	_, err := SumHex(missing)
+	if err == nil {
+		t.Fatal("expected error for missing file")
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("want errors.Is(..., os.ErrNotExist); got %v", err)
+	}
+}
+
+func TestSumHex_emptyFile(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "empty.dat")
+	if err := os.WriteFile(p, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SumHex(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// echo -n | shasum -a 256
+	const want = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
 
 func TestSumHex(t *testing.T) {
 	dir := t.TempDir()
@@ -81,5 +112,23 @@ func TestReaderHex_matchesSumHex_afterSeekFromEnd(t *testing.T) {
 	}
 	if got != want {
 		t.Fatalf("after seek rewind: got %q want %q", got, want)
+	}
+}
+
+type errReader struct{ err error }
+
+func (e errReader) Read(p []byte) (int, error) { return 0, e.err }
+
+func TestReaderHex_readErrorWraps(t *testing.T) {
+	wantErr := errors.New("boom")
+	_, err := ReaderHex(errReader{err: wantErr})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("errors.Is: got %v", err)
+	}
+	if !strings.Contains(err.Error(), "filehash: read:") {
+		t.Fatalf("want filehash read prefix, got %v", err)
 	}
 }

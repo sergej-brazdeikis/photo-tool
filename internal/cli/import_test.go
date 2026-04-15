@@ -15,7 +15,12 @@ import (
 )
 
 func testImportCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "import", RunE: RunImport}
+	cmd := &cobra.Command{
+		Use:           "import",
+		RunE:          RunImport,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
 	cmd.Flags().String("dir", "", "directory to import")
 	_ = cmd.MarkFlagRequired("dir")
 	cmd.Flags().Bool("recursive", false, "include subdirectories")
@@ -68,6 +73,7 @@ func TestRunImport_exitErrorWhenFileFails(t *testing.T) {
 	if !strings.Contains(buf.String(), "Failed: 1") {
 		t.Fatalf("out:\n%s", buf.String())
 	}
+	assertOperationReceiptLineOrder(t, buf.String())
 }
 
 func TestRunImport_rejectsDirOutsideLibrary(t *testing.T) {
@@ -263,6 +269,63 @@ func TestRunImport_nonRecursive_skipsNestedFiles(t *testing.T) {
 	}
 	if n != 0 {
 		t.Fatalf("assets: %d", n)
+	}
+}
+
+func TestRunImport_dryRun_backfillClassifiesUpdatedWithoutDBWrite(t *testing.T) {
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	t.Setenv(config.EnvLibraryRoot, libRoot)
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	day := filepath.Join(libRoot, "2020", "01", "02")
+	if err := os.MkdirAll(day, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(day, "meta-dry.jpg")
+	mt := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+	if err := writeJPEGGray(p, 0xD1); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(p, mt, mt); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := testImportCommand()
+	cmd.SetArgs([]string{"--dir", day})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	wrong := int64(424242)
+	_, err = db.Exec(`UPDATE assets SET capture_time_unix = ? WHERE rel_path = ?`, wrong, "2020/01/02/meta-dry.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cmd2 := testImportCommand()
+	cmd2.SetArgs([]string{"--dir", day, "--dry-run"})
+	var buf bytes.Buffer
+	cmd2.SetOut(&buf)
+	if err := cmd2.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "Updated: 1") {
+		t.Fatalf("dry-run should classify backfill; out:\n%s", buf.String())
+	}
+
+	var cap int64
+	if err := db.QueryRow(`SELECT capture_time_unix FROM assets WHERE rel_path = ?`, "2020/01/02/meta-dry.jpg").Scan(&cap); err != nil {
+		t.Fatal(err)
+	}
+	if cap != wrong {
+		t.Fatalf("dry-run must not write DB; capture_time_unix: got %d want %d", cap, wrong)
 	}
 }
 

@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	webshare "photo-tool/web/share"
 
@@ -28,7 +27,7 @@ var NotFoundBody = []byte("Not Found\n")
 const ShareHTMLContentSecurityPolicy = "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'none'"
 
 type handler struct {
-	db *sql.DB
+	db          *sql.DB
 	libraryRoot string
 	pageTmpl    *template.Template
 	packageTmpl *template.Template
@@ -229,25 +228,13 @@ func (h handler) servePackageHTML(w http.ResponseWriter, r *http.Request, rawTok
 		summary += " · " + strings.TrimSpace(payload.AudienceLabel)
 	}
 
-	rowByID := map[int64]store.ReviewGridRow{}
-	if gridRows, err := store.ListReviewGridRowsByIDsInOrder(h.db, pkg.MemberIDs); err == nil {
-		for _, row := range gridRows {
-			rowByID[row.ID] = row
-		}
-	}
-
-	items := make([]sharePackagePageItem, 0, len(pkg.MemberIDs))
-	for i, aid := range pkg.MemberIDs {
-		cap := fmt.Sprintf("#%d · id %d", i+1, aid)
-		if row, ok := rowByID[aid]; ok {
-			when := time.Unix(row.CaptureTimeUnix, 0).UTC().Format("2006-01-02")
-			base := pathpkg.Base(strings.ReplaceAll(row.RelPath, "\\", "/"))
-			cap = fmt.Sprintf("%s · %s · id %d", when, base, aid)
-		}
+	n := len(pkg.MemberIDs)
+	items := make([]sharePackagePageItem, 0, n)
+	for i := range pkg.MemberIDs {
 		items = append(items, sharePackagePageItem{
 			ImagePath: SharePackageMemberImagePath(rawToken, i),
 			Alt:       "Shared photo",
-			Caption:   cap,
+			Caption:   fmt.Sprintf("Photo %d of %d", i+1, n),
 		})
 	}
 

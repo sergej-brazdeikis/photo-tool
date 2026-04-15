@@ -15,16 +15,46 @@ stepsCompleted:
   - 13
   - 14
 lastStep: 14
-workflowCompleted: '2026-04-12'
+workflowCompleted: '2026-04-14'
 inputDocuments:
   - _bmad-output/planning-artifacts/PRD.md
-  - docs/input/initial-idea.md
+  - _bmad-output/planning-artifacts/epics.md
+  - _bmad-output/planning-artifacts/epics/README.md
+  - _bmad-output/implementation-artifacts/1-2-capture-time-hash.md
+  - _bmad-output/implementation-artifacts/1-3-core-ingest.md
+  - _bmad-output/implementation-artifacts/1-4-collections-schema.md
+  - _bmad-output/implementation-artifacts/1-5-upload-confirm-receipt.md
+  - _bmad-output/implementation-artifacts/1-6-scan-cli.md
+  - _bmad-output/implementation-artifacts/1-7-import-cli.md
+  - _bmad-output/implementation-artifacts/1-8-drag-drop-upload.md
+  - _bmad-output/implementation-artifacts/2-1-app-shell-navigation-themes.md
+  - _bmad-output/implementation-artifacts/2-2-filter-strip.md
+  - _bmad-output/implementation-artifacts/2-3-thumbnail-grid-rating-badges.md
+  - _bmad-output/implementation-artifacts/2-4-review-loupe-keyboard-rating.md
+  - _bmad-output/implementation-artifacts/2-5-tags-bulk-review.md
+  - _bmad-output/implementation-artifacts/2-6-reject-undo-hidden-restore.md
+  - _bmad-output/implementation-artifacts/2-7-delete-quarantine.md
+  - _bmad-output/implementation-artifacts/2-8-collections-list-detail.md
+  - _bmad-output/implementation-artifacts/2-9-collection-crud-multi-assign.md
+  - _bmad-output/implementation-artifacts/2-10-quick-collection-assign.md
+  - _bmad-output/implementation-artifacts/2-11-layout-display-scaling-gate.md
+  - _bmad-output/implementation-artifacts/2-12-empty-states-error-tone.md
+  - _bmad-output/implementation-artifacts/3-1-share-preview-snapshot-mint.md
+  - _bmad-output/implementation-artifacts/3-2-loopback-http-token.md
+  - _bmad-output/implementation-artifacts/3-3-share-html-readonly.md
+  - _bmad-output/implementation-artifacts/3-4-share-privacy-wcag.md
+  - _bmad-output/implementation-artifacts/3-5-share-performance-abuse.md
+  - _bmad-output/implementation-artifacts/4-1-multi-asset-snapshot-packages.md
+  - _bmad-output/implementation-artifacts/deferred-work.md
+  - _bmad-output/implementation-artifacts/epic-1-retrospective-20260413.md
+  - _bmad-output/implementation-artifacts/nfr-01-layout-matrix-evidence.md
+  - _bmad-output/implementation-artifacts/nfr-07-os-scaling-checklist.md
 ---
 
 # UX Design Specification photo-tool
 
-**Author:** Sergej Brazdeikis
-**Date:** 2026-04-12
+**Author:** Sergejbrazdeikis
+**Date:** 2026-04-14
 
 ---
 
@@ -34,760 +64,887 @@ inputDocuments:
 
 ### Project Vision
 
-Photo Tool helps people import, deduplicate, and organize large personal photo libraries using capture-time-aware storage, then review and curate with ratings, tags, and collections—primarily through a fast desktop experience (Fyne), with the web used for shared review. Users should be able to **filter by rating** and use **Reject** to **soft-hide** poor or unwanted images so they **do not appear again** in normal browsing, filtering, or sharing, with recovery from a dedicated rejected/hidden place. **Delete** is a **separate, stronger action** (exact persistence—library-only, trash, or file removal—is a PRD/architecture decision). The product should make it **extremely simple** to assemble **sharable packages**: curated subsets (e.g. a rated and sorted trip) with **audience-appropriate** sharing—not one global share-all (e.g. small friend group vs wider friends vs parents). Success hinges on layout resilience from square through ultrawide viewports, honest import feedback, a clear split between “edit in app” and “view in browser,” trustworthy sharing, and **non-destructive-but-invisible** reject flows that are hard to trigger by mistake.
+**Photo Tool** is a **local-first** personal photo library: users bring images in through **desktop upload, drag-and-drop, or CLI scan/import**, get **honest batch receipts** (added, duplicates, failures), and store **one physical instance** per unique file with **capture-time-aware** folder layout and **deterministic deduplication**. The product centers on **fast triage and organization**—**ratings (1–5)**, **tags**, **collections** with explicit **confirm-before-create** rules for upload batches—and on **curatorial safety**: **Reject** **soft-hides** noise from default surfaces and from **share selection**, while **Delete** is a **separate, guarded, destructive** path. **Sharing** is **trust-first**: **preview and confirm before mint**, **snapshot** link semantics by default, **read-only** web review for recipients, and **privacy/accessibility** constraints on the share page (**no raw GPS** on the web; **WCAG 2.1 Level A**). **Growth** extends the same trust model to **multi-asset packages** with **manifest preview**. Implementation stories and NFR evidence already encode many of these as **UX-DR1–UX-DR15** and layout/scaling gates—this revision should keep **GUI and CLI** aligned on **meaning and summaries** wherever reject/ingest semantics apply.
 
 ### Target Users
 
-Hobbyist and semi-pro photographers and organizers who manage large local libraries, need efficient bulk operations and predictable on-disk structure, want to **clear noise quickly** without irreversible loss by default, and want to **share different slices** with different people without manual re-foldering.
+**Primary:** Hobbyist and **semi-pro photographers** and **organizers** who manage **large local libraries**, care about **predictable on-disk structure**, want **bulk speed** (grid, filters, keyboard), and need to **reduce noise without default irreversible loss** (Reject) while still allowing **strong removal** when intentional (Delete). **Secondary:** **Power users** relying on **scan/import CLIs** for migration and reconciliation; **share recipients** on **desktop and mobile browsers** who must understand what they are seeing without installing the app.
 
 ### Key Design Challenges
 
-- Keeping primary navigation and controls fully visible in bulk and single-photo review from **1:1** through **21:9**, with the image fitting within ~**90%** of the viewport without cropping.
-- Bulk review density: hover actions, filters, and collection assignment at scale without errors or hidden affordances.
-- Desktop vs web: full metadata and editing on desktop; shared views read-only where specified; **no raw GPS** on shared pages per PRD; WCAG **2.1 Level A** for the share-link page.
-- **Sharable packages** and **audience tiers**: minimal steps to create, rare mis-sharing, clear mental models.
-- **Reject** vs **Delete**: distinct controls and expectations; rejected assets excluded from default surfaces and package builders; delete semantics defined in PRD (MVP vs Growth).
+- **Visual product identity (revision driver):** Photo Tool is **not** a **forms-first** or **control-dense** utility where **buttons, dropdowns, and chrome** dominate attention and **photos read as small accessories**. **Stakeholder direction (2026-04-14):** the **current app baseline is unacceptable**—**tiny thumbnails** with **persistent heavy UI** is the **wrong product**. This revision treats **large, always-primary imagery** as the **default bar**: in **upload**, **library/browse**, and **rating/single-photo** work, the **photograph must occupy the maximum practical window area**; secondary actions live in **thin strips, edges, overlays, or progressive disclosure**—never as the **visual center of gravity**.
+- **Layout resilience:** Bulk review, filter strip, and **loupe** must keep **primary navigation and controls in view** from **square through ultrawide** and under **non-100% OS scaling**—this is both a product NFR (**NFR-01**, **NFR-07**) and a **Fyne implementation risk** called out in epic stories (**2-4**, **2-11**, evidence artifacts). **Reconciliation:** resilience rules must **not** be met by **shrinking** the image field; they require **smart chrome placement** and **responsive density**, not **postage-stamp grids**.
+- **Safety and muscle memory:** **Reject** must stay **visually and spatially distinct** from **rating** and **Delete** (e.g. **Reject not adjacent to 1–5**); **undo/transient** feedback vs **Rejected/Hidden restore** must read as **one coherent recovery story** (**FR-29**, **FR-30**, **UX-DR5**, **UX-DR8**).
+- **Trust at publish time:** **Share** flows must **block mint** until the user has **seen what will be shared**; **rejected** assets stay **out of default share paths**; web surface must not **leak sensitive metadata** or **fail basic accessibility** (**FR-32**, **FR-14**, **UX-DR7**, **UX-DR11–UX-DR12**).
+- **Honesty at scale:** Ingest and scan/import must stay **streaming/chunked** for large trees, with **category-stable summaries** across **GUI and CLI** (**NFR-02**, **NFR-04**, stories **1-3**, **1-6**, **1-7**).
+- **Backlog truth:** This UX revision must stay **reconcilable** with **named implementation artifacts** (e.g. empty states **2-12**, share stack **3-x**, deferred items) so design changes propose **clear story/AC deltas**, not silent drift.
 
 ### Design Opportunities
 
-- Keyboard-driven rating, navigation, and **fast Reject** paired with undo or clear restore paths.
-- Collection-centric browsing and rating thresholds for **quality passes** and **trip curation** before sharing.
-- **Package presets** (audience templates); **exclude rejected/hidden** by default with obvious rules.
-- Trust: duplicate summaries, confirm-before-collection on upload, unified upload/scan/import behavior.
+- **Image-forward redesign:** Treat **grid cell size**, **upload preview real estate**, and **loupe footprint** as **primary design variables**—stories that assume **small thumbs** or **panel-heavy** shells may need **AC updates** to match **hero imagery** and **minimal persistent chrome**.
+- **Keyboard-forward curation:** Rating, navigation, and **deliberate Reject** as a **fast loop** with **capped undo** and an obvious **Rejected** home—turning “clear the junk” into a **confident ritual** rather than anxiety.
+- **Receipts as brand:** Operation summaries after upload/scan/import that are **specific, countable, and consistent** with CLI output—users feel the system **is not hiding duplicates or failures**.
+- **Collection-first browsing:** Full-page collection detail with **star/day/camera** grouping modes supports **album storytelling** before any sharing conversation.
+- **Share that respects relationships:** Snapshot links and (Growth) **package manifests** reinforce **audience-appropriate slices** without forcing a **global “share everything”** model.
+- **Polish where it hurts:** **Dual themes**, **empty states with one primary CTA**, and **proportionate error tone** (**UX-DR1**, **UX-DR9**, story **2-12**) compound into a product that feels **intentional** during long sessions.
+
+---
+
+**Discovery check-in:** If any of the above conflicts with how you want **v2** to feel (e.g. you are **narrowing MVP**, **changing share semantics**, or **deprioritizing CLI parity**), say so—the spec should track **your** bet, not only the last archive of the PRD/epics/stories.
 
 ## Core User Experience
 
-### Defining Experience
+### Defining experience
 
-The core loop is **ingest → triage → organize → share selectively**. Users bring photos in (upload or scan/import), **deduplication and capture-time layout** stay honest and visible, then they spend most time in **bulk review** and **collection browsing**: rating (1–5), tagging, **Reject** (soft-hide from all default surfaces and from share/package builders), optional **Delete** (stronger removal—exact behavior TBD in PRD), and collection assignment.
+**Photo Tool is a visual product first.** Users come to **see and move through their pictures**, not to operate a **database panel**. In every primary mode—**ingest**, **browse / triage**, **collection viewing**, and **single-photo work**—the **photograph is the dominant object**: it uses **as much of the application window as practicable**. **Buttons, dropdowns, filter chrome, and metadata** are **supporting**; they must **not** be what the eye meets first, and they must **not** permanently consume the **center mass** of the window at the expense of **image pixels**.
 
-**Sharing:** Any flow that exposes photos outside the app—**single-photo links** (current PRD MVP) or, when in scope, **sharable packages**—must include a **clear preview of what will be shared** before a link is created. For a **single photo**, preview can be minimal (identity confirmation); for **multi-asset packages**, preview must surface an explicit **list or thumbnail set** matching the selection. **Default share semantics: snapshot**—the link resolves to a **fixed set of assets (and renditions) as of creation time**—unless the PRD explicitly defines **live** collection links and recipient copy states that **content may change**.
+The journey remains **ingest → cut noise and impose order → optionally publish a slice**, with **trust** (receipts, reject vs delete, preview-before-share) unchanged—but **layout priority flips** from “controls with thumbnails” to **“photos with controls.”**
 
-**Audience presets** (e.g. close friends vs wider circle vs parents) are **accelerators** on a **simple default path**, not a mandatory wall of choices on first use.
+1. **Ingest** — **Incoming images are the hero**: large previews or a **generous** preview grid—not a **form stack** with **postage-stamp** hints. Receipts (added / duplicates / failures) and **collection confirm** stay **compact** and **deferrable** (e.g. sheet, bottom strip, collapsible)—they **do not** shrink previews to **decorations**.
+2. **Browse / triage** — The **image grid is the application surface**. Thumbnails are **as large as performance allows** for the window size; **rating, reject, and quick collection** read as **lightweight overlays or edge-attached** affordances—not a **wall of widgets** surrounding **tiny tiles**. **Filters** (**collection → minimum rating → tags**) use a **compact strip** or **collapsed** pattern; expanding filters uses **overlay / drawer / edge** behavior so **the grid regains maximum area** when not actively filtering.
+3. **Organize (collections)** — **Collection detail** is **image-forward** like Review: **member photos** dominate; grouping (**stars / day / camera**) stays **subordinate** to the **image field**.
+4. **Single-photo / rating** — The **active photo** fills **the maximum practical viewport** (the PRD **~90% loupe region** is a **structural floor** for “image wins,” not an excuse for **idle chrome**). **Letterbox** to show the **whole image**; **stars, reject, delete, share** sit **peripherally** and **must not** compete as equal visual weight with the **picture**.
+5. **Share** — **Preview** shows the asset **large**; **Growth** packages use **manifest + large thumbnails**—**never** a list-first mint.
 
-**Scope honesty:** The PRD today emphasizes **single shareable URLs** and **read-only** web review for MVP. **Multi-photo packages** and **rich audience modeling** are **stakeholder-critical UX intent**; they require an **explicit PRD/epic decision** (MVP vs Growth) and dated alignment so UX acceptance criteria and engineering scope stay testable.
+**CLI** remains **semantic parity** (dedup, dry-run, summary categories, exit rules per stories)—the **GUI** carries the **visual** promise; the **terminal** carries the **same trust in numbers and words**.
 
-**Interaction safety:** **Reject** is a **different action family** than **star rating**—including **keyboard layout**: do not place Reject adjacent to **1–5** in a way that causes accidental hides.
+### Explicit anti-patterns (current baseline called out)
 
-### Platform Strategy
+The following describe **what this revision rejects**—including the **current product feel** as of this writing:
 
-- **Primary:** Desktop app (**Go + Fyne**) on **macOS** and **Windows** (tier-1), **Linux** tier-2—**mouse/keyboard-first**, touch where supported.
-- **Authority:** The **desktop library** is the **source of truth**; share URLs are **versioned projections** (snapshot payloads) served with **non-guessable tokens** (per PRD/security direction)—not “whatever the DB says now” unless live links are explicitly specified.
-- **Secondary:** **Browser** for share recipients; **read-only** editing rules per PRD; **no raw GPS** on shared pages where required; **WCAG 2.1 Level A** for the share-link experience.
-- **Offline:** Local triage can be **offline-first**; delivering shares requires network for recipients.
-- **CLI parity:** Scan/import tooling must surface the same **reject/delete semantics and summaries** as the GUI so the library’s meaning does not diverge by entry path. *Example expectation:* if the GUI reports **N rejected** in a session, a batch **scan** with equivalent operations must emit a summary line or count that includes **`rejected: N`** (exact format TBD in architecture).
-- **Build risk:** **Bulk review + ultrawide layout + keyboard routing** in Fyne should be **prototyped early**—high coupling between density, hover affordances, and window aspect ratios.
+- **Tiny thumbnails as the “main” UI** while **panels, dropdowns, and buttons** occupy most of the window.
+- **Persistent dense chrome** (multi-column forms, large empty margins **around** small media) that makes the app feel like **settings with pictures attached**.
+- **Rating flows** where **controls** draw more attention than the **photo**.
+- **Upload** that prioritizes **transaction widgets** over **seeing what you are adding**.
+- Treating **NFR-01 / layout matrix** as satisfied by **hiding** controls **off-screen** while **shrinking** imagery—**both** must hold: **visible essential navigation** **and** **hero imagery**.
 
-### Effortless Interactions
+### Platform strategy
 
-- **Rating and navigation** without extra dialogs: **1–5**, stars, prev/next, arrows aligned to the image.
-- **Reject:** fast to apply, with **immediate undo** and/or a **reversible window**—**product/architecture to confirm:** e.g. undo until **navigating away from the current review context**, or a **short time bound** (e.g. 30 seconds), or both in combination. **Recovery** must also remain available from a **Rejected/Hidden** surface.
-- **Delete:** visually and procedurally distinct from **Reject** so it is not triggered by mistake.
-- **Filters:** fixed order **Collection → minimum rating → tags**, defaults **no assigned collection**, **any rating**.
-- **Import feedback:** duplicate counts and **confirm** before creating an upload collection.
-- **Packages (when in scope):** short path from selection to link, with **preview-before-publish** always in the chain.
+- **Primary:** **Desktop (Go + Fyne)** — **macOS** / **Windows** tier-1; **Linux** tier-2. **Image canvas** is the **default layout anchor** for proportions, not the **menu chrome**.
+- **Authority / share:** **Local library** is source of truth; **snapshot** links, **non-guessable tokens**, **loopback** default unless **deliberately** widened (per architecture/security).
+- **Recipients:** **Read-only** browser view—**image dominant**; **WCAG 2.1 A**, **200% zoom**, **reduced motion**, **no raw GPS** on web.
+- **Scale:** Large jobs may use **progress or batched logs** (**NFR-02**)—prefer **visual continuity** (e.g. **counts + thumbnails still visible**) over **log-first** full-screen takeovers unless the user **opts into** details.
 
-### Critical Success Moments
+### Effortless interactions
 
-- **After first large import:** “I see where everything went, duplicates were explained, I did not lose files.”
-- **In bulk or single-photo review on ultrawide:** “All controls are visible; the whole image fits; I am not fighting the window.”
-- **Before sharing:** “I see **exactly** which photos are in this link or package; the audience matches what I intend.” For **MVP single-photo**, success is still **explicit asset identity** before minting the URL; for **packages**, success requires a **visible multi-asset manifest** in preview.
-- **After a mistaken Reject:** “I can undo or restore without panic,” within the **undo rule** agreed in product/architecture.
-- **Failure modes that destroy trust:** Wrong or **rejected** assets appear on a share; **Delete** confused with **Reject**; layout hides primary actions; **CLI and GUI** disagree on what’s in the library.
+- **Hero image** in **upload**, **grid**, **collection detail**, and **loupe**—users never hunt for “where the photo went.”
+- **Filters** and **metadata** **yield space back** to the grid when idle.
+- **Receipts** after ingest: **clear numbers + plain language**; **secondary** to **large previews** unless expanded.
+- **Share:** **large preview** → **explicit confirm** (no **accidental mint**) → **Copy**; **auto-copy** opt-in only.
 
-### Experience Principles
+### Critical success moments
 
-1. **Triage first** — Optimize for speed through large sets with keyboard, clear states, and persistence rules aligned to the PRD.
-2. **Honest library** — One pipeline truth for upload, scan, and import; operations always explain skips and duplicates.
-3. **Reject ≠ delete** — Reject hides and recovers; delete is deliberate and guarded.
-4. **Preview before publish** — No share link without a **clear, reviewable** definition of what recipients will see (scaled to single-photo vs package scope).
-5. **Layout is a feature** — From square to **21:9**, chrome stays usable and the image stays fully visible in review modes.
+- **During upload:** User **sees their photos large**; still trusts **duplicate/fail** truth.
+- **During browse:** The **grid feels like the app**, not chrome around **flea-sized** media.
+- **While rating:** The **photo** is what you **feel**; controls are **orbital**.
+- **Ultrawide:** **Image stays hero**; **navigation** remains **in viewport** without **shrinking** photos below **reasonable minimum cell / loupe** targets (**quantitative thresholds** belong in a follow-on layout spec / story AC refresh).
+- **Share mint + recipient open:** **Obvious large image**; **safe** metadata posture.
 
-**Additional guidance** (supports the above; trace to PRD/epics as needed):
+### Experience principles
 
-- **Audience-safe sharing** — Packages and links **exclude rejected/hidden** by default; audience choice stays explicit and simple to parse.
-- **Composable share model** — Prefer **snapshot** manifests for v1 multi-asset shares; **live** collection links only with explicit PRD copy and technical behavior.
-- **Desktop edits, web consumes** — Rich editing and metadata on desktop; web stays within PRD (read-only MVP, GPS rules).
-- **Scope honesty** — Call out **MVP vs Growth** wherever PRD still says “single URL” but stakeholders require **packages**.
-- **CLI parity** — Scan/import reports and semantics align with the GUI for reject, delete, and registration (see example under Platform Strategy).
+1. **Image first, always** — **Upload, browse, triage, loupe, share preview:** the **picture is largest and most persistent**; everything else **supports**.
+2. **Not a control panel with photos** — If the **first screenshot** reads as **buttons and dropdowns**, the layout has **failed** the charter.
+3. **One library, many doors** — Upload, drop, scan, import: **same semantics**; **same summary language** GUI/CLI.
+4. **Trust beats cleverness** — **Preview-before-publish**, **honest receipts**, **recoverable reject**; **Reject ≠ Delete**.
+5. **Density with guardrails** — **Speed** without **hiding** reject/delete safety, **focus/publish safety**, or **errors**—badges **serve** the **large** grid; they **do not replace** it.
+6. **Layout is product** — **Aspect + OS scaling** prove **hero imagery** **and** **reachable chrome** together.
+7. **Recipients: smaller, safer, still visual** — **Read-only**, **accessible**, **privacy-bounded**—**photo still dominates**.
 
-### Testability notes (for QA / acceptance)
+## Desired emotional response
 
-- **Preview-before-share:** Verifiable expectation: **given** a share action, **then** a confirmation surface lists asset identity (and for packages, **count + IDs or thumbnails**) **before** token minting or URL finalization.
-- **Reject undo:** Acceptance tests depend on the chosen **undo rule** (navigation-bound, time-bound, or both); document the chosen rule in PRD or architecture when fixed.
+### Primary emotional goals
 
-## Desired Emotional Response
+Users should feel **immersed and photo-centered**: the **frame is the photo**; **chrome is quiet and predictable**—designers know **what recedes** (density and placement of controls), not which features disappear. The dominant feeling is **calm competence**: “**I see my work clearly; I can move fast without fear.**” Name the anti-pattern explicitly: **no spreadsheet anxiety**—rows of **tiny assets** and **dense controls** are what broke trust with the **current baseline**; this revision **rejects** that emotional read.
 
-### Primary Emotional Goals
+Secondary feelings: **relief** (duplicates and failures are **honest**, not mysterious); after triage aim for **resolution**—the stack feels **handled** (not only “lightness,” since personal libraries can carry **grief or ambivalence**, not just joy). For **sharing**, lead with **control** (what is included, how it reads to others); **pride** (“this is what I meant to show”) is **possible** but not universal—some users feel **exposure**; the UX must support **confident, bounded** sharing, not assumed delight.
 
-Users should feel **in control of a large, messy library**—not overwhelmed by it. The dominant affect is **calm competence**: fast triage without fear of losing files, hiding the wrong things, or sharing the wrong slice. They should also feel **authored control**—**curatorial ownership**: their ratings, rejects, collections, and (when in scope) audience choices express **judgment**, not just filing.
+The product should **not** feel like **admin software** or **a chore list with thumbnails**—**explicitly out of scope** for this revision.
 
-After sustained triage, users should feel a **lighter mental load**—a quiet sense of progress—through **dignified** feedback (e.g. clear session or batch outcomes), not gimmicky celebration.
+### MVP vs Growth emotional priorities (draft)
 
-When sharing, the sharer should never fear **embarrassment** (wrong photo, wrong person, oversharing metadata). **Recipients** should feel **welcome and safe** on share pages: clarity that the view is intentional, read-only where MVP requires, and **no creepy surprises** (e.g. raw GPS withheld per PRD). The product should feel like a **serious organizer’s tool**—keyboard-friendly, honest about the pipeline—rather than a toy gallery.
+- **MVP (must hold at launch):** **Confidence and clarity**—upload/ingest outcomes are **believable**, **orientation** to the next step is obvious, **errors** are **actionable**, **reject/delete/share** distinctions are **clear**. These emotions are **testable** with tasks, receipts, and error injection.
+- **Growth / polish:** Deeper **immersion**, **single-focus rhythm**, and **sparing** non-gimmicky moments—**after** core journeys are **reliably completable**; otherwise “vibes” become **scope inflation** (see testability below).
 
-### Emotional Journey Mapping
+### Intentional tension (when goals conflict)
 
-- **First use / big import:** **Relief and trust**—clear placement, duplicate honesty, no silent failures. Avoid **dread** (“did it eat my photos?”). *Internal hook:* handing over chaos and getting a **clear receipt** back.
-- **Core triage (bulk + single review):** **Flow and focus**—keyboard rhythm, visible chrome on any monitor shape. Avoid **irritation** (hunt for controls), **anxiety** (accidental reject/delete), and **fatigue** from hover-only or tiny targets at volume. *Internal hook:* the pile shrinks; **the controls stay with me**.
-- **Organizing (collections, filters):** **Clarity**—mental model matches UI order (collection → rating → tags). Avoid **cognitive load** from arbitrary or shifting filter logic.
-- **Sharing (sharer):** **Assurance**—preview-before-publish and audience presets reduce **fear of embarrassment**. MVP: single-photo link still requires **explicit identity confirmation** before minting the URL; Growth/packages: same emotional bar scales to multi-asset preview. *Internal hook:* I chose the **room**; only those people get the **key**.
-- **Sharing (recipient):** **Safe and simple**—obvious read-only posture, respectful presentation, privacy expectations met (e.g. location not exposed inappropriately).
-- **Adversity (errors, partial failure, disk/EXIF edge cases):** **Proportionate honesty**—clear facts, actionable next steps, **no toxic positivity**. Users can stay **calm** because the system is **straight**, not because it pretends nothing went wrong.
-- **After errors or retries:** **Recoverable, not punished**—undo/rejected bucket/CLI parity so the system feels **fair**. Avoid **shame** or **mystery** (“where did it go?”).
-- **Return visits:** **Familiar and dependable**—same rules for upload, scan, import. Avoid **mistrust** from inconsistent summaries between **GUI and CLI**.
+When **image prominence**, **information density**, and **power features** collide, **default image prominence wins**: **reduce or progressive-disclose** chrome before **shrinking** the photo canvas—unless a **stakeholder decision** explicitly records a different trade (documented in PRD/story).
 
-### Micro-Emotions
+### Emotional journey mapping
 
-Most critical: **trust vs. skepticism** (pipeline and sharing); **confidence vs. confusion** (reject vs delete, what will be shared); **accomplishment vs. frustration** (finishing a trip’s curation); **calm vs. anxiety** (large batches). **Delight** stays **small and professional**—e.g. a satisfying duplicate summary or a stable ultrawide layout—not novelty for its own sake.
+| Stage | Desired feeling | What breaks it (to avoid) |
+|-------|-----------------|---------------------------|
+| **First session / empty library** | **Welcoming, unblocked**—clear **one** path to add photos, **large previews** immediately | Empty states that feel **technical** or **form-heavy**; tiny drop zones |
+| **Orientation / wayfinding** | **“I know where I am”**—current **area** (Upload, Review, Collection, Rejected) and **what this view is for** without clutter | Getting **lost** in your own library; **orphan** screens; mystery meat nav |
+| **Heavy import / scan** | **Grounded**—**visible progress** on **photos**, not abstract spinners only | Log-first UI; **silent** partial failure; **disappearing** previews |
+| **Failure / recovery** | **Reassurance**—cause + next step; **nothing bad happened** (or **honest** consequence) after errors, disk issues, or “where did it go?” | Dead ends; **blamey** copy; **hiding** partial failure |
+| **Core triage (grid + loupe)** | **Single-focus rhythm**—**low cognitive load**; eyes on **images**, hands on **keyboard**; steady pace (**not** promising frictionless “flow” as an untestable bar) | **Flea-sized** tiles; **control soup**; **lost menus** on ultrawide |
+| **Reject / hide noise** | **Safe clearing**—“**gone from my day, not gone from my life**” | Reject that **feels like delete**; **unfindable** recovery |
+| **Delete** | **Solemn intentionality**—rare, **clear consequence** | Casual or **mis-tappable** destructive actions |
+| **Organize (collections)** | **Ownership**—albums as **places** that feel **yours** | Modals that feel **temporary** or **detached** from the grid |
+| **Share mint** | **Confident publish**—**control** over what ships; preview matches **recipient reality** | **Ambiguous** preview; **tiny** share image; **accidental** mint |
+| **Recipient opens link** | **Dignity + safety**—**photo first**, respectful surface; no **creepy** metadata | Walls of EXIF; **slow** or **broken** focus; **location** exposure |
+| **Return visit** | **Familiar continuity**—**themes**, **predictable** nav, **trust** in last session’s work | **Surprise** layout shifts; **inconsistent** labels or summaries |
 
-### Design Implications
+### Micro-emotions
 
-- **Trust** → Plain-language summaries after operations; no hidden states; preview surfaces before URLs; **privacy-visible design** on share pages (clearly **what is omitted**, e.g. raw GPS, not just what is shown).
-- **Confidence** → Visually distinct **Reject** vs **Delete**; Reject not adjacent to `1–5` on keyboard; undo or clear recovery paths.
-- **Calm flow** → Defaults that match intent (filter defaults); minimal blocking dialogs for rating; confirm only where PRD requires (e.g. new upload collection).
-- **Fatigue-resistant triage** → Long sessions need **non-hover paths** and **adequate targets** for the same actions as quick hover shortcuts—emotionally, bulk review must not **punish** sustained use.
-- **Assurance when sharing** → Snapshot semantics by default; thumbnail/list preview; excluded rejected/hidden without extra toggles; **sharer vs recipient** copy and UI reflect their different roles.
-- **Fair recovery** → Rejected/Hidden destination always discoverable.
-- **One voice from every path** → CLI summaries and counts align with GUI semantics so users never feel the app is “saying two different things.”
-- **Adversity** → Errors and stalls use **clear, factual** messaging with **next steps**; avoid dismissive cheerfulness.
+Each cluster should tie to **events** (load, empty state, success, long wait, error, risk action) so UX and eng can trace **when** the system must behave.
 
-### Experience narrative hooks
+- **Confidence over confusion** — Users **know** library state (**counts**, **where files live**, **what reject means**). **Confusion** is a **failure mode** for **personal** media.
+- **Trust over skepticism** — Receipts, **preview-before-share**, **CLI/GUI parity** prevent **“is it lying?”**
+- **Calm focus over anxiety** — Large imagery and **peripheral** chrome reduce stress from **small targets** and **dense panels** (the **baseline** to design away from).
+- **Reassurance after risk** — After **reject**, **delete confirm**, **share mint**, or **error recovery**: explicit **“you’re OK”** or **honest** outcome—**not** cute; **clear**.
+- **Accomplishment over frustration** — **Visible** progress at session end (**sorted grid**, **link copied**) vs **unfinished** business.
+- **Delight (sparing, bounded)** — **Specific** moments only: e.g. **clear confirmation without noise**, **smooth** loupe transitions (**reduced motion** respected), **crisp** empty states—**cap scope**; no **delight everywhere**.
+- **Agency over isolation** — **Local**, **under your hand**—not **anonymous cloudware**.
 
-Short story beats for **internal** alignment across UX, PM, and marketing—not literal UI strings:
+### Design implications
 
-- **Import:** “I handed you chaos; you gave me a **receipt**.”
-- **Triage:** “The pile shrinks; **the controls stay with me**.”
-- **Share:** “I chose the **room**; only those people get the **key**.”
+- **Immersion** → **Maximize image canvas**; **collapse** or **edge-dock** secondary UI; **avoid** permanent **half-window** panels that shrink photos **by default**.
+- **Orientation** → **Visible** place in app + **state** that matches reality; wayfinding **without** reclaiming the **hero** image area by default.
+- **Calm competence** → **Predictable** navigation; **consistent** **GUI/CLI** summary language; **themes** that **reduce glare** in long sessions.
+- **Relief on ingest** → **Large previews** with **plain-language** receipts; duplicate/failure lines **visible**, not buried.
+- **Safe clearing** → **Reject** = caution; **Rejected/Hidden** **discoverable**; **Delete** = destructive + confirm.
+- **Confident share** → **Large preview**; **explicit confirm** (no **single-keystroke mint**); **snapshot** clarity; **rejected** blocked on default path.
+- **Recipient dignity + safety** → **Image-dominant** page; **WCAG 2.1 A**; **no raw GPS**; **neutral** alt—**respectful** sharing, not just **compliance** checkboxes.
 
-**Tone guardrail:** External **customer-facing** copy stays **warm-neutral** (e.g. invitation to view); hooks may be sharper **inside** the spec.
+### Testability and traceability
 
-### Emotional Design Principles
+Emotional goals need an **observable bridge**—otherwise they are **not** acceptance criteria. Pattern: **emotional outcome → user-visible behavior → FR/NFR/story reference → verification** (task test, layout checklist, error injection, perf budget). Examples (exact thresholds like **X%** viewport belong in **layout AC / NFR**, not invented here):
 
-1. **Calm at scale** — The UI never adds panic to already-large libraries.
-2. **Trust through transparency** — Especially for import, deduplication, and share boundaries.
-3. **Dignity in sharing** — Sharers avoid embarrassment; recipients feel respected.
-4. **Authored control** — The product amplifies **curatorial judgment** (stars, reject, collections, audiences)—not anonymous feed consumption.
+- **Calm competence / empty library:** primary path + next action **visible** without burying **large** imagery; verify with **task test** + screenshot matrix.
+- **Image prominence:** loupe/grid targets per **NFR-01** / layout stories; verify at **breakpoints** and **OS scaling**.
+- **Recovery:** on ingest/share failure, **cause + next step** in plain language, **no** dead end—**error injection** tests.
+- **“Come back without dread”:** tie to **low cognitive debt**—work **honestly surfaced** (receipts, queue, failures), **no hidden backlog**; verify with **session return** tasks and **summary consistency**.
 
-**Supporting emotional rules**
+**Follow-on artifact (recommended):** an **emotion → AC** table and **traceability** column on key FRs/NFRs (**emotion tag** + **verification method**). **Party Mode (2026-04-14)** flagged **metrics** (task success, time-to-first-useful-view, retry after failure, 7-day return) as **product discipline**—assign in sprint planning, not only in this doc.
 
-- **Privacy signals trust** — What share pages **withhold** is as important as what they show.
-- **Safety without slowdown** — Fast triage with guardrails, not extra clicks everywhere.
-- **Recoverability is emotional infrastructure** — Undo and rejected states are part of the feeling of control.
-- **One voice from every path** — GUI and CLI tell the same human story about the library.
-- **Proportionate honesty under stress** — Bad news is **clear and actionable**, not sugar-coated.
+### Stakeholder lenses (emotional requirements)
 
-### Success signals (placeholder)
+| Lens | Emotional intent |
+|------|------------------|
+| **Accessibility** | **Calm** under **zoom, contrast, keyboard, screen reader**—predictable **focus order**, **non-alarming** announcements; a11y is not “extra,” it is **part of** calm competence. |
+| **Privacy / security** | **Confidence** about **where photos go** and **what links expose**; testable copy and states for share/delete/reject. |
+| **Performance / reliability** | **Immersion breaks** on **stalls**—latency and **offline** behavior are emotional requirements; align with **NFR-02**, **NFR-05**. |
+| **Support / ops** | Reduce **helplessness**: **actionable** errors, optional **error identity** for logs/docs where product allows. |
 
-When feedback channels exist, monitor trends such as **wrong-share** or **privacy-related** reports (tags/categories TBD) to sanity-check emotional goals—**no baseline claimed** until measured.
+### Emotional design principles
 
-## UX Pattern Analysis & Inspiration
+1. **The feeling is “my photos,” not “the app.”** If users narrate the session as **fighting the UI**, we have **lost** the emotional target.
+2. **Honesty is kindness.** **Hidden** failures and **ambiguous** share state create **anxiety**; **explicit** outcomes create **calm**.
+3. **Size is respect.** **Small thumbnails** read as **dismissive**; **hero imagery** reads as **taking the work seriously**.
+4. **Power without peril.** **Speed** must not **trade away** **recoverability** (reject), **clarity** (delete), or **certainty** (share).
+5. **Emotion scales with stakes.** **Delete** and **share** get **quieter, weightier** moments; **rating** stays **light** and **immediate**.
+6. **Come back tomorrow without dread.** **Continuity** and **trust** in what the app **remembers** and **shows**—tied to **honest surfacing** of work and outcomes (**low cognitive debt**).
+7. **Rank feelings like features.** If it has **no** observable proxy or **owner**, it is **aspiration** or **backlog hypothesis**—not a **launch gate**.
 
-### Inspiring Products Analysis
+## UX pattern analysis and inspiration
 
-**Working reference set** (confirm or replace with apps you rely on):
+*Inspiration sources below are **category landmarks** inferred for hobbyist/semi-pro organizers managing **large local libraries**—not a claim that Photo Tool will clone any product. Use them for **pattern vocabulary** and **trade-off awareness**; final UI must respect **Fyne**, **Go**, and **this spec’s image-first charter**.*
 
-**Adobe Lightroom Classic (or similar DAM)**  
-- **Elegant problem:** Large import → cull → organize with ratings, flags, and metadata without losing track of files.  
-- **UX strengths:** Strong **keyboard-first** culling, **grid + loupe**, persistent **filter bars**, clear **pick/reject** semantics (analogy: our **Reject** vs **Delete**).  
-- **Caveats:** Heavy UI; cloud/sync story differs from your local-first charter; still useful for **triage density** and **batch mindset**.
+### Inspiring products analysis
 
-**Apple Photos**  
-- **Elegant problem:** Make huge libraries **approachable** for non-experts.  
-- **UX strengths:** Simple **moments/collections** mental model, **low-friction** full-screen view, **share sheet** familiarity.  
-- **Caveats:** Less explicit **pipeline honesty** (duplicates, paths); use for **calm hierarchy** and **recipient-safe simplicity** on share surfaces—not for power-user metadata depth.
+**Apple Photos (macOS / ecosystem)** — **Strengths:** **Full-bleed** and **large-tile** browsing; **moments** and **albums** feel **media-first**; **simple** share sheet mental model for non-pro users. **Less transferable:** **cloud-centric** assumptions; **less** emphasis on **honest ingest receipts** and **CLI parity**—we keep our **local-truth** and **operator** story.
 
-**Photo Mechanic (or FastRawViewer-class tools)**  
-- **Elegant problem:** **Speed** through thousands of frames.  
-- **UX strengths:** Ruthless focus on **throughput**, keyboard codes, minimal obstruction.  
-- **Caveats:** Different visual polish bar; borrow **interaction tempo** and **non-hover fallbacks**, not necessarily visual style.
+**Adobe Lightroom Classic–style library (desktop DAM pattern)** — **Strengths:** **Grid-first** culling; **keyboard-driven** rating/flagging culture; **collections** as **first-class** organizational objects; users expect **dense productivity** **without** losing **which photo is selected**. **Less transferable:** **Steep** surface area and **module** complexity—our MVP should **not** import **panel sprawl**; steal **rhythm** and **keyboard loop**, not **chrome count**.
 
-*If your actual daily tools differ (e.g. digiKam, Mylio, Google Photos web only), name them—the transferable patterns below still apply but examples should track your reality.*
+**Google Photos (consumer web/mobile pattern)** — **Strengths:** **Large thumbs**, **low-friction** browsing, **obvious** primary content; **sharing** feels **lightweight** (with product-specific trust models). **Less transferable:** **Server-side** magic; **we** must implement **preview-before-mint**, **snapshot** semantics, and **rejected** rules **explicitly**—not assume **cloud** affordances.
 
-### Transferable UX Patterns
+**digiKam / darktable / libre catalog tools (power-user open ecosystem)** — **Strengths:** **Local-first**, **serious** metadata and **folder** discipline; **proof** that **keyboard** and **batch** workflows matter. **Caution:** Many UIs skew **inspector-heavy** or **small-thumb** defaults—useful as **anti-pattern** reference for **our** revision (**control soup**).
 
-**Navigation and hierarchy**
+### Transferable UX patterns
 
-- **Left/nav: Library scope → Collection or filter context → Content** — matches **Collection → min rating → tags** and full-page collection detail (not modal stacks).  
-- **Persistent filter strip** — keeps emotional **clarity**; avoids “where did my filters go?” on resize (relevant to **ultrawide** issues in your source idea).
+**Navigation**
+
+- **Persistent, low-height primary nav** (Upload / Review / Collections / Rejected) with **predictable order**—mirrors “**I always know where I am**” without eating the **grid**.
+- **Full-page collection detail** (not **modal stacks** for main browsing)—supports **ownership** and **image-forward** browsing.
 
 **Interaction**
 
-- **Keyboard star codes + single-key reject** (conceptually; map to non-adjacent keys) — supports **triage first** and **fatigue-resistant** workflows.  
-- **Grid hover shortcuts + full context menu / row actions** — hover for speed, **duplicated** actions elsewhere for long sessions.  
-- **Preview-before-share** — familiar from **cloud link** flows (Drive, Photos, Dropbox): confirm **asset set** before minting URL.  
-- **Snapshot link** behavior — recipients see a **stable** set; avoids “album changed under me” anxiety.
+- **Loupe / single-photo mode** that **reserves maximum canvas** for the **image**; **peripheral** rating, **reject**, **nav**—matches **single-focus rhythm**.
+- **Keyboard-first triage** (**1–5**, arrows, deliberate **reject** away from rating)—matches **semi-pro** muscle memory from DAM culture.
+- **Progressive disclosure** for **filters** and **metadata**—**overlay / drawer / collapse** so **grid regains** area when not editing filters.
 
-**Visual / layout**
+**Visual**
 
-- **Letterboxed image, chrome pinned to safe regions** — aligns with **90% viewport**, **no crop**, **controls always in view** from **1:1** to **21:9**.  
-- **Sparse, readable summaries** after batch jobs — supports **trust through transparency** and CLI/GUI **one voice**.
+- **Dark or neutral chrome** option so **photos pop** (already aligned with **dual themes**); **destructive** and **reject** semantics use **consistent** color roles—not **decorative** noise.
+- **Receipts and errors** as **compact** **secondary** surfaces after **ingest**—**large previews remain** visible (relief + honesty).
 
-### Anti-Patterns to Avoid
+**Share / recipient**
 
-- **Controls fixed in screen pixels** that drift off **ultrawide** — your explicit failure mode from `initial-idea.md`.  
-- **Reject buried** in submenus or **mapped next to rating keys** — causes **anxiety** and mis-hides.  
-- **Share without manifest preview** — drives **embarrassment** and wrong-audience mistakes.  
-- **Hover-only** critical actions in bulk review — creates **fatigue** and accessibility gaps.  
-- **Cheerful empty errors** — conflicts with **proportionate honesty**.  
-- **Mismatched CLI vs GUI counts** — destroys **one voice from every path**.
+- **Large preview before publish** and **explicit confirm**—analogous to **careful** share flows users trust in **mature** consumer apps, adapted to **local snapshot** + **loopback** architecture.
 
-### Design Inspiration Strategy
+### Anti-patterns to avoid
+
+- **Inspector-default layouts** where **metadata panels** dominate and **thumbnails** shrink to **postage stamps**—directly conflicts with **image-first** and **“not admin software.”**
+- **Modal layering** for **core** browse and **organize**—creates **disorientation** and **detached-from-grid** feeling.
+- **Share** paths that **mint** or **copy** before **clear asset identity**—breaks **confident publish** and **recipient dignity**.
+- **Hiding** ingest outcomes (**duplicates**, **failures**) behind **technical** logs—breaks **trust** and **calm competence**.
+- **Delight** sprawl (animation, sound, mascot) **without** **stop rules**—John/Mary party feedback: **bounded** delight only.
+- **Assuming “flow state”** as MVP bar—prefer **testable** **low cognitive load** and **task success**.
+
+### Design inspiration strategy
 
 **Adopt**
 
-- **Keyboard-led triage** with visible rating state and **distinct reject/delete** affordances.  
-- **Persistent, ordered filters** matching PRD (**Collection → min rating → tags**).  
-- **Preview-before-publish** for any share flow; **snapshot** link semantics by default.  
-- **Operation receipts** (added / duplicate / failed) for import, scan, import CLI.
+- **Large-tile / hero grid** defaults and **maximum loupe canvas**—core to **revision** direction.
+- **Keyboard culling loop** patterns where they **do not** require **adjacent reject** to **rating** keys.
+- **Progressive disclosure** for **filters** and **secondary metadata**—protects **image prominence** when idle.
 
 **Adapt**
 
-- **Lightroom-style density** → simplify for **intermediate** users and **Fyne** constraints; prove layout in **prototype** early.  
-- **Apple-style calm** → apply especially to **share recipient** pages and **first-run** import completion, without hiding expert metadata on desktop.
+- **Lightroom-style density** → **Photo Tool** **density** with **fewer** persistent panels; use **Fyne** constraints to implement **orbital** controls, not **Photoshop-style** docks.
+- **Consumer share simplicity** → **local snapshot** + **WCAG A** + **no raw GPS** on web; **more** explicit steps than **one-tap** cloud share.
 
 **Avoid**
 
-- **Modal-heavy** deep trees for collection browsing — PRD wants **full-page** collection detail.  
-- **Algorithmic feed** patterns — conflicts with **authored control** and local library truth.  
-- **Live-updating share** unless PRD explicitly adds it and recipient copy explains drift.
+- **Cloud-only** mental models for **organization** and **trust** (silent sync, ambiguous canonical copy).
+- **Panel-first** DAM complexity in **MVP** chrome—reserve **power** for **keyboard** and **focused** screens, not **parallel** inspectors.
+- **Tiny thumbnails** as the **default** success criterion for “we shipped a grid.”
 
-## Design System Foundation
+**Uniqueness:** Photo Tool’s **differentiator** remains **unified ingest + scan/import**, **reject vs delete** semantics, **GUI/CLI parity** on summaries, and **preview-before-mint** **local** sharing—**inspiration** informs **layout and rhythm**, not **feature cloning**.
 
-### 1.1 Design System Choice
+## Design system foundation
 
-**Hybrid foundation, platform-split:**
+### 1.1 Design system choice
 
-1. **Desktop (primary):** **Fyne-native UI** with a **project-owned theme** (extend `fyne.Theme` or equivalent) rather than bolting on a foreign web design system. Treat **Fyne widgets** as the component baseline; document **patterns** (lists, grids, dialogs, toolbars) as your internal “system.”
+**Hybrid: Fyne-native UI + project semantic token system + minimal web tokens for share pages.**
 
-2. **Web (share + read-only views):** **Implementation deliberately flexible.** Candidates include:
-   - **Fyne in the browser (WebAssembly)** — same toolkit as desktop; good for UI reuse; validate **bundle size**, **cold-load time** (PRD NFR-05), and **WCAG 2.1 Level A** in the web driver (see [Fyne web app docs](https://docs.fyne.io/started/webapp/)).
-   - **Minimal HTML/CSS (or light templating)** — smallest footprint and straightforward accessibility auditing; fastest path if WASM budgets fail.
+- **Desktop (primary):** Use **Fyne** as the **component runtime** (widgets, layout, themes). Do **not** adopt a **web-first** design system (Material, MUI, Chakra, Tailwind component libraries) for the **desktop shell**—they do not map 1:1 to Fyne and invite **wrong** interaction models. Instead, treat Photo Tool as having a **small custom design system**: **two peer themes** (**dark default**, **light**) driven by a **single semantic role table** shared across the app (**UX-DR1** in epics).
+- **Share viewer (secondary):** **`html/template` + static CSS** per architecture/PRD. Use a **minimal token subset** (**background, surface, text, focus, link**) **aligned by name** with desktop semantics so **brand and danger/reject** cues do not diverge wildly between app and link page.
 
-**Decision timing:** The **share contract** (read-only, snapshot semantics, preview-before-publish, privacy rules) is fixed in UX/product terms; the **web presentation stack** can be **chosen or revised after desktop MVP** once **metrics and a11y checks** exist. Document the chosen path in architecture when locked.
+### Rationale for selection
 
-### Rationale for Selection
+- **Technical fit:** The product is **Go + Fyne** on **macOS / Windows / Linux**; the design system must be **what Fyne can render and theme** reliably—not a parallel web kit.
+- **Image-first charter:** Success is **maximum canvas for photos** and **quiet chrome**; a **large external** web design system tends to **pull** toward **dense controls** and **component showcase** layouts. A **thin, documented** token + pattern layer keeps **layout decisions** in product hands.
+- **Accessibility split:** **WCAG 2.1 Level A** applies to the **share page**; **desktop a11y** is **Fyne- and platform-dependent**—document **focus visibility**, **keyboard order**, and **contrast** targets in **QA** (e.g. **UX-DR15**, **NFR-01** / **NFR-07**), not by importing a **web** a11y kit wholesale.
+- **Maintenance:** Fewer **third-party** UI dependencies on desktop reduces **upgrade risk**; **web** stays **small** and **auditable** for **privacy** and **performance** (**NFR-05**, **NFR-06**).
 
-- **Technical:** Go + Fyne is the product charter; **Material/Ant on desktop** would imply a different UI stack or embedded web views—extra cost and accessibility unknowns.  
-- **Consistency:** A **single Fyne theme** on desktop gives predictable **dark/light**, contrast, and spacing for **bulk review** and **layout stress** (1:1–21:9). Web surfaces should **reuse semantic roles** (colors, spacing, type) whether built as **Fyne WASM** or **HTML**.  
-- **Web:** Share pages need **clarity, privacy cues, and keyboard focus**—achievable with either **Fyne WASM** or **semantic HTML**; pick based on **measured** load and **a11y** validation.  
-- **Speed:** Shipping MVP favors **Fyne defaults** plus **targeted custom** (grid, review chrome) over an unrelated full component catalog on desktop.
+### Implementation approach
 
-### Implementation Approach
+1. **Semantic roles (desktop)** — Maintain one table (code or doc) mapping **roles** → **Fyne theme colors / styles**: at minimum **background**, **surface**, **primary**, **text primary**, **text secondary**, **focus**, **destructive** (delete), **reject / caution**, **border / separator**. **Both** themes implement **all** roles so features do not **only** work in dark mode.
+2. **Components as patterns** — Reuse Fyne primitives (**Button**, **Select**, **Entry**, **List**, **Scroll**, **Modal** or custom `fyne.CanvasObject` layouts) with **named wrappers** only where needed (**filter strip**, **thumbnail cell**, **loupe chrome**, **share preview sheet**) to enforce **spacing**, **focus**, and **role** usage consistently.
+3. **Typography and density** — Start from **Fyne defaults**; adjust **padding/margins** downward only when **image area** gains space—never **below** **readable** tap/click and **focus ring** visibility. **OS scaling** (**NFR-07**) validates **legibility**, not just raw pixels.
+4. **Web share CSS** — Single **small** stylesheet (or scoped blocks) using **CSS variables** mirroring semantic roles; **no** raw GPS panels; **focus** and **contrast** checked against **WCAG A** targets (**UX-DR11–UX-DR12**).
+5. **Icons and badges** — Use **consistent** shapes/colors for **rating**, **reject**, **failed decode**, **duplicate** summary—tied to **roles**, not **one-off** hex values in scattered files.
 
-- **Define design tokens** (name-level): semantic colors (background, surface, border, primary action, destructive, reject vs delete), spacing scale, corner radius, typography roles (title, body, caption, metadata), focus ring.  
-- **Implement tokens** in **Fyne theme** first; **mirror** roles on the web share layer (CSS variables or Fyne web theme—depending on chosen web stack).  
-- **Component patterns** (not necessarily new widgets): filter strip, thumbnail grid, single-photo chrome, operation summary panel, share preview step—each with **layout contracts** (safe zones for ultrawide) referenced from core UX success moments.  
-- **Icons:** Use a **single icon set** (Fyne-friendly) with **text labels** where the PRD requires clarity for share page **WCAG A**.
+### Customization strategy
 
-### Customization Strategy
+- **Brand:** Photo Tool is **utility-forward**, not **marketing-flashy**; “brand” = **predictable** **semantic** colors + **calm** typography + **photo-forward** layout. Optional **accent** only where it **aids** orientation (e.g. **primary** for **active nav**), not **decorative** noise.
+- **Image-first overrides** — When **layout** fights **token defaults** (e.g. default Fyne **padding** eats grid), **prefer** **layout templates** that **shrink chrome** before **shrinking thumbnails**—consistent with **intentional tension** in **Desired emotional response**.
+- **Destructive / reject** — **Never** style **Reject** like **Delete**; **never** place **Reject** **adjacent** to **1–5** in **keyboard** or **visual** grouping (**UX-DR5**).
+- **Future:** If the project adds **more** web surfaces, **extract** shared **tokens** to a **single source** (generated Go constants + CSS variables) to avoid **drift**—out of scope until a second web flow exists.
 
-- **Phase 1:** Default Fyne **light/dark** + minimal brand accent; **web** neutral, high-contrast reader view.  
-- **Phase 2:** Optional **brand pack** (accent, wordmark on share page) without changing interaction model.  
-- **Do not** fork Fyne internals; customize via **theme**, **layout containers**, and **composition** of standard widgets.  
-- **Document** any **custom-drawn** surfaces (e.g. image viewport with overlaid arrows) for **test matrix** (aspect ratios, DPI).
+**Review cadence:** When adding a **new surface** (e.g. Growth package UI), check **role coverage** and **focus order** before **shipping**—treat as **design-system** change, not **one widget** tweak.
 
-## 2. Core User Experience
+## 2. Core user experience
 
-### 2.1 Defining Experience
+*This section drills into the **single defining interaction** that should make Photo Tool feel unmistakable. It **extends** the earlier **Core User Experience** (product-level loop and principles) with **mechanics** and **success criteria** focused on what users would describe to a friend.*
 
-**Headline:** *Move through a huge pile of my own photos at full speed—rate, reject, and file into collections—without the UI fighting my monitor shape.*
+### 2.1 Defining experience
 
-**Subline:** *When I share, I know **exactly** what leaves my library and **who** it is for—after preview, not by surprise.*
+**The one-line story:** “**I move through my library with the photo huge on screen—rate, hide junk, and sort into albums—without fighting a panel full of buttons or flea-sized thumbnails.**”
 
-If the headline is nailed, **import trust**, **collection browsing**, and **CLI parity** read as supporting pillars. If the subline is nailed, **embarrassment** and **wrong-audience** failures stay rare.
+**The defining interaction:** **Hero-image triage**—a **tight loop** of **(1)** seeing each photo **as large as the window allows**, **(2)** committing **state** (**rating**, **tags**, **reject**, **collections**) with **minimal context switch**, and **(3)** **trusting** that **ingest** and **batch tools** tell the **truth** (**duplicates**, **failures**, **same words as CLI**). If this loop feels **fast, calm, and visual**, the product wins; if it feels like **admin software**, the product loses—regardless of feature count.
 
-### 2.2 User Mental Model
+**Secondary but coupled loop:** **Honest ingest**—**large previews** while adding photos plus **plain receipts**—because distrust at import **poisons** every later triage session.
 
-Users arrive with a **folder + light table** mental model: photos “live” somewhere on disk; the app should **respect capture time**, **not duplicate bytes**, and **make culling feel like a pro workstation** (keyboard, grid, loupe), not a passive feed. They expect **reject** to mean **“gone from my working set”** but **recoverable**, and **delete** to mean **something scarier and explicit**. For sharing, they think in **social circles** (close friends vs parents), not in **permission ACLs**—the UX should map circles to **simple presets** and **preview**, not jargon.
+### 2.2 User mental model
 
-Confusion risk: **ultrawide** layouts that **lose chrome** (known pain from the original idea); **reject vs 1-star**; **share link** that **updates** when the library changes unless you **promise snapshot** behavior.
+- **Users think in pictures, not rows.** They expect **the artifact** (the **image**) to be **the interface’s center of gravity**, like a **light table** or **contact sheet**, not a **database grid** where the **row chrome** matters more than the **thumbnail**.
+- **“My files, my disk.”** **Local-first** operators expect **predictable** paths, **dedup** that **matches intuition** (same bytes = one copy), and **no silent magic** that hides **failures** or **duplicates**.
+- **Reject vs delete** must match **emotional reality:** **Reject** = “**not part of my working set**” (recoverable, hidden); **Delete** = “**I meant to remove**” (guarded, heavier)—users **import** this from **email** and **file managers**; **conflation** creates **anxiety**.
+- **Share** is **publication**, not **sync**—they expect **preview** and **a fixed slice** (**snapshot**), not **surprise** changes for recipients.
+- **Confusion hotspots:** **tiny thumbs**, **lost chrome** on ultrawide, **unclear** duplicate outcomes, **ambiguous** share targets, **reject** that **feels like erase**.
 
-### 2.3 Success Criteria
+### 2.3 Success criteria
 
-- **Throughput [MVP]:** User can **sustain** bulk triage with **keyboard 1–5**, **prev/next**, and **reject** without reaching for the mouse for every photo (mouse optional for discovery).  
-- **Layout trust [MVP]:** From **1:1** to **21:9**, **primary controls** for review modes stay **in viewport**; image remains **fully visible** in the **~90%** region without crop—align verification to PRD **NFR-01** manual matrix (**1024×768** through **5120×1440**, square / 16:9 / 21:9).  
-- **Rating feedback [MVP]:** After assigning a rating, **visible state** (thumbnail and loupe) updates within **1 second** under **single-user, local-library** use—PRD **SC-3** / **FR-10**.  
-- **Honesty [MVP]:** After import/scan, user sees a **plain summary** (added, duplicate, failed)—same story from **CLI** and **GUI**. **Duplicate/dedup** outcomes are **deterministic** across upload, scan, import—PRD **NFR-03**.  
-- **Share assurance [MVP]:** **Preview-before-publish** with **explicit asset identity** before **token/URL minting**; **rejected** items **never** appear by default; **snapshot** link semantics unless PRD defines **live** shares (**FR-13**, **FR-14**).  
-- **Share assurance [Growth]:** Multi-asset **packages** use the same **preview → confirm → mint** order with a **visible manifest** (count + thumbnails/IDs). **Audience presets** accelerate but do not skip preview.  
-- **Recovery [MVP]:** **Reject** is **undoable** or **restorable** per the agreed rule; **Delete** requires **guarded** interaction.
+- **Visual dominance:** In **Review** and **loupe**, the **photo** occupies **the maximum practical area**; **chrome** is **peripheral**—validated by **layout matrix** and **stakeholder screenshot** test (“**does this look like buttons-with-photos?**” → fail).
+- **Speed of commitment:** **Rating** and other **frequent** actions persist within the **PRD** guideline (**~1s** local single-user) and **reflect immediately** on **grid badges** and **loupe**.
+- **Honest closure:** After **upload/scan/import**, user can **state** what happened (**added / duplicate / failed**) and **where** new files live—**GUI** matches **CLI** categories when the operation class overlaps.
+- **Safety clarity:** **Reject** removes from **default** views and **share selection** but remains **recoverable** from **Rejected/Hidden**; **Delete** requires **confirm** and **destructive** styling—**no** **mis-tap** pattern next to **1–5**.
+- **Share confidence:** **No token/URL** until **preview + confirm**; **rejected** not shareable on **default** path; recipient page **image-first**, **WCAG A**, **no raw GPS**.
+- **Orientation:** User can **name** where they are (**Upload / Review / Collections / Rejected**) without **hunting**—supports **calm competence** from **Desired emotional response**.
 
-### 2.4 Novel UX Patterns
+### 2.4 Novel UX patterns
 
-**Mostly established:** Grid + loupe review, star ratings, filters, albums/collections, **pick/reject** culling, **share link** preview—borrowed from DAM and consumer libraries.
+- **Mostly established:** **Thumbnail grid + full-screen/loupe viewer**, **keyboard numerals for rating**, **filters** (collection → min rating → tags), **collections** as **containers**—users **already know** these from **photo managers** and **DAM-style** tools.
+- **Differentiators (product-specific twists):** **Unified** upload + scan/import **semantics**; **Reject** as **first-class** **soft-hide** with **CLI/GUI** **aligned** summaries; **local snapshot** share with **loopback** default and **preview-before-mint**; **explicit** **Growth** path for **packages** with **manifest preview**.
+- **Education burden:** **Low** for grid/loupe; **medium** for **Reject vs Delete** and **snapshot share**—address with **copy**, **styling**, **confirm** steps, and **empty states**, not **tutorial walls**.
 
-**Differentiators (familiar pattern, sharp execution):** **Reject ≠ delete** with **safe keyboard layout**; **audience-first packages** (when in scope) on a **snapshot** model; **CLI/GUI parity** as a **product-visible** promise; **layout resilience** on **extreme aspect ratios** as a first-class requirement—not an afterthought.
+### 2.5 Experience mechanics
 
-**Education:** Minimal—rely on **metaphors** (collections = albums, reject = hidden pile). **Preview-before-share** teaches **snapshot** without a manual.
+**A. Initiation (enter triage)**
 
-### 2.5 Experience Mechanics
+- User opens **Review** from **primary nav**; **filter strip** shows **defaults** (**no assigned collection**, **any rating**) unless **remembered** per product rules.
+- Optional: user applies **filters** (**collection**, **min rating**, **tags**) via **compact strip**; expanded filter UI **yields** space back to **grid** when dismissed.
 
-**1. Initiation**  
-User opens **bulk review** or a **collection**, finishes **import** and lands on **“review new,”** or opens **Rejected/Hidden** to **audit or restore**. Entry points show **filter defaults** (no collection / any rating) and **visible counts** where applicable.
+**B. Interaction (core loop)**
 
-**2. Interaction**  
-User moves **photo to photo** (keys, swipe on touch, click). **Rating:** `1–5` or stars, **instant** persist. **Reject:** dedicated control/key **not** adjacent to `1–5`. **Delete:** separate, guarded. **Collections:** hover/quick assign in grid; richer assign in single-photo.
+1. **Scan grid** — **Large** thumbnails with **visible** **rating / reject / decode** state; **hover or equivalent** **quick** collection assign per **FR-08**.
+2. **Open loupe** — **Click** or **keyboard** opens **single-photo** view: image **letterboxed** in **~90%** region; **primary chrome** remains **in viewport** across **1:1–21:9** (**NFR-01**).
+3. **Commit state** — **1–5** or **stars** for **rating** (no extra confirm); **Reject** and **Delete** use **distinct** **controls** and **keyboard** bindings (**Reject not adjacent to 1–5**); **tags** and **multi-collection** assign per **PRD**.
+4. **Navigate** — **Prev/next** (**arrows**, **keys**, **swipe** where supported) **without** closing **loupe**; **focus order** targets **filter strip → grid → loupe** for **keyboard** users (**UX-DR15** intent).
 
-**Sharing (deliberate branch, not the default end of triage):** User signals **share** from **single-photo** or (when in scope) **selection/package flow** → **preview manifest** → **confirm** → **mint token / finalize URL** → copy or distribute. No **mint** before **confirm**.
+**C. Feedback**
 
-**3. Feedback**  
-**Selected rating/reject state** visible on **thumbnail and loupe** within the **SC-3** window. **Operation receipts** after batch jobs. **Errors:** **proportionate** copy with **next step**. **Undo** for reject when in scope of the rule.
+- **Immediate** **badge/state** updates on **grid** and **loupe** after **rating/reject**; **transient undo** for **reject** where architecture allows (**UX-DR8**).
+- **Errors** (**decode**, **IO**) show **cell-level** or **inline** **honest** states—**no** silent **holes**.
 
-**4. Completion**  
-User **clears the pile** (filtered set empty or session goal met), **organizes** into collections, **restores** from Rejected, or **finishes a share flow** after **preview + confirm**. **Next:** return to **library/collection** view or **continue triage** with filters unchanged unless user resets.
+**D. Completion**
 
-## Visual Design Foundation
+- **Session-level:** User **closes** loupe or **navigates** away with **visible** **progress** (**sorted** set, **fewer** unrated, **rejects** **cleared** from default).
+- **Ingest-level:** **Receipt** **summarizes** operation; user **dismisses** or **drills into** details **without** losing **large** **preview** context on **first** success paths.
 
-### Color System
+**E. Parallel path (share from loupe)**
 
-**Approach:** **Semantic tokens** implemented via the **Fyne theme** (desktop) and **mirrored roles** on the web share layer. **Web:** map **CSS custom properties 1:1** to the same role names as the Fyne theme so **Fyne WASM** and **HTML** implementations do not fork palettes. No fixed hex values in this spec until design or implementation locks them; define **roles** first.
+- **Share** opens **large preview sheet** → **confirm** → **mint** → **Copy** URL (**auto-copy** opt-in only); **rejected** **blocked** on **default** flow.
 
-**Fallback if tokens lag:** Ship share (and any early web UI) with **documented safe defaults**—**system neutrals + a single accent** mapped into the same **role names**—so implementation is never “unthemed.” When the full token set lands, **swap values** without renaming roles.
+**Next in workflow (BMAD):** **Step 8 — visual foundation** (color, type, spacing intent beyond tokens already chosen).
 
-**Core roles**
+## Visual design foundation
 
-- **Background / surface / elevated surface** — reduce glare for long sessions; support **light** and **dark** themes.  
-- **Border / divider** — separate grid cells and panels without heavy chrome.  
-- **Text primary / secondary / disabled** — **metadata** and summaries use **secondary** for de-emphasis.  
-- **Primary action** — one dominant CTA color (import confirm, primary navigation).  
-- **Destructive** — **Delete** and irreversible flows.  
-- **Warning / caution** — **Reject** or **hide** (distinct from destructive: **amber family** vs **red**), aligned to emotional **safety without slowdown**.  
-- **Success / info** — duplicate summaries, neutral confirmations.  
-- **Focus ring** — high-contrast, consistent with **keyboard-first** triage and **WCAG A** on share pages.
+*No separate **marketing brand book** is assumed for Photo Tool; visual direction follows **emotional goals** (**calm competence**, **image-first**) and **Design system foundation** (Fyne **semantic roles**, dual themes). **Hex values** belong in **theme code** or a **token file**—this section defines **strategy** and **constraints**.*
 
-**Star vs reject:** **Rating stars** and **reject** affordances must **not share the same silhouette**; do not rely on **hue alone**. Verify **caution/reject** colors remain distinguishable from **star gold** (and selected-star states) in **both** light and dark themes.
+### Color system
 
-**Theme completeness:** **Light and dark** each define **focus ring**, **destructive**, **reject/caution**, and **primary**—not a light-only palette with dark as an afterthought.
+- **Themes:** **Dark** (default) and **Light** as **peers**—both **complete**; no **light-mode-afterthought** controls or **missing** **destructive/reject/focus** roles in either.
+- **Semantic mapping (minimum roles):** **background**, **surface** (raised cards/panels), **primary** (key actions, active nav), **text primary**, **text secondary**, **border/separator**, **focus** (keyboard), **destructive** (**Delete**), **reject/caution** (**Reject**, non-destructive hide), **success** (optional—for **receipt “added”** emphasis), **warning** (optional—long operations). **Photos** sit on **surface/background** neutrals that **do not** compete with **sRGB** image saturation—avoid **neon** chrome.
+- **Emotional palette:** **Restrained**—**calm** grays/neutrals + **one** disciplined **primary** accent; **reject** and **delete** are **distinct** hues or **weight**, not **same red**.
+- **Contrast:** **WCAG 2.1 Level A** for **share page** text/UI; **desktop** targets **readable** body and **visible focus** on **both** themes at **100%** and **125%/150%** OS scaling (**NFR-07**). Validate **rating badges** and **secondary text** on **varied** photo **thumbnails** (light/dark images behind **semi-transparent** overlays if used).
+- **Imagery:** Prefer **neutral** **matte** chrome so **user content** carries **color**; **do not** **tint** the **loupe** image region.
 
-**Metadata / EXIF readability:** **Technical metadata** lines use **body** or **secondary** text roles against their **surface** (often **elevated** panels)—verify **contrast** in **both** themes; avoid ad-hoc “dim gray” that fails in **dark mode**.
+### Typography system
 
-**Contrast**
+- **Desktop:** **Fyne / platform system fonts**—no **custom** webfont **requirement** for MVP; **consistency** beats **brand novelty** for a **utility** product.
+- **Tone:** **Professional, quiet, legible**—**short** labels (**nav**, **filters**, **buttons**), **scannable** receipts; **no** long-form reading **surface** except **help/errors**.
+- **Hierarchy:** **Three** practical levels: **window/nav title**, **section label**, **body/caption** (grid metadata, receipt lines). **Avoid** **excessive** **sizes**—**pixels** belong to **photos**.
+- **Density:** **Slightly compact** **chrome** text to **return** area to **grid/loupe**; **never** **below** **minimum** comfortable **reading** at **target** OS scaling.
+- **Share page:** **System font stack** in CSS; **line length** short; **headings** only for **page title** / **error**—**image** remains **hero**.
 
-- Desktop: target **readable** body and control text against surfaces (exact ratios TBD in implementation; verify in both themes).  
-- **Share page [MVP]:** meet **WCAG 2.1 Level A** contrast for text and meaningful non-text cues where applicable.
+### Spacing and layout foundation
 
-**Stakeholder alignment (optional Phase 0):** When the theme freezes, publish a **token table** or **reference capture**—label intent: **internal engineering alignment** vs **external marketing** so screenshots are not reused out of context.
+- **Base unit:** **8px** mental model (Fyne **padding** may use **half/double**—document **in code** as **constants**). **Inset** **nav** and **strips** with **multiples** of base; **loupe** **image margin** **minimal**—**outer** **breathing room** only where **focus rings** and **window resize** need it.
+- **Density stance:** **Efficient** **chrome**, **generous** **media**—**inverse** of **current** **tiny-thumb** baseline; when **in doubt**, **shave** **panel** padding **before** **cell** size.
+- **Grid:** **Fluid columns** by **window width**; **minimum** **cell** size **floor** set in **layout AC** (see **testability** notes)—**grow** cells when **width** allows; **avoid** **fixed** **tiny** columns on **large** displays.
+- **Loupe:** **Center-weighted** image; **controls** **orbit** (**top/bottom** bar or **overlay** with **safe** **hit targets**); **arrows** **mid-height** at **image** edge per **PRD**.
+- **Z-order / layers:** **Filters** **drawer/overlay** **above** grid **without** **persistent** **resize** of **image** area when **closed**.
 
-### Typography System
+### Accessibility considerations
 
-**Tone:** **Professional, calm, utilitarian**—closer to **Lightroom workstation** than **playful consumer**. Users read **short labels**, **filter chips**, **receipts**, and **metadata blocks** more than long prose.
+- **Share page (mandatory):** **WCAG 2.1 Level A**—**focus** visible, **labels** for **controls**, **contrast** for **text** and **UI**, **keyboard** operability; **200% zoom** **primary** path usable (**UX-DR12**); **`prefers-reduced-motion`** for **non-essential** motion (**UX-DR12**).
+- **Desktop:** **Focus visibility** on **all** **interactive** **defaults**; **predictable** **tab order** (**filter strip → grid → loupe** intent); **do not** **rely** on **color alone** for **rating/reject** (**shape/icon/text** **redundancy** where feasible).
+- **Motion:** **Respect** system **reduced motion** for **loupe** transitions and **toasts**.
+- **Alt text (share):** **Neutral** policy (e.g. **“Shared photo”**) unless **owner** caption exists—**no** **auto** filename/EXIF **dump** (**UX-DR11**).
 
-**Strategy**
+## Design direction decision
 
-- **Desktop:** Prefer **platform-native system fonts** via Fyne defaults unless a brand font is mandated—**performance** and **familiarity** on macOS/Windows/Linux.  
-- **Roles (scale):** **Display / screen title**, **section header**, **body**, **caption**, **metadata / monospace optional** for EXIF lines if readability benefits.  
-- **Line height:** Slightly relaxed for **body** in receipts; **tighter** for **dense grid** labels.  
-- **Web share:** **System UI stack** or **single webfont** only if brand requires; avoid **layout shift** and **NFR-05** regressions.
+### Design directions explored
 
-### Spacing & Layout Foundation
+Six **layout directions** are captured as **low-fidelity wireframes** (HTML) for **chrome vs. photo** balance—not pixel-perfect Fyne. Open in a browser:
 
-**Density:** **Efficient by default** for **bulk review** (more thumbnails per screen); **airier** zones for **single-photo** chrome and **share preview** so **embarrassment-prone** actions get **breathing room**.
+`_bmad-output/planning-artifacts/ux-design-directions.html`
 
-**Spacing unit:** **8px base grid** (4px half-step allowed for optical alignment). Apply consistently to **gutters, list rows, filter strip, dialog padding**.
+| ID | Direction | Intent |
+|----|-----------|--------|
+| **A** | **Minimal top nav + collapsible filter strip + hero grid** | **Default recommendation**—grid is the app; filters yield space. |
+| **B** | **Narrow left rail + wide grid** | Maximum horizontal grid; validate **focus order** and **Fyne** rail ergonomics. |
+| **C** | **Edge-to-edge grid + floating filter chip** | Strong immersion; needs **obvious dismiss** and **keyboard** path to filters. |
+| **D** | **Loupe split: main stage + filmstrip** | Single-photo **hero** with context strip; watch **ultrawide** chrome rules. |
+| **E** | **Ingest-first: large previews + compact receipt** | Upload/scan **emotion**—previews dominate, receipts secondary. |
+| **F** | **Pro density: more cells, no inspector wall** | More thumbs **without** permanent metadata panel—**floor** cell size in **AC**. |
 
-**Layout principles**
+**Evaluation criteria used:** layout intuitiveness, interaction style, visual weight, navigation fit, journey support, emotional alignment (**calm**, **not admin UI**).
 
-- **Safe chrome:** Reserve **non-scroll regions** for **primary navigation** and **filters** per **PRD NFR-01** (manual matrix **1024×768**–**5120×1440**, square / 16:9 / 21:9)—**do not** pin critical controls to **viewport edges** that clip on wide screens.  
-- **Image-first:** In review modes, **photo area** owns the **center of attention**; controls **orbit** within safe regions.  
-- **Grid:** **Uniform thumbnail aspect** (e.g. square cells with letterboxed thumbs) for **scannable** bulk review; **consistent cell spacing** from the 8px system.  
-- **Touch (share / web):** Where controls are **tap** targets, aim for at least **~44×44 logical px** minimum interactive area (or platform-equivalent), even when the layout is **mouse-first** on desktop.
+### Chosen direction
 
-### Accessibility Considerations
+**Primary (v2 spec default): Direction A — minimal top navigation, collapsible/compact filter strip, hero thumbnail grid.**  
+**Secondary references:** **E** for **ingest** surfaces; **D** for **loupe** composition (main stage + contextual strip); **B** as a **future** variant if **top bar** feels heavy in **Fyne** testing.
 
-- **Share page [MVP]:** **WCAG 2.1 Level A** — keyboard-focusable controls, **visible focus**, **text alternatives** for meaningful icons, **labels** not icon-only for critical actions.  
-- **Zoom / reflow:** At **200%** browser zoom, **main share content** (image + primary controls + key text) remains **usable**—minimize **horizontal scrolling** on the **primary reading path**; interpret together with **1.4.4 Resize text** and **1.4.10 Reflow** during implementation.  
-- **Desktop Fyne:** Follow **platform + Fyne** accessibility posture; document **keyboard paths** for rating, reject, delete, navigation.  
-- **Color:** Do not rely on **color alone** for **rating** or **reject** state—pair with **icon, badge, or position**.  
-- **Motion:** Avoid **unnecessary animation** in triage; respect **reduced motion** where the stack allows.  
-- **Quality gate (placeholder):** Run **automated contrast / basic accessibility** checks (e.g. axe or equivalent) on the **default share template** in **CI** or **release checklist**—exact tooling TBD in architecture.
+**Status:** **Locked as design intent** pending **usability / NFR-01 matrix** validation; **combine** elements (e.g. **A** + **D** loupe layout) as implementation proves necessary.
 
-## Design Direction Decision
+### Design rationale
 
-### Design Directions Explored
+- Aligns with **stakeholder** mandate: **photos largest**, **not** **buttons-and-dropdowns-first**.
+- **Progressive disclosure** for filters matches **transferable patterns** (Step 5) and **intentional tension** (image prominence **wins** over default chrome).
+- **Conservative** on **C** (full floating chrome)—higher **discovery** risk for **filters** and **a11y** unless carefully built.
+- **F** remains available for **power** users only if **minimum cell** and **OS scaling** tests pass—never as **default tiny-thumb** baseline.
 
-Six static directions were compared in `_bmad-output/planning-artifacts/ux-design-directions.html` (**disposable browser showcase only**—not production UI). Directions ranged from dark DAM and light clinical to dense violet and share-adjacent teal layouts.
+### Implementation approach
 
-### Chosen Direction
+- **Prototype in Fyne** with **Direction A** for **Review** + **Collection detail**; measure **grid cell size** vs. **window** at **1024–5120** widths and **125%/150%** scaling.
+- **Loupe:** adopt **D-like** **orbit** controls + **letterboxed** main stage per **PRD**; **filmstrip** optional if it **does not** shrink **main** image below charter.
+- **Upload:** apply **E-like** **preview-first** layout; **receipt** **collapsible** after first success path.
+- **HTML file** is **communication** artifact for **stakeholders**; **source of truth** remains this spec + **stories**—update **AC** when a **direction** mix is chosen per screen.
 
-**Primary character: “Dark DAM default”** (showcase **Direction 1**)—dark surfaces, **blue** primary accent, **pro workstation** weight (bulk review + filter strip + grid), aligned with **calm at scale** and **authored control**.
+## User journey flows
 
-**Dual themes required:** Implement a full **light / white** theme as a **first-class peer**, not an afterthought. Both themes must map the **same semantic roles** (background, surface, primary, destructive, reject/caution, focus, text primary/secondary, metadata readability)—consistent with **Visual Design Foundation → Theme completeness** and **Design System Foundation** (Fyne `fyne.Theme` or equivalent). Users should be able to run **dark (default product character)** or **light** (daylight sessions, preference, or future OS sync), with **no feature gap** between themes for core triage.
-
-### Design Rationale
-
-- **Dark DAM default** matches the **serious organizer** emotional target and long **triage** sessions without glare.  
-- **Blue primary** reads as **tooling**, not consumer “gallery fluff,” while staying distinct from **star gold**, **reject/caution**, and **destructive** roles.  
-- **Light/white** support is a **product requirement**: accessibility of choice, bright environments, and parity with expectations for desktop apps—without abandoning the **dark-first** identity.
-
-### Implementation Approach
-
-- **Ship two Fyne themes** (dark + light) from one **token/role table**; avoid one-off colors per screen.  
-- The **HTML showcase** informed **direction only**; **all shipped desktop UI** is **Fyne**. Web share surfaces remain per **Design System Foundation** (Fyne WASM and/or minimal HTML), reusing **the same role names** as the Fyne themes.  
-- Validate **both** themes against **NFR-01** layout matrix and **metadata/EXIF** contrast notes in **Visual Design Foundation**.
-
-## User Journey Flows
-
-PRD **User Journeys A–D** define *who* and *why*; this section defines *how* in UX terms, plus flows added in this spec (**reject/delete**, **packages**).
+*Flows extend **PRD user journeys** (A–F) with **screen-level** intent, **decision points**, and **recovery**. **Direction A/E/D** inform layout: **hero grid**, **large ingest previews**, **loupe-forward** share. Diagrams are **Mermaid**—render in a Mermaid-capable viewer if needed.*
 
 ### Journey A — Bulk import and optional collection
 
-**Goal:** Bring many files in, dedupe, place by capture time, optionally attach to a new collection **only after confirm**.
+**Goal:** Add many photos with **honest outcomes** and **optional** batch collection—**no** surprise albums (**FR-01–FR-06**).
 
-**Flow**
+**Flow notes:** **Large previews** during/after ingest (**Direction E**); **receipt** always visible; **confirm** is the **only** gate to **persist** collection (**FR-06**).
 
 ```mermaid
 flowchart TD
-  A[User opens Upload Photos] --> B[Selects many files]
-  B --> C[System hashes and dedupes]
-  C --> D[Writes new files to Year Month Day]
-  D --> E{Assign to collections?}
-  E -->|Yes| F[Default name Upload YYYYMMDD editable]
-  F --> G{User confirms?}
-  G -->|Yes| H[Create or update collections and links]
-  G -->|No| I[No new collection]
-  E -->|Skip| I
-  H --> J[Show receipt added skipped duplicate failed]
-  I --> J
+  A[Upload: picker or drop] --> B[Ingest pipeline hash dedupe EXIF]
+  B --> C[Show large previews plus running status]
+  C --> D[Operation receipt added dup failed]
+  D --> E{Assign upload collection?}
+  E -->|Edit default name| F[Name Upload YYYYMMDD or custom]
+  E -->|Clear skip| G[No collection links]
+  F --> H{User confirms collection?}
+  H -->|Yes| I[Create or update collection and link batch]
+  H -->|No| G
+  I --> J[Done: library updated]
+  G --> J
 ```
 
-**UX notes:** Receipt must match **CLI honesty** story; confirm gate is **mandatory** for collection creation (**FR-06**).
+**Recovery:** Partial failures **listed** on receipt; **retry** or **fix source** paths **plain-language**; **no** silent partial success.
+
+---
 
 ### Journey B — Bulk review, rating, and single-photo share
 
-**Goal:** Triage fast with keyboard; open loupe; share one photo with **preview before mint**.
+**Goal:** **Triage** at speed with **keyboard**; **share** only after **large preview** + **confirm** (**FR-07–FR-14**, **FR-32**, **FR-29**).
 
-**Flow**
-
-```mermaid
-flowchart TD
-  A[User opens bulk review] --> B[Sees grid with filters default order]
-  B --> C[Rate with 1 to 5 or stars]
-  C --> D[Optional quick collection on hover]
-  D --> E{Open large view?}
-  E -->|Yes| F[Loupe up to 90 percent viewport]
-  F --> G[Prev next keys swipe arrows on image]
-  G --> H{Share?}
-  E -->|No| H
-  H -->|Yes| I[Preview asset identity]
-  I --> J{Confirm?}
-  J -->|Yes| K[Mint token finalize URL]
-  J -->|No| F
-  K --> L[User copies link recipient read-only web]
-  H -->|No| B
-```
-
-**UX notes:** Reject key **not** adjacent to 1–5; layout must pass **NFR-01**; browser **no rating edit** in MVP (**FR-14**).
-
-### Journey C — Browse collections and single-photo depth
-
-**Goal:** List collections, full-page detail, group by stars day or camera; deep single-photo assign.
-
-**Flow**
+**Flow notes:** **Filter strip** defaults **no collection / any rating**; **loupe** uses **maximum** image area; **rejected** **blocked** from default share.
 
 ```mermaid
 flowchart TD
-  A[User opens Collections list] --> B[Selects collection]
-  B --> C[Full page detail not modal]
-  C --> D[Sort by capture time group by stars]
-  D --> E{Change grouping?}
-  E -->|Day or camera| D
-  E -->|Open photo| F[Single photo view]
-  F --> G[Rate reject delete per rules]
-  F --> H[Multi collection assign or new collection]
-  H --> F
+  R[Open Review] --> F[Filter strip collection min rating tags]
+  F --> G[Hero thumbnail grid badges]
+  G --> H{Action?}
+  H -->|Hover quick assign| Q[Pick collection persists]
+  H -->|Open loupe| L[Large letterboxed image]
+  L --> K[Rate 1 to 5 or stars]
+  L --> X[Reject caution not adjacent to rating]
+  L --> S{Share?}
+  S -->|No| G
+  S -->|Yes| P[Large share preview sheet]
+  P --> C{Confirm mint?}
+  C -->|No| L
+  C -->|Yes| M[Mint snapshot token]
+  M --> U[Show URL with explicit Copy]
+  Q --> G
+  K --> G
+  X --> G
 ```
 
-### Journey D — Scan or import existing disk
+**Edge cases:** **Rejected** asset → **block** default share path → user must **restore** or use **Rejected** view intentionally. **Decode failure** → **cell state** + explanation, not blank tile.
 
-**Goal:** Register or copy into canonical layout with **dry-run** and summaries.
+---
 
-**Flow**
+### Journey C — Browse by collection
+
+**Goal:** **Albums** as **places**—**full-page** detail, grouping by **stars / day / camera** (**FR-15–FR-25**, **FR-21**).
 
 ```mermaid
 flowchart TD
-  A[User runs scan or import CLI or GUI] --> B{Dry run?}
-  B -->|Yes| C[Report counts only no write]
-  B -->|No| D[Discover images extract EXIF dedupe]
-  D --> E[Apply scan copy or import register rules]
-  E --> F[Emit summary added duplicate updated failed]
-  C --> G[User decides next action]
-  F --> G
+  C1[Collections list] --> C2[Select collection]
+  C2 --> C3[Full page detail hero grid]
+  C3 --> C4{Grouping mode?}
+  C4 -->|Stars default| C5[Sections omit empty ratings]
+  C4 -->|By day| C6[Day headers]
+  C4 -->|By camera| C7[Camera headers]
+  C5 --> C8[Open loupe rate multi-assign]
+  C6 --> C8
+  C7 --> C8
+  C8 --> C3
 ```
 
-**UX notes:** Summary semantics **must match GUI** for the same operation class (**one voice**).
+---
+
+### Journey D — Scan or import existing disk (CLI)
+
+**Goal:** **Power users** reconcile trees with **dry-run** and **GUI-aligned** summaries (**FR-27–FR-28**, **NFR-04**).
+
+```mermaid
+flowchart TD
+  D1[Run scan or import with flags] --> D2{Dry run?}
+  D2 -->|Yes| D3[Print summary only no writes]
+  D2 -->|No| D4[Walk tree hash dedupe register]
+  D4 --> D5[Emit OperationSummary categories]
+  D3 --> D6{Failures?}
+  D5 --> D6
+  D6 -->|Any| D7[Non zero exit after summary]
+  D6 -->|None| D8[Zero exit]
+```
+
+*GUI parity:* **Same category labels** as **upload receipt** where operation class matches.
+
+---
 
 ### Journey E — Reject, delete, and recovery
 
-**Goal:** Hide bad shots without losing trust; delete is rarer and guarded; recovery is discoverable.
-
-**Flow**
+**Goal:** **Safe clearing** vs **intentional removal**; **recoverable** reject (**FR-29–FR-31**).
 
 ```mermaid
 flowchart TD
-  A[User in review grid or loupe] --> B{Action?}
-  B -->|Reject| C[Soft hide from default surfaces and share builders]
-  C --> D[Undo or rule window if defined]
-  D --> E[Rejected Hidden bucket always reachable]
-  B -->|Delete| F[Guarded confirm distinct UI]
-  F --> G[Strong removal per PRD arch]
-  B -->|Restore| E
-  E --> H[User restores to library]
+  E1[Grid or loupe] --> E2{User action?}
+  E2 -->|Reject| E3[Soft hide from default surfaces]
+  E3 --> E4{Undo available?}
+  E4 -->|Yes| E5[Transient undo toast]
+  E4 -->|No| E6[Open Rejected Hidden]
+  E5 --> E1
+  E6 --> E7[Restore clears reject]
+  E7 --> E1
+  E2 -->|Delete| E8[Destructive confirm dialog]
+  E8 -->|Cancel| E1
+  E8 -->|Confirm| E9[Architecture-defined delete pipeline]
+  E9 --> E1
 ```
+
+---
 
 ### Journey F — Sharable package (Growth)
 
-**Goal:** Curate a **snapshot** set for an **audience preset** with **preview manifest** (not skipped by presets).
-
-**Flow**
+**Goal:** **Multi-asset snapshot** with **manifest preview**; **presets never replace preview** (**FR-33**).
 
 ```mermaid
 flowchart TD
-  A[User selects photos or filtered set] --> B[Start package flow]
-  B --> C[Optional audience preset accelerator]
-  C --> D[Preview manifest count thumbs or IDs]
-  D --> E{Confirm?}
-  E -->|Yes| F[Mint package link snapshot]
-  E -->|No| A
-  F --> G[Share excludes rejected hidden by default]
+  F1[Select multi or filtered set] --> F2[Optional audience preset accelerator]
+  F2 --> F3[Manifest count thumbs or IDs]
+  F3 --> F4{Confirm package?}
+  F4 -->|No| F1
+  F4 -->|Yes| F5[Mint snapshot package link]
+  F5 --> F6[Copy URL]
 ```
 
-**UX notes:** Treated as **Growth** until PRD explicitly promotes to MVP; mechanics mirror **preview before publish**.
+---
 
 ### Journey patterns
 
-- **Entry:** Primary navigation to **Upload**, **Review**, **Collections**, **Rejected**; post-import shortcut to **review new**.  
-- **Filters:** Always **Collection then min rating then tags**; defaults **no collection**, **any rating**.  
-- **Decisions:** **Confirm** only for **collection create from upload**, **delete**, **share mint**, **package mint**.  
-- **Feedback:** **Receipts** after batch jobs; **inline state** on thumbs within **SC-3**; **proportionate** errors.  
-- **Recovery:** **Rejected** surface; **undo** for reject per agreed rule.
+- **Primary nav anchor** — **Upload / Review / Collections / Rejected** in **fixed order**; **orientation** before **task depth**.
+- **Confirm-before-persist** — **Collection** from upload batch; **Delete**; **Share mint**—**three different** “commit” families with **distinct** styling.
+- **Preview-before-publish** — **Share** and **Growth package** always **show** what recipients get **large** where possible.
+- **Honest batch closure** — **Receipt** or **CLI summary** ends **ingest-class** jobs; **failures** **addressed**, not **hidden**.
+- **Progressive disclosure** — **Filters** and **metadata** **yield** canvas to **grid/loupe** when not active.
+- **Recovery always drawn** — **Reject** has **undo** and/or **Rejected**; **errors** have **next step** copy.
 
 ### Flow optimization principles
 
-1. **Triage first** — Default paths favor keyboard and minimal blocking dialogs.  
-2. **Preview before publish** — No URL without **confirm** after **visible manifest**.  
-3. **One voice** — GUI and CLI tell the same **counts and outcomes**.  
-4. **Safe chrome** — Flows assume **NFR-01** layout; no steps that require **off-screen** controls.  
-5. **Scope honesty** — **Packages** and **live links** are **explicit** branches, not silent upgrades.
+1. **Minimize steps to first large photo** — **Empty library** and **post-upload** should **show** **big** imagery **before** deep forms.
+2. **One focal task per screen** — **Triage** = **grid/loupe**; **avoid** **inspector + tiny grid** defaults.
+3. **Reduce decision points at commit** — **Share** and **Delete** use **explicit** confirm; **rating** stays **one action**.
+4. **Feedback proportional to stakes** — **Receipt** detail expandable; **rating** **instant** badge update.
+5. **Error paths are emotional paths** — **Failure / recovery** rows in **Desired emotional response** apply: **plain language**, **no dead ends**.
 
-## Component Strategy
+## Component strategy
 
-### Design System Components
+*Stack: **Fyne** primitives + **semantic tokens** (**Design system foundation**). **UX-DR1–UX-DR15** (epics) name the **product-specific** patterns below. **Custom** here means **composed layouts and behaviors**, not necessarily **new widgets**—prefer **thin wrappers** over **forking** Fyne internals.*
 
-**Fyne baseline (desktop):** Standard widgets for **navigation**, **forms**, **dialogs**, **menus**, **lists**, **scroll containers**, **labels**, **separators**, **progress** where applicable. **Theming** via **custom `fyne.Theme`** implementing agreed **semantic roles** (dark + light).
+### Design system components
 
-**Web share (when not Fyne WASM):** Semantic HTML elements + **token-mapped** CSS; no separate “design system” beyond **roles** from **Visual Design Foundation**.
+**Available from Fyne / platform (foundation):**
 
-### Custom Components
+- **Controls:** `Button`, `Label`, `Entry`, `PasswordEntry`, `Select`, `Check`, `RadioGroup`, `Slider`, `Hyperlink`, `RichText` (where used).
+- **Structure:** `Box`, `Border`, `Grid`, `Form`, `Scroll`, `Split`, `AppTabs` / custom tab row if needed, `Card` (if version supports) or **bordered container** pattern.
+- **Windows / layers:** `Dialog`, `PopUp`, `Modal` patterns, `Window` toolbar areas.
+- **Theme:** `fyne.Theme` implementation mapping **semantic roles** → **colors**, **sizes**, **fonts** (**UX-DR1**).
 
-**1. Filter strip**  
-**Purpose:** Persistent **Collection → Min rating → Tags** with PRD defaults.  
-**Content:** Current selections, chip or dropdown affordances.  
-**Actions:** Change filters; optional **assign selection to collection** from filter context.  
-**States:** Default, disabled (if no library), error if invalid combo.  
-**Accessibility:** Full keyboard traversal, visible focus, labels not icon-only.
+**Gaps (require composed “product components”):** **filter strip**, **thumbnail cell**, **loupe layout**, **operation receipt**, **share preview sheet**, **empty state block**, **collection row / section header**, **drag-drop target**, **tag editor** (bulk), **package manifest** (Growth).
 
-**2. Thumbnail grid cell**  
-**Purpose:** Dense bulk review.  
-**Content:** Thumbnail, rating badge, reject indicator, optional collection hint.  
-**Actions:** Select, open loupe, hover quick actions **with non-hover duplicates** elsewhere.  
-**States:** Default, hover, selected, focused (keyboard), rejected hidden from grid; **decoding / pending** (placeholder or skeleton until pixmap ready); **failed decode** (icon + tooltip or caption).  
-**Accessibility:** Focus ring meets **non-hairline** guidance; rating state not color-only.  
-**Data contract:** **One source of truth** for displayed state (asset id, rating, reject flags, selection)—grid and loupe **subscribe** to the same model so state does not drift between views.
+---
 
-**3. Review loupe (single-photo viewport)**  
-**Purpose:** **90%** max footprint, **full image** letterboxed, **prev/next** mid-height on image.  
-**Content:** Image, stars, metadata panel optional, share entry.  
-**Actions:** Rate 1–5, reject, delete guarded, collections, share branch.  
-**States:** Portrait vs landscape assets; **1:1–21:9** window (**NFR-01**).  
-**Accessibility:** Keyboard prev/next and rating; focus order logical.
+### Custom components
 
-**4. Operation receipt panel**  
-**Purpose:** Post-import/scan trust.  
-**Content:** Added, skipped duplicate, updated, failed codes.  
-**Actions:** Dismiss, **copy summary** optional, link to log.  
-**States:** Success partial success failure.
+#### Primary navigation shell
 
-**5. Share preview sheet**  
-**Purpose:** **Preview before mint** for single photo MVP and packages Growth.  
-**Content:** Thumbnail or manifest list, audience preset optional.  
-**Actions:** **Confirm** (UI) triggers **mint request**; **Cancel** returns without URL.  
-**States:** Loading, success, error.  
-**Boundary:** **Token/URL minting** is **service/architecture**—the UI **never** shows a final share URL until **confirm** and a **successful mint** response (or documented error).
+- **Purpose:** **Orientation** (**Upload / Review / Collections / Rejected**) with **minimal height** (**UX-DR13**).
+- **Usage:** **Every** main surface; **same order** always.
+- **Anatomy:** **Nav row** + **content area** (fills); optional **window title** sync.
+- **States:** **Active** section uses **primary** role; **inactive** **text secondary**; **keyboard focus** visible on each target.
+- **Variants:** **Compact** labels if width constrained (prefer **icons + tooltips** only if **text** still discoverable elsewhere—avoid **mystery meat**).
+- **Accessibility:** **Full keyboard** reachability; **logical tab** order **into** content, not **trapped** in nav.
+- **Content:** Short labels matching **PRD** terms.
+- **Interaction:** **Click** / **shortcut** (future) selects area; **no** **hidden** fifth area without **PRD** change.
 
-**6. Reject vs delete control pair**  
-**Purpose:** Prevent confusion.  
-**Content:** Distinct icons/labels; delete behind confirm or equivalent guard.  
-**Actions:** Reject undo per rule.  
-**States:** Pending undo.
+#### Filter strip
 
-**7. Collections list / detail shell**  
-**Purpose:** Full-page navigation (**FR-21**).  
-**Content:** List rows; detail grid with grouping headers (stars day camera).  
-**Actions:** Navigate create edit delete collection per PRD.
+- **Purpose:** **Collection → min rating → tags** with **defaults** (**FR-15**, **FR-16**, **UX-DR2**).
+- **Usage:** **Review** top (below nav); **collapsible** per **Design direction A**.
+- **Anatomy:** **Three** controls **in order** + optional **collapse** affordance; **Apply** only if needed (prefer **live** apply with **debounce** for tags).
+- **States:** **Default** vs **dirty**; **disabled** when **no library**; **error** if filter query fails.
+- **Variants:** **Collapsed** = single **chips** row summarizing selections.
+- **Accessibility:** **Visible focus**; **arrow** navigation between controls; **screen reader** names state (“Minimum rating 3 stars”).
+- **Content:** **Plain** filter names; **no** jargon.
+- **Interaction:** Changing filter **updates** grid **without** stealing **focus** from **loupe** unexpectedly (define **focus restoration** rule in implementation).
 
-**8. Empty state pattern**  
-**Purpose:** Calm guidance when there is nothing to show.  
-**Content:** Short explanation + **one primary CTA** (e.g. import, clear filters, open collections).  
-**Usage:** Reuse across **empty library**, **no filter results**, **empty Rejected/Hidden**.
+#### Thumbnail grid cell
 
-**9. Transient feedback (cross-cutting)**  
-**Purpose:** Lightweight confirmation without blocking flows—especially **undo reject** and quick saves.  
-**Behavior:** Short duration; **keyboard-dismiss** where applicable; **cap** stacked notices (e.g. max two). Not a replacement for **operation receipt** for large batches.
+- **Purpose:** **Dense triage** with **state at a glance** (**UX-DR3**, **FR-07** display).
+- **Usage:** **Review**, **collection detail**, **Rejected** list.
+- **Anatomy:** **Image** (max area) + **rating badge** + **reject indicator** + optional **quick collection** affordance on **hover/focus**.
+- **States:** **Default**, **hover**, **selected**, **focused**, **decoding**, **failed decode**, **rejected overlay**.
+- **Variants:** **Cell size** scales with **window**—**minimum** per **layout AC**; **never** **default** to **flea** size on **large** displays.
+- **Accessibility:** **Keyboard** **enter** opens loupe; **focus** border; **reject/rating** not **color-only**.
+- **Content:** **Alt** not required on desktop grid (decorative) unless **product** decides otherwise; **tooltips** for **filename** optional.
+- **Interaction:** **Quick assign** without opening loupe (**FR-08**).
+
+#### Review loupe
+
+- **Purpose:** **Single-photo hero** with **orbital** controls (**UX-DR4**, **FR-09–FR-12**, **FR-25**).
+- **Usage:** From **grid**; **full window** content region.
+- **Anatomy:** **Letterboxed image** + **prev/next** mid-height + **rating** + **reject** + **delete** + **share** + **tags/collections** as **secondary** row or **overflow**.
+- **States:** **Loading**, **ready**, **error**, **transition** (respect **reduced motion**).
+- **Variants:** **Ultrawide** / **square**—**chrome** must stay **in viewport** (**NFR-01**).
+- **Accessibility:** **Keyboard** **1–5**, arrows; **Reject** **not** adjacent to **1–5** (**UX-DR5**); **focus** never **lost** off-window.
+- **Content:** **Metadata** panel **optional** and **secondary**—**do not** **split** loupe **50/50** with **inspector** by default.
+- **Interaction:** **Rating** saves **immediately** (**FR-10**).
+
+#### Operation receipt
+
+- **Purpose:** **Honest batch closure** after ingest-like ops (**UX-DR6**, **NFR-04**).
+- **Usage:** **Post-upload**, **post-scan** (if surfaced in GUI later), **import** summary views.
+- **Anatomy:** **Counts** row (**added / duplicate / failed / updated**) + **expand** for **details** + **primary dismiss**.
+- **States:** **Success with failures** (non-zero failed) uses **warning** role; **total failure** uses **error** role.
+- **Variants:** **Compact** bar vs **expanded** list.
+- **Accessibility:** **Announce** summary for **assistive tech** if **platform** allows; **focus** moves to **receipt** then **logical** next step.
+- **Content:** **Same words** as **CLI** categories.
+- **Interaction:** **Dismiss** returns focus to **grid** or **upload**.
+
+#### Share preview sheet
+
+- **Purpose:** **Preview-before-mint** (**UX-DR7**, **FR-32**).
+- **Usage:** **Loupe** share action.
+- **Anatomy:** **Large asset preview** + **identity text** (id/filename policy) + **Confirm** + **Cancel** + post-mint **URL** + **Copy** (no auto-copy unless opt-in).
+- **States:** **Pre-mint** (no URL), **minting**, **success**, **error** (token failure, network).
+- **Variants:** **Growth** adds **manifest** list—**same** confirm discipline.
+- **Accessibility:** **Focus trap** in modal; **Enter** does **not** mint without **explicit** **default** on **Confirm** only.
+- **Content:** **Plain** explanation of **snapshot** semantics (short).
+- **Interaction:** **Rejected** path **blocked**—**inline** message.
+
+#### Empty state block
+
+- **Purpose:** **Orientation** when **no data** (**UX-DR9**).
+- **Usage:** **Empty library**, **no filter results**, **empty Rejected**.
+- **Anatomy:** **Illustration optional** + **one primary CTA** + **short** explanation.
+- **States:** N/A.
+- **Variants:** **Context-specific** copy only—**reuse** layout shell.
+- **Accessibility:** **Heading** + **CTA** labeled.
+- **Content:** **Encouraging**, not **blaming**.
+- **Interaction:** **CTA** starts **journey** (e.g. **Upload**).
+
+#### Collection list row and detail section header
+
+- **Purpose:** **Browse albums** and **group** within detail (**UX-DR10**, **FR-21–FR-24**).
+- **Usage:** **Collections** list → **full-page** detail.
+- **Anatomy:** **Row:** name + optional **display date** + **count**; **Section header:** **star group** / **day** / **camera** label.
+- **States:** **Hover**, **selected** row.
+- **Variants:** N/A.
+- **Accessibility:** **List** keyboard nav; **headers** **semantic** structure (visual hierarchy at minimum).
+- **Content:** **Display date** explained as **metadata**, not **EXIF** replacement (**FR-18**).
+- **Interaction:** **Navigate** to **detail** **full page**, not **modal** stack for **primary** browse.
+
+#### Drag-and-drop upload target
+
+- **Purpose:** **Parity** with picker ingest (**UX-DR14**, **FR-01**).
+- **Usage:** **Upload** surface.
+- **Anatomy:** **Large** drop zone **visually** part of **preview** area (**Direction E**).
+- **States:** **Idle**, **drag-over** highlight, **unsupported** drop error.
+- **Variants:** N/A.
+- **Accessibility:** **Keyboard** users use **picker**—drop zone **not** sole path; **announce** errors.
+- **Content:** **Clear** **supported types** message.
+- **Interaction:** **Same pipeline** as **picker**.
+
+#### Tag bulk editor (Review)
+
+- **Purpose:** **FR-07** tags without **inspector wall**.
+- **Usage:** **Selection** + **inline** or **sheet** pattern.
+- **Anatomy:** **Entry** or **chips** + **apply to selection**.
+- **States:** **Dirty**, **saving**, **error**.
+- **Variants:** N/A for MVP beyond **simple** editor.
+- **Accessibility:** **Label** association; **escape** closes sheet.
+- **Content:** **Comma-separated** or **token** UX—**product** picks **one** pattern and **documents**.
+- **Interaction:** **Filter** strip **tags** reflect updates.
+
+#### Growth: package manifest preview
+
+- **Purpose:** **FR-33** **manifest** before mint.
+- **Usage:** After **multi-select** package flow exists.
+- **Anatomy:** **Scrollable** **thumbnails or IDs** + **count** + **Confirm**.
+- **States:** Same discipline as **share sheet**.
+- **Accessibility:** **Keyboard** **operable** list; **focus** management.
+- **Content:** **Rejected** **excluded** by default—**show** rule in copy if **user** could wonder.
+- **Interaction:** **Preset** does **not** skip **manifest**.
+
+---
 
 ### Component implementation strategy
 
-- **Compose** from Fyne primitives first; **custom-draw** only **loupe image stack** and **grid cell overlays** if needed.  
-- **Share** token names with web layer for colors/spacing/type roles.  
-- **Document** layout contracts for **safe chrome** in **loupe** and **grid** for QA matrix.  
-- **Large libraries:** Thumbnail grid must support **virtualization, windowing, or paging** as volume grows—**exact mechanism** is architecture; UI design assumes **incremental load** is possible without locking to naive “render all cells.”  
-- **Long-running jobs** (large import/scan): show **progress** and offer **safe cancel** where architecture supports it—align with **NFR-02** (no unbounded memory; user-visible progress).  
-- **Upload entry:** Support **drag-and-drop** onto a designated **drop target** in addition to the file picker, **same pipeline** as multi-select upload.
-
-### Testability (placeholder)
-
-- **Filter strip:** Changing **collection** or **rating** threshold **updates** the visible grid set (or count) **without** silent mismatch.  
-- **Loupe + grid:** After rating in loupe, **thumbnail** reflects new rating within **SC-3** window.  
-- **Share preview:** **No** final URL in clipboard or UI until **confirm** and successful **mint** (or explicit error state).
+- **Implement** as **small packages** under `internal/` (or existing app structure): e.g. **`ui/shell`**, **`ui/review`**, **`ui/share`**—**one** **theme** source **injected**.
+- **Compose** Fyne primitives; **extract** **only** when **third** reuse appears (**rule of three**) or **AC** demands **consistency** (**badges**, **receipt**).
+- **Test** **layout** with **matrix** fixtures (**NFR-01**, **NFR-07**), not only **manual** **happy path**.
+- **Web share** uses **separate** **minimal** **components** (HTML partials) with **CSS variables**—**do not** force Fyne into **server HTML**.
 
 ### Implementation roadmap
 
-**Phase 1 — MVP flows:** Filter strip, thumbnail cell, loupe, operation receipt, share preview (single photo), reject/delete pair, collections shell, **Rejected/Hidden** destination (if reject ships MVP), **empty states**, **transient feedback**, **upload DnD** where feasible.  
-**Phase 2 — Depth:** Metadata side panel polish, bulk multi-select operations, grid **performance** hardening (virtualization if needed), **progress/cancel** polish for heavy jobs.  
-**Phase 3 — Growth:** Package builder manifest preview, audience presets as accelerators.
+| Phase | Components / outcomes | Drives journey |
+|-------|------------------------|----------------|
+| **1 — Core triage shell** | Primary nav, filter strip, thumbnail cell, loupe skeleton, grid scroll | **B**, **C** |
+| **2 — Trust surfaces** | Operation receipt, upload + DnD target, collection list/detail headers, empty states | **A**, **C** |
+| **3 — Risk actions** | Reject/delete styling separation, undo toast, delete confirm, Rejected list cell | **E** |
+| **4 — Share** | Share preview sheet, post-mint URL row, web page template partials | **B** (share leg) |
+| **5 — Growth** | Package manifest preview, multi-select chrome | **F** |
 
-## UX Consistency Patterns
+### Party mode follow-ups (2026-04-14)
 
-These patterns align with **User Journey Flows** and **Component Strategy**; intentional overlap supports **QA traceability** and acceptance themes.
+*Synthesis from **Party Mode** on this component strategy (Sally / Winston / Amelia). **Step 12 — UX patterns** should expand the “govern composition” items; **architecture** and **AC** items belong in **architecture.md** / **stories** where noted.*
+
+**Image-first and Step 12 (UX)**
+
+- Treat **image stage** explicitly: grid vs single-photo vs (future) compare—**minimum readable thumb size**, **safe padding**, **when chrome may overlap** the image (not by default in primary review).
+- Define **density tiers** (e.g. comfortable / compact / inspect), **progressive disclosure** (default vs hover vs selected vs expert), and **grid semantics** (min cell, column collapse, gutters)—**filter strip + thumbnail cell** are the highest **control-soup** risk; cap **visible chrome per tier**.
+- Add patterns for **selection / bulk** (selection chrome, batch bar vs overflow), **loading placeholders** (decode, blur/skeleton policy), **media errors** (inline retry without icon noise), optional **collapsible inspector** for metadata (not stuffed into every cell).
+- Clarify **loupe** scope: **primary immersive review** vs optional **pixel peek**—merge or split deliberately; document **zoom/pan** if in MVP scope.
+- **Motion + focus:** short rules for **loupe/sheet** transitions (**reduced motion**); keyboard **focus** through grid and modals (**UX-DR15**).
+
+**Architecture and implementation (Winston)**
+
+- **Layering:** domain/use-cases → **presentation adapters** (Fyne vs `html/template`) → **shared** read models/DTOs; document **allowed imports** (e.g. UI may not reach into storage/HTTP directly).
+- **Thumbnail pipeline:** document **decode → resize → cache key → bounded cache → background work + cancel on scroll/filter**; **no heavy decode on UI thread**; align **thumbnail spec** (size, aspect, placeholder) across desktop and any web preview.
+- **Desktop vs web:** **shared** rules (validation, URL shape, errors, filter semantics, empty copy); **diverge** on layout/widget structure only.
+- **Spec add-ons elsewhere:** lightweight **ADR** for package boundaries; **test strategy** (view models + golden templates); **parity matrix**; error/telemetry contract; **share HTML** assumptions for **old links**.
+
+**Concrete AC seeds (Amelia)**
+
+- **AC-UI-THREAD:** After async work, **Fyne UI updates** run on the **main thread**; **`-race`** smoke with slow IO passes.
+- **AC-LIST-STATES:** Primary asset list shows defined UI for **0 items / populated / error / loading** (copy + disabled actions per matrix).
+- **AC-RESIZE:** At **documented minimum window**, primary actions **not clipped**; **Tab** reaches all visible controls **without** focus trap in hidden widgets.
+
+**Underspecified components to tighten in stories**
+
+- **Thumbnail cell:** **slots** (image / selection / status / overflow) + **max chrome per density tier**.
+- **Filter strip:** **filter vs sort vs scope**; **overflow** (“more filters” sheet) so it does not become a second nav.
+- **Operation receipt:** **content schema** (lines, links, dismiss, optional drill-down).
+- **Share preview sheet:** **failure** states (mint denied, size, permissions).
+- **Drag-drop:** distinguish **external files** vs **internal reorder** vs **tag drop** if ever combined.
+- **Tag bulk editor:** **add/remove/replace** rules + **preview of affected set**.
+
+## UX consistency patterns
+
+*These patterns **govern composition** of **components**—**when** UI appears, **how much**, and **how it behaves**—so the app stays **image-first** and avoids **control soup**. They implement **Party mode follow-ups (2026-04-14)** at the UX layer; **architecture** items (imports, thumbnail pipeline SLO) live in **architecture** / **ADRs**.*
 
 ### Button hierarchy
 
-- **Primary:** One per surface—completes the user’s main intent (**Confirm import**, **Confirm share**, **Save collection**).  
-- **Secondary:** Safe alternatives (**Cancel**, **Back**, **Skip**).  
-- **Tertiary / quiet:** **Dismiss**, **Learn more**, non-blocking actions.  
-- **Destructive:** **Delete** and irreversible actions—**never** primary styling; require **confirm** or typed guard per architecture.  
-- **Reject / hide:** Use **caution** styling, **not** destructive; distinct from **Delete**.
+- **Primary** — **One** obvious **commit** per context: **Confirm** collection, **Confirm** share mint, **Confirm** delete (after already choosing Delete). Uses **primary** semantic role.
+- **Secondary** — **Safe** alternatives: **Cancel**, **Back**, **Dismiss** receipt—**outline** or **muted**; never compete visually with **primary** in **commit** dialogs.
+- **Destructive** — **Delete** and **irreversible** actions: **destructive** role + **confirm** step; never **default** focused button on first paint of delete dialog.
+- **Reject / caution** — **Reject** uses **caution** role—**not** **destructive**; **visually** and **spatially** separate from **rating** and **Delete** (**UX-DR5**).
+- **Tertiary / quiet** — **Overflow** menus, **“More filters”**, **metadata** toggles—**low** visual weight; **do not** multiply **filled** buttons in **chrome** rows.
+- **Icon-only** — **Only** when **tooltip** + **keyboard** access + **ARIA**/name; prefer **text** for **commit** and **reject/delete** families.
+- **Desktop / Fyne:** **Default button** in dialogs **only** where it **cannot** cause **accidental mint** or **accidental delete**—**share** and **delete** require **explicit** focus on **Confirm**.
 
 ### Feedback patterns
 
-- **Transient:** Short toasts for **undo reject**, quick confirmations—**capped** stack, keyboard-dismiss where possible (**Component Strategy**).  
-- **Receipt:** After **batch** import/scan—**added / duplicate / failed** counts; same semantics as CLI.  
-- **Inline:** Rating/reject state on **thumb + loupe** within **SC-3**.  
-- **Errors:** **Proportionate honesty**—fact, next step, no fake cheer (**Desired Emotional Response**).  
-- **Progress:** Long jobs show **determinate** when possible + **safe cancel** (**NFR-02**).  
-- **System / IO failure:** For **disk, DB, or network** errors mid-operation: **retry** where sensible, **preserve unsaved user choices** where possible, optional **diagnostic export**—same honest tone, not dismissive positivity.  
-- **Busy / concurrent operations:** When a **long job** holds the library (import/scan): **disable** or **block** conflicting writes with a **visible reason**, or **queue** operations—**no silent failure** or ambiguous state.
-
-### Undo scope
-
-- **Reject:** **Undo** or **restore** per agreed product rule (time-bound, navigation-bound, and/or **Rejected** bucket)—**transient feedback** should surface undo when applicable.  
-- **Delete:** After **confirmed delete**, **do not** imply silent undo unless PRD explicitly defines **trash/recycle** behavior.  
-- **Share mint:** **Cancel** before confirm; after successful mint, treat as **issued** (revocation is a **separate** product/architecture concern if ever added).
-
-### Share URL presentation
-
-- After successful **mint:** show URL in a **read-only field** plus an explicit **Copy** control as the **default** pattern. **Auto-copy to clipboard** only as **optional** user preference or **secondary** action—avoid surprising users by overwriting the clipboard without consent.
+- **Operation receipt (batch truth)** — After **ingest-class** work: **counts** first (**added / duplicate / failed / updated**), **plain language**, **expand** for detail; **same category words** as **CLI** (**NFR-04**). **Warning** role if **any** failures; **error** if **total** failure.
+- **Transient undo (reject)** — **Short** toast/bar for **reject undo**—**distinct** from **receipt**; **capped** stack (**UX-DR8**); **respect reduced motion**.
+- **Inline / cell errors** — **Decode** or **IO** on **one** asset: **cell** or **loupe** **inline** message + **retry** where possible—**no** silent **blank**.
+- **Blocking errors** — **Library** not writable, **DB** failure: **modal** or **full-width** banner with **next step** (check permissions, disk, restart)—**one** **primary** recovery CTA where feasible.
+- **Success (non-batch)** — **Rating** / **assign** **no** toast spam—**instant** **badge** update is the feedback; **toasts** reserved for **rare** **completion** moments (**link copied** optional **subtle** confirmation).
+- **Share** — **No** “success” noise until **mint** completes; **Copy** control **confirms** handoff (**UX-DR7**).
 
 ### Form patterns
 
-- **Collection create/edit:** **Name** required; **display date** optional with documented default (**FR-18**).  
-- **Validation:** Errors **next to field** or summary at top of dialog; **preserve** user input on fix.  
-- **Defaults:** Filter defaults **no collection** + **any rating**—offer **reset filters** if users get stuck in empty results.
+- **Minimal fields** — **Collection** name, **tags**, **filter** values: **short** inputs; **defaults** explicit (**Upload YYYYMMDD**); **clear** resets to **no** collection assignment.
+- **Confirm-before-persist** — **No** **silent** **Enter** submit for **collection create** from upload; **explicit** **Confirm** (**FR-06**).
+- **Validation** — **Inline** on blur/submit; **factual** copy (**“Name required”**); **no** blame.
+- **Filter strip** — Treat as **micro-form**: **live** apply with **debounce** for **tags** if needed; **overflow** **advanced** filters to **sheet** if count grows—**strip** stays **one row** by default (**Party** **filter vs second nav**).
 
 ### Navigation patterns
 
-- **Primary areas:** **Upload**, **Review**, **Collections**, **Rejected** (when reject exists)—consistent **order** and labels in both themes.  
-- **Collection detail:** **Full page** (**FR-21**), not modal.  
-- **Deep link return:** From loupe back to **same filter context** unless user resets.  
-- **Filtering:** Order fixed: **Collection → Min rating → Tags**; changing filters **updates** the grid without silent mismatch.
-
-### Selection patterns
-
-- **Document the MVP selection model** in PRD/architecture (e.g. **single selection** in grid vs **multi-select**).  
-- **Range / modifier selection** (Shift/Ctrl or platform equivalents) and **select all in current filter** are **explicit** phases—if not MVP, state **deferred** so engineering does not implement **accidental** half-multi-select.  
-- **Visual consistency:** Selected thumb state matches **keyboard** and **mouse** selection.
-
-### Keyboard patterns
-
-- **Focus order:** Logical flow—e.g. **filter strip → grid → loupe chrome**—no **focus traps** in review overlays.  
-- **Rating:** **1–5** and **stars**; **Reject** bound to keys **not** adjacent to **1**.  
-- **Overlays / dialogs:** **Esc** closes **transient** overlays and **cancelable** dialogs where applicable; **Enter** activates **primary** action in confirmation dialogs when safe.  
-- **Documentation:** Surface shortcuts in **in-app help** or **settings** when the product provides them.
-
-### Internationalization and density
-
-- **Default copy** assumes **LTR** and **English** string lengths; layouts should tolerate **longer labels** without clipping **primary actions**.  
-- Maintain **minimum targets**, **safe chrome**, and **200% zoom** behavior per **Visual Design Foundation** when localizing.
+- **Primary areas** — **Fixed order:** **Upload → Review → Collections → Rejected** (**UX-DR13**); **active** state **obvious**; **no** **mystery** fifth area without **PRD** change.
+- **Places not modes** — **Collections** and **Rejected** are **destinations**, not **filters** only—**full-page** **browse** where specified (**FR-21**).
+- **Deep link mental model** — **Loupe** is **overlay** or **full-stage** within **Review/collection**—**back** returns to **same** **scroll/filter** context where possible (**continuity**).
+- **Breadcrumbs** — **Optional**; if **omit**, **window title** or **in-view** **heading** must state **context** (**collection name**, **Rejected**).
 
 ### Additional patterns
 
-- **Empty states:** One **primary CTA**; reuse **calm at scale** tone.  
-- **Loading / decode:** Thumbnails show **pending** then **image** or **failed decode**—never an endless spinner without explanation.  
-- **Share / privacy:** Desktop may show full metadata; **share URL page** follows **PRD** (no raw GPS, read-only MVP).  
-- **Modals / overlays:** Use for **confirm delete**, **share preview**, **blocking errors**—not for main collection browsing.
+#### Image stage and density
 
-## Responsive Design & Accessibility
+- **Image stage** — **Grid**, **loupe**, and (future) **compare** are **stages** with **rules**: **minimum readable thumb** and **minimum loupe image region** defined in **layout AC** (numeric thresholds **not** invented here); **chrome** **must not** **overlap** **primary** image **by default**.
+- **Density tiers** — **Comfortable** (default): **fewest** **badges** visible until **hover/focus** where possible. **Compact** (opt-in): **more** **metadata** on **cells** for **power** users—still **no** **inspector wall**. **Inspect** (optional future): **pixel** tools—**separate** from **default loupe** if scope demands.
+- **Progressive disclosure** — **Default** surface shows **image + essential state**; **hover/focus** reveals **quick actions**; **selected** multi-select reveals **batch bar**; **expert** shortcuts **documented** but **not** required to **start**.
+
+#### Grid and selection
+
+- **Grid semantics** — **Fluid** columns; **grow** **cell** size with **width**; **collapse** columns **before** **shrinking** below **minimum**; **consistent** **gutter** (**8px** multiples).
+- **Selection** — **Visible** **selection chrome** (border/check); **batch actions** in **one** **bar** or **overflow**—**never** **duplicate** **every** action on **every** cell.
+- **Mixed selection** — **Disable** or **explain** actions that **don’t apply** to **all** selected (**tags** conflict rules in **stories**).
+
+#### Filtering and search
+
+- **Order locked** — **Collection → minimum rating → tags** (**FR-15**); **defaults** **no collection / any rating** (**FR-16**).
+- **“No results”** — **Distinct** from **empty library**: **clear filters** **primary** CTA.
+- **Overflow** — **More filters** → **sheet**; **strip** does **not** **grow** into **second navbar**.
+
+#### Modal and overlay
+
+- **Commit modals** — **Share preview**, **delete confirm**, **tag bulk** sheet: **focus trap**, **Escape** closes **non-destructive**; **destructive** **Confirm** **requires** **explicit** activation.
+- **Drawers** — **Filters** / **inspector** (if added): **push** or **overlay** **without** **permanently** **resizing** **grid** when **closed**.
+
+#### Loading and placeholders
+
+- **Thumbnails** — **Placeholder** (**skeleton**, **blur**, or **dominant color**) per **thumbnail pipeline** spec; **cancel** **in-flight** decode on **fast** **scroll**/**filter** change (**architecture**).
+- **Loupe** — **Spinner** only **centered** **over** **image region**; **avoid** **whole-window** flash.
+- **Long jobs** — **Progress** or **batched logs** (**NFR-02**) **without** **hiding** **preview** grid on **upload** (**Direction E**).
+
+#### Keyboard and focus
+
+- **Order target** — **Filter strip → grid → loupe** (**UX-DR15** intent); **document** **shortcuts** (**1–5**, **arrows**, **reject** **away** from **1–5**).
+- **Focus visibility** — **All** **interactive** **elements** **visible** **focus** in **both** themes.
+- **Reduced motion** — **Honor** for **transitions** (**loupe**, **sheet**, **toast**).
+
+#### Share web (recipient)
+
+- **Patterns** mirror **trust**: **minimal** **chrome**, **large** **image**, **keyboard** **nav** for **next/prev** if present, **WCAG A** (**Step 8** / **UX-DR11–12**).
+
+### Integration with design system
+
+- Patterns **consume** **semantic roles** (**Design system foundation**); **no** **ad-hoc** **hex** for **same** meaning across **screens**.
+- **Custom** **wrappers** **enforce** **pattern** (e.g. **only** **ShareSheet** may **mint**)—**centralize** **side effects**.
+
+## Responsive design and accessibility
+
+*Extends **Visual design foundation** and **UX consistency patterns** with **testable** layout and **a11y** expectations. **PRD:** **NFR-01**, **NFR-07**; **share** page **WCAG 2.1 Level A** (**FR-14** domain + **UX-DR11–12**).*
 
 ### Responsive strategy
 
-**Desktop (primary — Fyne)**  
-- **Desktop-first:** Extra space increases **grid density** and optional **side metadata**—not a different product mode.  
-- **Window resize:** All **review** and **single-photo** flows must keep **primary controls in viewport** and **full image** within the **~90%** region across **1:1** through **21:9**—verify with PRD **NFR-01** matrix (**1024×768**–**5120×1440**).  
-- **Ultrawide:** Never pin critical chrome to **off-screen** coordinates; use **safe regions** and **flex** layouts (see **initial-idea** ultrawide issue).  
-- **Display scaling:** Validate layouts at **non-100% OS scaling** (e.g. **125% / 150%**) on **Windows** and **macOS** at least once per major milestone—**90% viewport** and **safe chrome** must hold under fractional scaling.
-
-**Tablet**  
-- **Tier-2:** If Fyne targets tablets, favor **larger tap targets** and preserve **keyboard** where attached; no separate tablet MVP unless PRD adds it.
-
-**Mobile (share recipients)**  
-- **Share URL only (MVP):** Layout must work at **mobile widths**; **swipe** prev/next where PRD requires (**FR-25** analog on web). **Not** a full mobile editor—**read-only** consumption.  
-- **Landscape:** On **narrow viewports**, test **landscape** orientation—**image** and **prev/next** (or equivalent) remain **usable** without breaking the **primary** path.
-
-**Linux (tier-2 desktop)**  
-- Run the **same NFR-01 manual matrix** as macOS/Windows **or** document an **explicit subset** (sizes/aspects) in QA—**no ambiguous** “best effort” without a written scope.
+- **Primary surface — resizable desktop window (Fyne):** Photo Tool is **desktop-first**. **Responsive** means **continuous resize** of a **single window**, not **mobile breakpoints** for the **main app**. **Extra width** → **larger thumbnails** and/or **more columns** (**image-first**); **never** **only** **more** **empty chrome**. **Extra height** → **more grid rows**; **loupe** keeps **letterboxed** image **maximum** in **content** region.
+- **Aspect ratios:** Validate **1:1 (square)** through **21:9 (ultrawide)** so **primary navigation** and **loupe** controls stay **in viewport** (**NFR-01**, **FR-11**). **Ultrawide** must **not** **clip** menus **off-screen** (stakeholder **pain** driver).
+- **Minimum window:** Define a **documented minimum** (aligned with **NFR-01** lower bound **1024×768** testing) below which **horizontal scroll** is **acceptable** only for **secondary** panels—not for **primary** **commit** actions (**AC-RESIZE** seed from **Party mode**).
+- **Tablet / touch:** **Not** a **native tablet app** in **MVP** (**PRD**). **Touch** applies to **shared** **browser** page (**swipe** **next/prev** where implemented) and any **future** touch-capable **desktop** hardware—**targets** should still meet **comfortable** **hit** sizes where Fyne allows.
+- **Mobile phones:** **Recipient** experience via **share URL** in **mobile browser**—**responsive** **single-column**, **image** **dominant**, **readable** at **200% zoom** (**UX-DR12**). **No** requirement for **full** **library** **management** on **phone** in **MVP**.
 
 ### Breakpoint strategy
 
-- **Desktop:** Treat **continuous resize** as the main variable—not only fixed breakpoints. Use **min/max window** tests from **NFR-01** plus **square / 16:9 / 21:9** aspect checks.  
-- **Web share:** Use standard **fluid** layout from **narrow (~320px)** to **desktop**; **200% zoom** must not destroy the **primary reading path** (**Visual Design Foundation**).
+- **Desktop app:** Avoid **CSS-style** “breakpoints” as the **mental model**—use **window width/height buckets** for **QA** only, e.g. **~1280**, **~1920**, **~3440×1440**, **square 1080×1080**, documented in **NFR-01** **evidence** artifact. **Layout** should **adapt** **fluidly** between buckets.
+- **Share HTML:** Use **relative** units and **one** **narrow** breakpoint if needed (e.g. **stack** controls **below** image **under ~600px** width)—**keep** **one** **primary** **reading** column; **no** **horizontal** **scroll** for **main** **content** at **default** **zoom**.
 
 ### Accessibility strategy
 
-**Share page (MVP) — WCAG 2.1 Level A (PRD)**  
-- Keyboard-operable controls, **visible focus**, **labels** for meaningful icons, **non-color-only** state cues where applicable.  
-- **Contrast:** Meet **Level A** minimums for default theme; automated check in CI/release checklist (placeholder).  
-- **Privacy:** Omit **raw GPS** and restricted metadata per PRD—also reduces **accidental exposure** for assistive-tech users.  
-- **Zoom / reflow:** **1.4.4** / **1.4.10** interpreted in implementation so **main content** stays usable at **200%**.  
-- **Images — alt text:** Default to a **brief neutral** description (e.g. “Shared photo”) unless the product adds **owner-supplied captions**. Do **not** auto-populate **alt** from **filename or EXIF** without an explicit privacy/content review.  
-- **Motion:** Honor **`prefers-reduced-motion`** on the web share page for **non-essential** transitions or animations.  
-- **Skip link (optional enhancement):** Consider **skip to main content** if header/chrome grows—helps keyboard users on **WCAG A** without changing MVP bar if omitted initially.
-
-**Desktop (Fyne)**  
-- **PRD:** Accessibility posture **architecture-defined** for MVP; UX still specifies **full keyboard paths** for triage (**UX Consistency Patterns**) and **focus visibility** on custom grid/loupe where feasible.  
-- **Target:** Prefer **platform-appropriate** accessibility behaviors; **reassess WCAG AA** (or stricter jurisdiction rules) when **distribution or market** expands—**no MVP commitment**.
+- **Share page (required):** **WCAG 2.1 Level A** — **keyboard** operable **controls**, **visible focus**, **text** **contrast** for **UI** and **body** text, **meaningful** **labels** / **icons** **paired** with **text** where **required**, **no raw GPS** exposure (**PRD** domain). **200% zoom** **primary** path **usable** (**UX-DR12**). **`prefers-reduced-motion`** honored for **non-essential** motion (**UX-DR12**). **Alt** **policy** **neutral** unless **owner** caption (**UX-DR11**).
+- **Desktop app (Fyne):** **Target** **keyboard-complete** **flows** for **core** **journeys** (**Upload**, **Review**, **Collections**, **Rejected**, **Share** sheet): **visible** **focus** on **standard** **widgets**; **logical** **tab** order per **UX-DR15** intent. **Screen reader** support is **platform-dependent**—document **best-effort** **milestones**; **do not** **claim** **full** **WCAG** **equivalence** on **desktop** unless **verified**.
+- **Color:** **Do not** rely on **color alone** for **rating**, **reject**, **delete**, **error**—use **shape**, **icon**, **label** redundancy (**UX consistency patterns**).
+- **Motion:** **Respect** **OS** **reduced motion** for **animations** (**loupe**, **dialogs**, **toasts**).
 
 ### Testing strategy
 
-**Responsive**  
-- Manual matrix: **NFR-01** sizes + aspect ratios on **macOS** and **Windows** (tier-1); **Linux** per **Responsive strategy** tier-2 rule.  
-- **Web share:** Chrome/Safari/Firefox desktop + **Mobile Safari** / **Chrome Android** smoke tests for **link open** and **navigation**; include **portrait and landscape** on mobile where feasible.  
-- **Traceability:** Maintain a **documented checklist** or future **test case IDs** for **NFR-01** runs (**placeholder** link to QA repo or ticket template).
-
-**Accessibility**  
-- **Automated:** axe or equivalent on **default share template**.  
-- **Manual:** Keyboard-only pass on share page; **VoiceOver** (macOS/iOS) or **TalkBack** spot-check on share **MVP**.  
-- **Color:** Quick **simulation** pass for **star vs reject** distinction (not hue-only).  
-- **Keyboard traps:** **Tab** through share page completes a cycle **without** getting stuck in the **viewer** or **chrome**—explicit acceptance check.
+- **Layout matrix (manual):** Run **NFR-01** matrix: **1024×768** → **5120×1440**, **square / 16:9 / 21:9**, **tier-1 OS** (**macOS**, **Windows**); record **pass/fail** + **notes** for **Review**, **loupe**, **collection detail** (**story 2-11** / evidence artifact pattern).
+- **OS scaling:** **NFR-07** — **125%** and **150%** **UI** **scaling** on **macOS** and **Windows** each **major** **milestone**; **re-check** **focus** **visibility** and **unclipped** **primary** **actions**.
+- **Share page:** **Keyboard-only** pass; **zoom** to **200%**; **axe** or **similar** **automated** **scan** in **CI** where **feasible**; **spot** **VoiceOver** (**Safari**) and **NVDA** or **JAWS** (**Chrome**/Edge) on **staging**.
+- **Performance (recipient):** **NFR-05** **cold** **load** **measurement** on **staging**—**emotional** **a11y** includes **not** **stalling** (**Desired emotional response**).
+- **Include** **users** **with** **disabilities** in **usability** **sessions** when **budget** allows—**prioritize** **share** **page** first.
 
 ### Implementation guidelines
 
-**Fyne**  
-- Centralize **layout math** for **loupe** and **toolbar** so resize is **deterministic**; document **focus** order for **filter strip → grid → loupe**.  
-- Avoid **fixed pixel** positioning for **global chrome** that must stay visible.  
-- Include **fractional OS scaling** in **pre-release** verification alongside raw pixel window sizes.
+- **Fyne:** **Centralize** **layout** **templates** for **grid** and **loupe**; **avoid** **hard-coded** **pixel** **positions** for **nav**—use **layout** **containers** that **reflow**. **Document** **minimum** **sizes** for **thumbnails** in **code** **constants** tied to **UX** **AC**.
+- **Threading:** **UI** **updates** **only** on **main** **thread** (**AC-UI-THREAD**); **decode** **off-thread** per **thumbnail** **pipeline** (**Party** **follow-ups**).
+- **Web templates:** **Semantic** **HTML** where **possible** (`main`, `button`, `h1`); **ARIA** only **to** **fill** **gaps**; **focus** **management** when **opening** **modals** (if any on **share** page).
+- **Assets:** **Serve** **appropriately** **sized** **renditions** for **share** **page**; **avoid** **layout** **shift** on **image** **load** (**width/height** or **aspect** **box**).
 
-**Web share**  
-- **Semantic HTML** first; **ARIA** only where native elements are insufficient.  
-- **Relative units** and **flex/grid** for reflow; **token-mapped** colors for contrast maintenance.  
-- **Images:** Apply the **alt** policy under **Accessibility strategy**; respect **`prefers-reduced-motion`**.  
-- **Failure / offline:** On **asset load failure** or **effective offline**, show an **explicit error** with **retry** (or guidance)—**no indefinite** loading spinner without explanation.
+---
+
+**BMAD `create-ux-design` workflow:** **complete** (**2026-04-14**). Prior finished spec for comparison: `ux-design-specification-v1-archive-2026-04-12.md`.

@@ -14,7 +14,7 @@ As a **product owner**,
 I want **documented proof that layout holds across sizes and OS scaling**,  
 So that **ultrawide and laptop both work**.
 
-**Implements:** NFR-01, NFR-07.
+**Implements:** NFR-01, NFR-07; UX-DR16, UX-DR19 (evidence).
 
 ## Acceptance Criteria
 
@@ -28,6 +28,15 @@ So that **ultrawide and laptop both work**.
 5. **Linux (tier-2) scope:** **Given** PRD lists **Linux** as **tier-2**, **when** this story completes, **then** either **(a)** Linux is **explicitly deferred** with a one-line rationale in the evidence bundle **or** **(b)** a **documented subset** of the matrix was run and recorded (UX spec: no ambiguous “best effort” without written scope).
 6. **Traceability:** **Given** UX spec **Testing strategy** calls for a **documented checklist** for NFR-01 runs, **when** artifacts land, **then** the evidence files are **linked from this story’s References** and from **`sprint-status.yaml`** comment or epic notes if the team uses that convention.
 7. **Matrix cell IDs:** **Given** NFR-07 may re-run a **subset** of NFR-01, **when** evidence is recorded, **then** each NFR-01 row has a stable **cell ID** (e.g. `S-mid`, `169-max-L`) reused in **`nfr-07-os-scaling-checklist.md`** so scaling runs map unambiguously to base matrix rows.
+
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+Evidence should capture **UX-DR16** thresholds where applicable:
+
+- **Grid:** minimum **thumbnail edge** (readable thumb) at reference layouts (e.g. **1024-wide** and **1920-wide** windows).
+- **Loupe:** minimum **letterboxed image region** (not overlapped by default chrome).
+- **Chrome budget:** combined **nav + filter strip** height vs window (image stage dominates).
+- **UX-DR19:** at **NFR-01 minimum** window, **primary** actions **not clipped**; **Tab** reaches visible controls **without** focus trap on hidden widgets.
 
 ## Tasks / Subtasks
 
@@ -165,3 +174,17 @@ Party mode **dev** 2/2 (2026-04-13): simulated roundtable — **Amelia (Dev)** d
 - [Source: `_bmad-output/implementation-artifacts/nfr-01-layout-matrix-evidence.md` — NFR-01 matrix template + checklists]  
 - [Source: `_bmad-output/implementation-artifacts/nfr-07-os-scaling-checklist.md` — NFR-07 scaling re-run template]  
 - [Source: `internal/domain/nfr_layout.go` — PRD NFR-01 window band constants (keep in sync with evidence tables)]  
+
+### Review Findings
+
+_BMAD code review (2026-04-14), scoped to Story 2.11 deliverables; baseline vs `origin/main` in working tree was only `internal/app/shell.go` (comment + `b.Refresh()` in `setNavSelection`); review layers also examined full gate code paths and evidence._
+
+- [ ] [Review][Patch] AC2 resize sweep omits loupe surface — `exerciseNFR01ResizeSweepAC2` only drives the Review panel (`tapPanel` → `"Review"`) and never holds the window on loupe chrome while stepping `NFR01AC2ResizeSweepPath`, yet AC2 requires that **critical Review/loupe chrome** not stay off-screen after idle resize. Extend the sweep (e.g. alternate Review and a loupe body matching `review_loupe.go`) or record an explicit, PM-approved scope exception in `nfr-01-layout-matrix-evidence.md` with traceability to AC2. [`internal/app/nfr01_layout_gate_test.go` ~213–228]
+
+- [ ] [Review][Patch] AC1 structural gate narrows “Review bulk” to nav + filter strip — matrix and NFR-07 subset exercises assert primary nav and first three `Select` widgets but do not check **bulk actions** called out in AC1 (grid may scroll, but primary bulk affordances should remain reachable). Add minimal assertions (e.g. known bulk button labels) or document in the evidence “What CI covers” table that bulk chrome is manual-only. [`internal/app/nfr01_layout_gate_test.go` ~169–181]
+
+- [x] [Review][Defer] Filter-strip detection assumes the first three `Select` widgets in traversal order are the strip — correct today (`TestReviewFilterStrip_tabFocusOrder` documents a fourth assign-target `Select`), but any future `Select` inserted ahead of the strip will break or mislead `assertReviewFilterStripOnScreen`. [`internal/app/review_test.go` ~59–78, `internal/app/nfr01_layout_gate_test.go` ~110–126] — deferred, pre-existing convention
+
+- [x] [Review][Defer] `newNFR01GateShippingLoupeBody` manually reconstructs loupe layout instead of importing production constructors — can drift from `review_loupe.go` without compiler linkage. Consider a shared test helper or contract test when loupe changes. [`internal/app/nfr01_layout_gate_test.go` ~62–99] — deferred, acceptable test seam for now
+
+- [x] [Review][Defer] UX-DR16 quantitative thresholds (minimum thumb edge, letterbox region, chrome budget, Tab/focus at NFR-01 minimum) from the story’s UX backlog are not encoded in automated assertions — still relies on manual matrix notes. [`_bmad-output/implementation-artifacts/2-11-layout-display-scaling-gate.md` §UX backlog delta] — deferred until tooling or rubric is defined

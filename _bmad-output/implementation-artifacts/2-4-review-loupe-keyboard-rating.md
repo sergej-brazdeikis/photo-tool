@@ -1,6 +1,6 @@
 # Story 2.4: Review loupe with safe chrome and keyboard rating
 
-Status: review
+Status: in-progress
 
 <!-- Ultimate context engine analysis completed — comprehensive developer guide created. -->
 
@@ -12,7 +12,7 @@ As a **photographer**,
 I want **a large letterboxed view with keyboard 1–5 and prev/next**,  
 So that **I can review on any aspect ratio monitor**.
 
-**Implements:** FR-09–FR-12, FR-25 (desktop portion); NFR-01; UX-DR4, UX-DR5.
+**Implements:** FR-09–FR-12, FR-25 (desktop portion); NFR-01; UX-DR4, UX-DR5, UX-DR16.
 
 ## Acceptance Criteria
 
@@ -23,6 +23,10 @@ So that **I can review on any aspect ratio monitor**.
 5. **Keyboard safety (UX-DR5):** **Do not** bind **Reject** (or any Story **2.6** hide action) to keys **immediately adjacent** to **1–5** on a typical QWERTY layout. For this story, **either** omit Reject shortcuts entirely **or** document a deliberate non-adjacent binding (e.g. not `4`/`5`/`6` neighbors). **No** “accidental reject” regression from rating keys.
 6. **Given** the loupe is open, **when** the user presses **Escape**, **then** the loupe closes and focus returns to the grid without leaving Review (**UX-DR15** focus order: document strip → grid → loupe in Dev Agent Record / code comment). **Tab** order inside the loupe must reach rating + prev/next + close **before** any purely decorative controls.
 7. **Filter consistency (session 2 challenge):** **Given** the loupe is open, **when** the user changes **Collection** or **Minimum rating** (or any control that triggers a **new** `CountAssetsForReview` / `ListAssetsForReview` result set), **then** the loupe **closes** (or is explicitly resynced to the new set with a defined index rule). **MVP:** **auto-dismiss** the loupe on refresh so the grid and loupe cannot disagree silently.
+
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+- **Image vs chrome:** **Chrome** must **not** **overlap** the **letterboxed** image **by default**; **minimum loupe image region** is asserted in Story **2.11** evidence (**UX-DR4**, **UX-DR16**).
 
 ## Tasks / Subtasks
 
@@ -50,6 +54,14 @@ So that **I can review on any aspect ratio monitor**.
 - [x] **Tests** (AC: 2, 4, 5, 6)
   - [x] Store tests for rating update (`assets_rating_test.go`).
   - [x] Pure-Go **`loupeStepIndex`** (incl. OOB/negative start index) + **`loupeRatingKeyAllowed`** tests (`review_loupe_test.go`). **Manual:** NFR-01 resize matrix remains Story 2.11 / QA.
+
+### Review Findings
+
+- [ ] [Review][Decision] Reject shortcut `R` vs AC5 / UX-DR5 — `SetOnTypedRune` applies reject on `r`/`R` while digit `4` sits directly above `R` on typical QWERTY, which conflicts with “do not bind Reject to keys immediately adjacent to 1–5.” Package comment states the letter is “not adjacent to the 1–5 rating row,” but that is only true on the number row, not the full keyboard layout. Decide: drop the `R` binding (button-only reject in loupe), move reject to an explicit chord only, or record a formal UX exception.
+
+- [ ] [Review][Patch] Silent failure when rating persist errors — On-screen stars and keyboard `1–5` call `store.UpdateAssetRating` but only `slog.Error` on failure; the user sees no dialog or inline error, so FR-10 “instant persist” failures look like no-ops. Align with other loupe flows (`dialog.ShowError` + user-facing copy). [`internal/app/review_loupe.go` ~419–426, ~606–610]
+
+- [x] [Review][Defer] Failed grid pages stay cached until reset — `pageFailed` prevents SQLite/log spam but a transient failure leaves the page in an error state until `invalidatePages` / `reset` (e.g. user navigates away or filter refresh). [`internal/app/review_grid.go`] — deferred, pre-existing product risk from Story 2.3 paging behavior extended by this pattern.
 
 ## Dev Notes
 

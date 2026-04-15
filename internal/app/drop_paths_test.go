@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,23 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/storage"
 )
+
+func TestDropBlockedDialogInfo(t *testing.T) {
+	t.Parallel()
+	if _, _, blocked := dropBlockedDialogInfo(false, false); blocked {
+		t.Fatal("expected not blocked")
+	}
+	if title, msg, blocked := dropBlockedDialogInfo(true, false); !blocked || title != "Finish collection step" || msg == "" {
+		t.Fatalf("post-import: blocked=%v title=%q msg=%q", blocked, title, msg)
+	}
+	if title, msg, blocked := dropBlockedDialogInfo(false, true); !blocked || title != "Import in progress" || msg == "" {
+		t.Fatalf("in-flight: blocked=%v title=%q msg=%q", blocked, title, msg)
+	}
+	// Post-import wins over import-in-flight (both should not be true in production).
+	if title, _, blocked := dropBlockedDialogInfo(true, true); !blocked || title != "Finish collection step" {
+		t.Fatalf("both flags: title=%q blocked=%v", title, blocked)
+	}
+}
 
 func TestTryAddUniquePath(t *testing.T) {
 	t.Parallel()
@@ -28,6 +46,25 @@ func TestTryAddUniquePath(t *testing.T) {
 	}
 	if len(paths) != 2 {
 		t.Fatalf("paths: %#v", paths)
+	}
+}
+
+func TestTakePendingStringSlice(t *testing.T) {
+	t.Parallel()
+	var p []string
+	if _, ok := takePendingStringSlice(&p); ok {
+		t.Fatal("empty pending should not take")
+	}
+	p = []string{"a: bad", "b: bad"}
+	lines, ok := takePendingStringSlice(&p)
+	if !ok || len(lines) != 2 || lines[0] != "a: bad" {
+		t.Fatalf("first take: ok=%v lines=%#v", ok, lines)
+	}
+	if p != nil {
+		t.Fatalf("expected pending cleared, got %#v", p)
+	}
+	if _, ok := takePendingStringSlice(&p); ok {
+		t.Fatal("second take should be empty")
 	}
 }
 
@@ -96,6 +133,10 @@ func TestURILocalPath(t *testing.T) {
 	if err := os.WriteFile(tmp, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	httpsURI, err := storage.ParseURI("https://example.com/x.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name    string
 		uri     fyne.URI
@@ -103,9 +144,9 @@ func TestURILocalPath(t *testing.T) {
 		wantErr bool
 	}{
 		{"nil", nil, "", true},
-		{"https", storage.NewURI("https://example.com/x.jpg"), "", true},
+		{"https", httpsURI, "", true},
 		{"file_uri", storage.NewFileURI(tmp), tmp, false},
-		{"empty_path_file", storage.NewURI("file://"), "", true},
+		{"empty_path_file", testFileURI{scheme: "file", path: ""}, "", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,12 +183,16 @@ func TestClassifyDroppedURIs(t *testing.T) {
 	if err := os.Mkdir(subDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	httpsZ, err := storage.ParseURI("https://example.com/z")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	uris := []fyne.URI{
 		storage.NewFileURI(okFile),
 		storage.NewFileURI(badExt),
 		storage.NewFileURI(subDir),
-		storage.NewURI("https://example.com/z"),
+		httpsZ,
 	}
 	res := classifyDroppedURIs(uris, os.Stat)
 	if len(res.Supported) != 1 || res.Supported[0] != okFile {
@@ -155,6 +200,23 @@ func TestClassifyDroppedURIs(t *testing.T) {
 	}
 	if len(res.Unsupported) < 3 {
 		t.Fatalf("expected several unsupported, got %#v", res.Unsupported)
+	}
+}
+
+func TestClassifyDroppedURIs_statErrors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	okFile := filepath.Join(dir, "a.jpg")
+	if err := os.WriteFile(okFile, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	statErr := func(string) (fs.FileInfo, error) { return nil, errors.New("permission denied") }
+	res := classifyDroppedURIs([]fyne.URI{storage.NewFileURI(okFile)}, statErr)
+	if len(res.Supported) != 0 {
+		t.Fatalf("supported: %#v", res.Supported)
+	}
+	if len(res.Unsupported) != 1 || !strings.Contains(res.Unsupported[0], "could not be opened") {
+		t.Fatalf("unsupported: %#v", res.Unsupported)
 	}
 }
 
@@ -174,3 +236,18 @@ func TestClassifyDroppedURIs_dedupesPaths(t *testing.T) {
 		t.Fatalf("unexpected unsupported: %#v", res.Unsupported)
 	}
 }
+
+// testFileURI is a minimal fyne.URI for exercising uriLocalPath edge cases without deprecated storage.NewURI.
+type testFileURI struct {
+	scheme, path string
+}
+
+func (u testFileURI) String() string    { return u.scheme + ":" + u.path }
+func (u testFileURI) Extension() string { return "" }
+func (u testFileURI) Name() string      { return "" }
+func (u testFileURI) MimeType() string  { return "" }
+func (u testFileURI) Scheme() string    { return u.scheme }
+func (u testFileURI) Authority() string { return "" }
+func (u testFileURI) Path() string      { return u.path }
+func (u testFileURI) Query() string     { return "" }
+func (u testFileURI) Fragment() string  { return "" }

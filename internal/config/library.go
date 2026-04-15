@@ -4,16 +4,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+const asciiWhitespaceCut = " \t\n\r\v\f"
+
+func trimLeadingTrailingASCIIWhitespace(s string) string {
+	return strings.Trim(s, asciiWhitespaceCut)
+}
 
 // EnvLibraryRoot is the environment variable overriding the default library location.
 const EnvLibraryRoot = "PHOTO_TOOL_LIBRARY"
 
 // ResolveLibraryRoot returns the absolute path to the photo library root.
-// If PHOTO_TOOL_LIBRARY is set, it must be a non-empty path (made absolute).
-// Otherwise UserConfigDir()/photo-tool/library is used.
+// If PHOTO_TOOL_LIBRARY is set to a non-empty value after trimming leading/trailing ASCII whitespace, that path is made absolute. Empty, unset, or ASCII-whitespace-only
+// values fall back to UserConfigDir()/photo-tool/library. (Unicode space characters such as NBSP are not trimmed.)
 func ResolveLibraryRoot() (string, error) {
-	if v := os.Getenv(EnvLibraryRoot); v != "" {
+	if v := trimLeadingTrailingASCIIWhitespace(os.Getenv(EnvLibraryRoot)); v != "" {
 		abs, err := filepath.Abs(v)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", EnvLibraryRoot, err)
@@ -24,7 +31,12 @@ func ResolveLibraryRoot() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("user config dir: %w", err)
 	}
-	return filepath.Join(cfg, "photo-tool", "library"), nil
+	p := filepath.Join(cfg, "photo-tool", "library")
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return "", fmt.Errorf("library root: %w", err)
+	}
+	return abs, nil
 }
 
 // EnsureLibraryLayout creates the library root and standard subdirectories

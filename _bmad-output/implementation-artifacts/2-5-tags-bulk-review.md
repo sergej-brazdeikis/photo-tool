@@ -50,6 +50,15 @@ So that **I can organize beyond stars**.
   - [x] Domain tests for filter validation with tag set/unset.
   - [x] Optional: lightweight app tests if headless Fyne allows; otherwise document manual QA (multi-select + filter + loupe).
 
+### Review Findings
+
+_BMAD code review (Epic 2 Story 2.5), 2026-04-14. Headless run: patch items below are follow-ups; story/sprint status left `done` pending product triage._
+
+- [ ] [Review][Patch] Bulk partial-apply wording is swallowed by `userFacingDialogErrText` — [`internal/app/collection_store_err_text.go`](internal/app/collection_store_err_text.go) (e.g. FK substring / generic SQLite branch). Store returns explicit `bulk tag add:` / `bulk tag remove:` prefixes (`internal/store/tags.go`); dialogs should preserve that user-facing prefix before mapping driver errors.
+- [ ] [Review][Patch] `SelectedAssetIDs` is explicitly unordered (map iteration); chunk boundaries for `LinkTagToAssets` / `UnlinkTagFromAssets` are nondeterministic, so “first N … updated” does not correspond to a stable selection ordering — [`internal/app/review_grid.go`](internal/app/review_grid.go) (`SelectedAssetIDs`, ~282–293). Sort ascending (or grid order) before bulk ops.
+- [ ] [Review][Patch] Loupe `ListTags` failure only logs; tag typeahead options and labels can stay stale with no on-screen hint — [`internal/app/review_loupe.go`](internal/app/review_loupe.go) (~348–357).
+- [ ] [Review][Patch] `ListTagsUnionForAssets` builds one `IN (?,…,?)` for all selected asset IDs; very large selections may hit SQLite/host variable limits — [`internal/store/tags.go`](internal/store/tags.go) (~221–237). Chunk the IN list or cap selection for union query.
+
 ## Dev Notes
 
 ### Product decisions (Party mode — create, session 1)

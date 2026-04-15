@@ -68,7 +68,7 @@ func openLoupeShareFlow(win fyne.Window, grid *reviewAssetGrid, idx int, current
 	rows, err := store.ListAssetsForReview(grid.db, f, 1, idx)
 	if err != nil || len(rows) == 0 {
 		slog.Error("share: load row", "err", err, "idx", idx)
-		dialog.ShowError(errors.New("Could not load this photo for sharing. Return to Review and try again."), win)
+		dialog.ShowError(errors.New("could not load this photo for sharing — return to review and try again"), win)
 		return
 	}
 	row := rows[0]
@@ -158,7 +158,7 @@ func showLoupeShareMintSuccess(win fyne.Window, loop *share.Loopback, rawToken s
 	note.Wrapping = fyne.TextWrapWord
 
 	copyTok := widget.NewButton("Copy token", func() {
-		win.Clipboard().SetContent(rawToken)
+		fyne.CurrentApp().Clipboard().SetContent(rawToken)
 	})
 
 	buttons := []fyne.CanvasObject{copyTok}
@@ -167,7 +167,7 @@ func showLoupeShareMintSuccess(win fyne.Window, loop *share.Loopback, rawToken s
 		urlEntry.SetText(fullURL)
 		urlEntry.Disable()
 		copyLink := widget.NewButton("Copy link", func() {
-			win.Clipboard().SetContent(fullURL)
+			fyne.CurrentApp().Clipboard().SetContent(fullURL)
 		})
 		buttons = append([]fyne.CanvasObject{copyLink}, buttons...)
 		note.SetText("Copy the loopback link to open this shared photo in a browser on this machine. You can still copy the raw token if needed. The clipboard is not changed automatically.")

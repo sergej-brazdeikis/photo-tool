@@ -77,9 +77,42 @@
 
 generated: "2026-04-13"
 last_updated: "2026-04-14"
+# 2026-04-14: BMAD code review (3-5) — under-limit test + posture doc follow-ups; 3-5-share-cold-load-performance-abuse-posture → in-progress.
+# 2026-04-14: BMAD code review (3-4) — package HTML caption privacy vs Story 3.4 tasks; decision + test follow-up; 3-4-share-page-privacy-wcag-2-1-level-a → in-progress.
+# 2026-04-14: BMAD code review (3-3) — slog err attachment patch item; story + sprint → in-progress.
+# 2026-04-14: BMAD code review (2-12) — one patch finding (drop stat copy); story → in-progress.
+# 2026-04-14: BMAD code review (2-9) — Review filter refresh gap vs Collections CRUD; 2-9-collection-crud-multi-assign → in-progress.
+# 2026-04-14: BMAD code review (2-4) — decision + patch findings; 2-4-review-loupe-keyboard-rating → in-progress.
+# 2026-04-14: Party mode dev session 1/2 (2-2) — triple-filter ReviewFilterWhereSuffix arg-order contract + Select duplicate-label note; 2-2-filter-strip remains done.
+# 2026-04-14: Party mode dev session 2/2 (2-2) — ListAssetIDsForReview count+sort parity vs ListAssetsForReview (filtered package path); 2-2-filter-strip remains done.
+# 2026-04-14: Party mode dev session 1/2 (1-6) — partial-failure dry vs live CLI parity test (scan_test.go); 1-6-scan-cli remains done.
+# 2026-04-14: Party mode dev session 2/2 (1-6) — dry-run in-batch dedup (ingest drySeen + scan); same-byte path parity tests; 1-6-scan-cli remains done.
+# 2026-04-14: Party mode dev session 2/2 (1-5) — import close guard, receipt accordion + batch count label, rename/duplicate-batch tests, collectLabelsDeep accordion; 1-5-upload-confirm-receipt → review.
+# 2026-04-14: Party mode dev session 1/2 (1-5) — UX-DR17 async ingest + fyne.Do, importInFlight/drop guard, SynchronousIngest for fyne_test; 1-5-upload-confirm-receipt → review.
+# 2026-04-14: Story 1-5 dev-story — review follow-up (transactional create+link, import gate test); 1-5-upload-confirm-receipt → review.
+# 2026-04-14: Party mode dev session 2/2 (1-2) — challenged: MVP EXIF tag exclusions + mtime-on-bad-parse policy; malformed datetime + empty hash + ReaderHex read-wrap; 1-2-capture-time-hash → done.
+# 2026-04-14: Party mode dev session 1/2 (1-2) — simulated PM/UX/Arch/Dev; exifmeta %w wraps + IFD0/precedence tests; 1-2-capture-time-hash remains review.
+# 2026-04-14: Party mode dev session 1/2 (1-3) — simulated Dev/Arch/UX/PM; concurrent UNIQUE + orphan unlink fix, sqlite single-connection pool; 1-3-core-ingest → done.
+# 2026-04-14: Party mode dev session 2/2 (1-4) — simulated Amelia/Winston/Sally/Mary: TargetSchemaVersion AC alignment, v1→Open upgrade test, empty link no-op + double-delete not found; 1-4-collections-schema → done.
+# 2026-04-14: Party mode dev session 1/2 (1-4) — simulated Amelia/Winston/Sally/John; link batch rollback + duplicate assetIDs tests; collections godoc; 1-4-collections-schema remains review.
+# 2026-04-14: Party mode dev session 2/2 (1-3) — simulated Amelia/Winston/Sally/John; per-dest O_TRUNC race + copy Sync/size check + mixed-batch summary test; 1-3-core-ingest remains done.
+# 2026-04-14: Story 1-2 dev-story — SumHex open-error wrap + test; 1-2-capture-time-hash → review.
+# 2026-04-14: Party mode dev session 1/2 (1-7) — simulated Amelia/Sally/Winston/Murat; CLI dry-run backfill test + scan progress log `updated` field; 1-7-import-cli remains done.
+# 2026-04-14: Party mode dev session 2/2 (1-7) — four-line receipt order tests + scan/import Long alignment + import library-root hint; 1-7-import-cli remains done.
+# 2026-04-14: Party mode dev session 1/2 (1-1) — simulated Amelia/Winston/Sally/John: env whitespace fallback, PRAGMA regression test, epics AC3 aligned to TargetSchemaVersion; 1-1 remains review.
+# 2026-04-14: Party mode dev session 2/2 (1-1) — challenged TrimSpace vs ASCII AC; Open preflight `.phototool` + empty root; NBSP env test; 1-1-library-foundation → done.
+# 2026-04-14: Story 1-1 dev-story — library root Abs, TargetSchemaVersion export + tests; 1-1-library-foundation → review.
+# 2026-04-14: create-story workflow — Story 1.1 spec at 1-1-library-foundation.md; 1-1-library-foundation → ready-for-dev.
+# 2026-04-14: Story 1-3 dev-story follow-up — sqlite constraint codes for late duplicate + EXIF ingest test; 1-3-core-ingest → review.
 # 2026-04-14: Story 4-1 dev-story — multi-asset package shares; sprint entry → in-progress → review.
 # 2026-04-14: Party mode dev session 1/2 (4-1) — AC1 confirm count label + wrapped mint err UX test + HTTP 404 header/HEAD parity; status unchanged review.
 # 2026-04-14: Party mode dev session 2/2 (4-1) — NFR-06: OOB package member404 parity + post-reject package HTML snapshot assertions; status unchanged review.
+# 2026-04-14: Party mode dev session 2/2 (1-8) sequencing — mixed-drop skip dialog after applyImportResult (pendingDropSkipLines + takePendingStringSlice); 1-8-drag-drop-upload remains review.
+# 2026-04-14: Party mode dev session 1/2 (2-1) — simulated dev round; story 2-1 doc + shell godoc aligned (button nav, AC4/2.8 traceability); 2-1-app-shell-navigation-themes remains done.
+# 2026-04-14: Party mode dev session 2/2 (2-3) — simulated Amelia/Sally/Winston/John; pending thumbnail `MediaPhotoIcon` + page-query slog fields (`page`, `rejected_mode`);2-3-thumbnail-grid-rating-badges remains done.
+# 2026-04-14: Party mode dev session 1/2 (2-3) — simulated Amelia/Sally/Winston/Mary; cached page-query failure (one slog + no SQLite retry storm); `review_grid.go` + story record; 2-3-thumbnail-grid-rating-badges remains done.
+# 2026-04-14: Party mode dev session 2/2 (2-1) — nav `setNavSelection` + Refresh; theme test primary≠warning; story risks/record; 2-1 remains done.
+# 2026-04-14: Party mode dev session 1/2 (1-8) deepen — dropBlockedDialogInfo + classify stat-error test + empty-uris comment; manual QA "drop during import"; 1-8-drag-drop-upload remains review.
 project: photo-tool
 project_key: photo-tool
 tracking_system: file
@@ -88,10 +121,10 @@ story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
   1-1-library-foundation: done
-  1-2-capture-time-hash: in-progress
-  1-3-core-ingest: in-progress
-  1-4-collections-schema: in-progress
-  1-5-upload-confirm-receipt: in-progress
+  1-2-capture-time-hash: done
+  1-3-core-ingest: done
+  1-4-collections-schema: done
+  1-5-upload-confirm-receipt: review
   1-6-scan-cli: done
   1-7-import-cli: done
   1-8-drag-drop-upload: review
@@ -100,20 +133,20 @@ development_status:
   2-1-app-shell-navigation-themes: done
   2-2-filter-strip: done
   2-3-thumbnail-grid-rating-badges: done
-  2-4-review-loupe-keyboard-rating: review
+  2-4-review-loupe-keyboard-rating: in-progress
   2-5-tags-bulk-review: done
   2-6-reject-undo-hidden-restore: review
   2-7-delete-quarantine: done
   2-8-collections-list-detail: review
-  2-9-collection-crud-multi-assign: review
+  2-9-collection-crud-multi-assign: in-progress
   2-10-quick-collection-assign: review
   2-11-layout-display-scaling-gate: ready-for-dev
-  2-12-empty-states-error-tone: review
+  2-12-empty-states-error-tone: in-progress
   epic-3: in-progress
   3-1-share-preview-snapshot-mint: review
   3-2-loopback-http-server-token-resolution: review
-  3-3-read-only-share-html-page: review
-  3-4-share-page-privacy-wcag-2-1-level-a: review
-  3-5-share-cold-load-performance-abuse-posture: review
+  3-3-read-only-share-html-page: in-progress
+  3-4-share-page-privacy-wcag-2-1-level-a: in-progress
+  3-5-share-cold-load-performance-abuse-posture: in-progress
   epic-4: in-progress
   4-1-multi-asset-snapshot-packages: review

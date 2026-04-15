@@ -164,6 +164,13 @@ Dev-story 2026-04-13: Rejected panel bulk delete + selection on hidden grid; the
 
 ## Change Log
 
+### Review Findings
+
+_BMAD code review (2026-04-14), scoped to Story 2.7 implementation at HEAD; layers simulated in-session (no separate subagent run)._
+
+- [ ] [Review][Patch] Broaden `userFacingDialogErrText` for rare delete/quarantine failures — `internal/app/collection_store_err_text.go` (~76–86) does not match `delete: lost update for asset` (split-brain after successful rename), `delete asset rows affected`, or `quarantine: no free filename` / `quarantine:` prefix; users see the generic library update string instead of trash-focused recovery copy (AC4). Add substrings + table-driven tests in `collection_store_err_text_test.go`.
+- [x] [Review][Defer] Orphan thumbnail files under `.cache/thumbnails` after delete — pre-called out in story Dev Notes (optional invalidation); not AC-blocking.
+
 - 2026-04-13 — Story 2.7 dev-story closure: Rejected panel delete parity, theme test for destructive on background, all tasks/DoD checked; status **review**.
 - 2026-04-13 — Party mode dev **1/2**: quarantine collision test + split-brain log field `quarantine_file`; status unchanged **review** (await dev 2/2 or sign-off).
 - 2026-04-13 — Party mode dev **2/2**: library-root path guard + loupe resync on idempotent delete; status **done**.

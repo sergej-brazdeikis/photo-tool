@@ -1,6 +1,6 @@
 # Story 1.3: Core ingest — copy into canonical storage and register asset
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,13 +32,21 @@ So that **the library reflects what is on disk**.
 
 ### Review Findings
 
-- [ ] [Review][Patch] Detect late duplicate via SQLite constraint errors, not English substring matching on `err.Error()` — `isUniqueContentHash` matches `"UNIQUE constraint failed"` and index names; this breaks if the driver/localization/message format changes. Prefer `errors.As` into the `modernc.org/sqlite` error type and check constraint/extended result codes (e.g. `SQLITE_CONSTRAINT_UNIQUE`). [internal/ingest/ingest.go:136-145]
+- [x] [Review][Patch] Detect late duplicate via SQLite constraint errors, not English substring matching on `err.Error()` — `isUniqueContentHash` matches `"UNIQUE constraint failed"` and index names; this breaks if the driver/localization/message format changes. Prefer `errors.As` into the `modernc.org/sqlite` error type and check constraint/extended result codes (e.g. `SQLITE_CONSTRAINT_UNIQUE`). [internal/ingest/ingest.go:136-145]
 
-- [ ] [Review][Patch] Integration tests only exercise `ReadCapture` mtime fallback (no EXIF in `writeJPEGGray`); AC1 calls out capture time from Story 1.2 including the EXIF path. Add at least one ingest test with a tiny JPEG carrying `DateTimeOriginal` so `CanonicalDayDir` / `rel_path` reflect EXIF-derived UTC, not only `Chtimes`. [internal/ingest/ingest_test.go]
+- [x] [Review][Patch] Integration tests only exercise `ReadCapture` mtime fallback (no EXIF in `writeJPEGGray`); AC1 calls out capture time from Story 1.2 including the EXIF path. Add at least one ingest test with a tiny JPEG carrying `DateTimeOriginal` so `CanonicalDayDir` / `rel_path` reflect EXIF-derived UTC, not only `Chtimes`. [internal/ingest/ingest_test.go]
 
-- [x] [Review][Defer] `copyToFile` does not `Sync` the destination — acceptable MVP; revisit if NFRs require crash-safe media writes. [internal/ingest/ingest.go:120-133] — deferred, pre-existing operational concern
+- [x] [Review][Patch] `copyToFile` now calls `Sync` after `io.Copy` (party dev2/2); directory metadata flush remains OS-dependent. [internal/ingest/ingest.go — copyToFile]
 
 - [x] [Review][Defer] Theoretical collision: same UTC second + identical first 12 hex chars of two distinct SHA-256 digests yields the same `SuggestedFilename` / `destAbs`; `O_TRUNC` could clobber an existing asset on disk before DB rejects the insert. Probability is negligible for non-adversarial use; mitigating cleanly conflicts with idempotent retry after a crash between copy and insert. Document as accepted architecture risk or lengthen prefix in a future story if libraries scale into collision regimes. [internal/paths/canonical.go SuggestedFilename + internal/ingest/ingest.go copyToFile] — deferred, architecture/product tradeoff
+
+- [x] [Review][Patch] **Party dev1/2 (2026-04-14):** Concurrent ingest could hit `SQLITE_CONSTRAINT_UNIQUE` on `content_hash` **or** `rel_path` while targeting the same canonical file. The previous handler always `Remove(dest)` before branching, which could delete the **winner’s** library file. **Fix:** resolve collisions via `AssetRowByContentHash` + `ActiveAssetByRelPath`; only remove the copied file when it is an orphan (duplicate-bytes-other-path, or non-duplicate insert failure). **`store.Open`:** `SetMaxOpenConns(1)` / idle1 / `ConnMaxLifetime(0)` so `busy_timeout` applies and pooled connections do not bypass it. [internal/ingest/ingest.go, internal/store/open.go, `TestIngest_concurrentSameSource_oneRow_fileSurvives`]
+
+- [x] [Review][Patch] **Party dev2/2 (2026-04-14):** Session 1 fixed DB-level races but **not filesystem-level** races: two goroutines opening the **same** canonical dest with `O_TRUNC` truncated each other’s in-flight copy (`copy size mismatch: got 0 want 375` in `TestIngest_concurrentSameSource_oneRow_fileSurvives`). **Fix:** `sync.Map` of per-destination mutexes + second `AssetIDByContentHash` under that lock before seek/copy. **`copyToFile`:** `Sync` + post-copy size check vs `src.Stat` (closes prior “no Sync” deferral for MVP integrity). **Tests:** `TestIngest_batch_mixedSuccessAndFailure` for NFR-04 stable counts when one path fails mid-batch.
+
+- [ ] [Review][Patch] After successful `InsertAssetWithCamera`, the follow-up `AssetIDByContentHash` lookup can error or miss while the row and library file already exist; the code then increments `Failed` and decrements `Added`, contradicting AC3/NFR-04 summary honesty. Prefer returning the new row id from the INSERT (`sql.Result.LastInsertId` or `RETURNING id`) instead of a second query. [internal/ingest/ingest.go:215-228]
+
+- [x] [Review][Defer] `destCopyLocks` (`sync.Map`) never evicts per-destination mutex entries; an extremely long-lived process ingesting a huge number of unique canonical paths could grow memory without bound. [internal/ingest/ingest.go:41-47] — deferred, operational scale edge
 
 ## Dev Notes
 
@@ -128,11 +136,16 @@ Composer (Cursor agent)
 - Extended `internal/ingest` package comment with SHA-256 dedup semantics (NFR-03 / size+hash via digest).
 - Added `internal/ingest/ingest_test.go`: duplicate ingest + three-file batch against real SQLite + library layout; asserts row shape, canonical rel_path prefix, and per-call `OperationSummary` fields.
 - Added `internal/domain/summary_test.go` to lock JSON `snake_case` contract for `OperationSummary`.
+- **Review follow-up (2026-04-14):** Late duplicate detection uses `errors.As` into `modernc.org/sqlite.Error` with `SQLITE_CONSTRAINT_UNIQUE`, scoped to `content_hash` / `idx_assets_content_hash` in the driver message (not the English `"UNIQUE constraint failed"` prefix). Tests cover wrapped errors, `rel_path` unique false positives, EXIF `DateTimeOriginal` JPEG ingest vs wrong mtime, and full `go test ./...` green.
+- **Party mode dev session 1/2 (2026-04-14):** Simulated roundtable (Amelia / Winston / Sally / John) on hook **dev** — challenged “late duplicate is solved” by forcing **concurrent** ingest: found **data-loss risk** (unlink after UNIQUE) and **SQLITE_BUSY** from multi-connection pool ignoring per-conn `busy_timeout`. Implemented collision resolver + single-connection SQLite pool + `TestIngest_concurrentSameSource_oneRow_fileSurvives`.
+- **Party mode dev session 2/2 (2026-04-14):** Same roster — **challenged** session 1 by asking whether SQLite serialization implies **safe media writes**. Disagreement: Winston/Amelia argued single DB conn is necessary but **insufficient** when two goroutines target the same dest path; Sally wanted **batch honesty** (`Failed` alongside `Added` in one `Ingest` call) for receipt UX-DR6 foreshadowing. **Shipped:** per-dest copy mutex + dedup re-check under lock, `dst.Sync` + size parity in `copyToFile`, `TestIngest_batch_mixedSuccessAndFailure`.
 
 ### File List
 
+- go.mod
 - internal/ingest/ingest.go
 - internal/ingest/ingest_test.go
+- internal/store/open.go
 - internal/domain/summary_test.go
 - _bmad-output/implementation-artifacts/1-3-core-ingest.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
@@ -140,3 +153,5 @@ Composer (Cursor agent)
 ### Change Log
 
 - 2026-04-13: Story 1.3 — ingest integration tests, dedup documentation, OperationSummary JSON test; sprint status `1-3-core-ingest` → review.
+- 2026-04-14: Code review follow-ups — `isUniqueContentHash` via `sqlite.Error` + `SQLITE_CONSTRAINT_UNIQUE`; EXIF `DateTimeOriginal` JPEG ingest test + unique-key disambiguation tests; `go mod tidy`; story → review.
+- 2026-04-14: Party dev2/2 — per-dest mutex for concurrent same-dest copy, `copyToFile` Sync + size verify, `TestIngest_batch_mixedSuccessAndFailure`; story remains done.

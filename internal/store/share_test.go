@@ -90,6 +90,49 @@ SELECT token_hash, asset_id, created_at_unix, payload FROM share_links WHERE id 
 	}
 }
 
+// AC7(c) / AC1: Dismissing the preview without confirm must not write share_links.
+// MintDefaultShareLink is the only writer for single-asset rows; pre-mint eligibility reads must be side-effect free.
+func TestShareLinks_countUnchangedWhenMintNotCalled(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	now := time.Now().Unix()
+	if err := InsertAsset(db, "h-share-no-mint", "2024/nomint.jpg", now, now); err != nil {
+		t.Fatal(err)
+	}
+	var id int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = ?`, "h-share-no-mint").Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+
+	before, err := CountShareLinks(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := AssetEligibleForDefaultShare(db, id)
+	if err != nil || !ok {
+		t.Fatalf("eligible: ok=%v err=%v", ok, err)
+	}
+	msg, err := DefaultShareBlockedUserMessage(db, id)
+	if err != nil || msg != "" {
+		t.Fatalf("gate: msg=%q err=%v", msg, err)
+	}
+	after, err := CountShareLinks(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatalf("share_links count changed without mint: before=%d after=%d", before, after)
+	}
+}
+
 func TestMintDefaultShareLink_rejectedBlocked(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "lib")
 	if err := config.EnsureLibraryLayout(root); err != nil {

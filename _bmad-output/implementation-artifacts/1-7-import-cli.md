@@ -107,6 +107,34 @@ So that **the DB matches disk after manual operations**.
 
 **Orchestrator synthesis — edits applied (dev2/2):** `summary_exit.go`; **`RunScan` / `RunImport`** return errors when **`sum.Failed > 0`**; help text; tests above; story **`done`** unchanged; sprint unchanged.
 
+## Party mode (automated headless, hook **dev**, session **1/2** — 2026-04-14)
+
+**Mode:** `--solo` (manifest at `_bmad/_config/agent-manifest.csv`; roundtable simulated).
+
+**Amelia (Developer):** Ingest tests prove **`RegisterInPlacePath`**, not **`RunImport` + Cobra flags + stdout**. Session 1/2 should lock **dry-run backfill** at the CLI: **`Updated: 1`** on stdout while **`capture_time_unix`** stays stale in SQLite.
+
+**Sally (UX Designer):** Help text is enough; the four receipt lines already match **scan**. Skip another **Long** paragraph—muscle memory is the counters.
+
+**Winston (Architect):** **`import`** progress logs included **`updated`**; **`scan`** omitted it even though **`OperationSummary`** is shared. Normalize the **`slog`** field list so CI greps stay comparable; **`scan`** will usually log **`updated=0`**, which is honest.
+
+**Murat (Test Architect):** Pushing back: adding **`updated`** to **scan** logs risks golden-log churn—acceptable only if **`go test ./...`** stays green (no snapshot tests on those lines today).
+
+**Orchestrator synthesis — edits applied:** **`TestRunImport_dryRun_backfillClassifiesUpdatedWithoutDBWrite`**; **`scan`** progress **`slog`** includes **`updated`**; story + sprint comment only.
+
+## Party mode (automated headless, hook **dev**, session **2/2** — 2026-04-14)
+
+**Mode:** `--solo` (manifest at `_bmad/_config/agent-manifest.csv`; roundtable simulated).
+
+**Murat (Test Architect):** Session 1 proved dry-run backfill text on stdout; it did **not** lock **ordering** for automation. **`Failed > 0`** must still yield **exactly four lines** in **`Added` → `Skipped duplicate` → `Updated` → `Failed`** so the last line stays grep-stable for CI/scripts.
+
+**Amelia (Developer):** Pushback on import-only tests: **`errIfOperationFailures`** is shared—**`scan`** exit-path must assert the same receipt shape or we’ll drift silently.
+
+**Sally (UX Designer):** **`scan --help`** listed only three outcome buckets while the binary always prints **`Updated:`** (zero for scan). That’s cognitive noise for power users comparing **`scan`** vs **`import`**; align the **`Long`** text with the four printed lines.
+
+**Winston (Architect):** I disagree with burying “you can pass **library root** as **`--dir`**” only in epics—**`import` `Long`** should say it; containment already allows **`--dir == libraryRoot`**.
+
+**Orchestrator synthesis — edits applied (dev 2/2):** **`internal/cli/summary_stdout_test.go`** (`assertOperationReceiptLineOrder`); **`TestRunImport_exitErrorWhenFileFails`** + **`TestRunScan_exitErrorWhenFileFails`** call it; **`root.go`** scan dry-run wording + import library-root sentence; **`testImportCommand` / `testScanCommand`** set **`SilenceUsage` + `SilenceErrors`** like production so captured stdout stays receipt-only; Dev Agent Record + sprint comment.
+
 ## Dev Notes
 
 ### Technical requirements
@@ -179,7 +207,7 @@ So that **the DB matches disk after manual operations**.
 
 ### Agent Model Used
 
-BMAD party mode (automated headless; create + dev sessions), 2026-04-13. BMAD dev-story verification run (Cursor), 2026-04-13.
+BMAD party mode (automated headless; create + dev sessions), 2026-04-13. BMAD dev-story verification run (Cursor), 2026-04-13. BMAD dev-story workflow re-run (Cursor), 2026-04-14.
 
 ### Debug Log References
 
@@ -193,19 +221,34 @@ BMAD party mode (automated headless; create + dev sessions), 2026-04-13. BMAD de
 - **Known limitation (soft-delete × global hash uniqueness):** `assets.content_hash` is unique for all rows; a soft-deleted row still reserves its hash. Import treats some insert failures like duplicate skips; full “revive tombstone” behavior is **out of scope** for 1.7 unless schema/product changes. **`TestRegisterInPlacePath_softDeletedRowReservesHash`** locks the observable outcome (second path → **`skipped_duplicate`**, no active row).
 - **CLI exit status:** When **`Failed > 0`**, **`scan`** and **`import`** return an error after printing the full summary so **`MainExit`** exits **1** (parity between subcommands).
 - **Dev-story verification:** `go test ./...` and `go build .` green; ACs 1–6 and all story tasks confirmed against current tree; sprint `1-7-import-cli` remains `done` (terminal state — not regressed to `review`).
+- **2026-04-14 dev-story workflow:** Full `go test ./...` and `go build .` at project root; all packages green; no code changes required; tasks remain complete.
+- **2026-04-14 party mode (dev 1/2):** CLI dry-run backfill regression (`import_test.go`); scan progress log parity with import (`scan.go`).
+- **2026-04-14 party mode (dev 2/2):** Receipt stdout locked to four ordered lines (`summary_stdout_test.go`; import + scan exit tests); `import`/`scan` Cobra `Long` text aligned with printed summary + library-root hint for import; test subcommands silence usage/errors to match `Execute` and keep buffers clean.
 
 ### File List
 
-- `internal/cli/root.go` — register `import` command
+- `internal/cli/root.go` — register `import` command; `scan`/`import` Long help (four outcome labels; import may use library root as `--dir`)
+- `internal/cli/summary_stdout_test.go` — shared assertion for ordered four-line CLI receipt (scan/import parity)
 - `internal/cli/import.go` — `RunImport` (symlink-resolving containment)
 - `internal/cli/summary_exit.go` — non-zero exit when `OperationSummary.Failed > 0` (shared with scan)
-- `internal/cli/scan.go` — uses `errIfOperationFailures` after summary
-- `internal/cli/import_test.go` — CLI tests
+- `internal/cli/scan.go` — uses `errIfOperationFailures` after summary; progress `slog` includes `updated` (parity with import)
+- `internal/cli/import_test.go` — CLI tests (includes receipt order on import failure path)
+- `internal/cli/scan_test.go` — scan CLI tests (receipt order on scan failure path)
 - `internal/ingest/register_import.go` — `RegisterInPlacePath`
 - `internal/ingest/register_import_test.go` — ingest/import tests
 - `internal/store/assets.go` — `AssetRowByContentHash`, `ActiveAssetByRelPath`, `UpdateAssetCaptureTime`; `AssetIDByContentHash` delegates to row helper
 - `internal/domain/summary.go` — comment for **`Updated`**
 - `internal/ingest/extensions.go` — doc string mentions import
+
+### Review Findings (bmad-code-review, headless, 2026-04-14)
+
+_Scope: Story 1.7 paths; diff emphasis: scan dry-run dedup, receipt tests, help text._
+
+- [ ] [Review][Patch] Import dry-run should mirror scan in-batch content-hash memory — `RegisterInPlacePath` / `RunImport` lack a `drySeen`-style map; two same-byte files in one dry run can classify as two `added` while live run dedups. Violates AC3 parity with scan after `ingest.IngestPath` dry-run fix. [`internal/ingest/register_import.go`, `internal/cli/import.go`]
+
+- [ ] [Review][Patch] Assert four-line CLI receipt order on import dry-run backfill test — `TestRunImport_dryRun_backfillClassifiesUpdatedWithoutDBWrite` should call `assertOperationReceiptLineOrder` for grep-stable stdout (party-mode intent). [`internal/cli/import_test.go`]
+
+- [x] [Review][Defer] `scanSummaryFromOutput` ignores non-receipt lines — parity tests could theoretically pass if extra stdout noise appears; pre-existing helper pattern, not introduced by this diff. [`internal/cli/scan_test.go`] — deferred, pre-existing
 
 ---
 

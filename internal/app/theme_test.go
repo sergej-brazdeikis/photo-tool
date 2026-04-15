@@ -41,6 +41,18 @@ func TestPhotoToolTheme_destructiveVsCautionDistinct(t *testing.T) {
 	}
 }
 
+// UX-DR1 / AC7: reject/caution must not read as the primary action (hue baseline for later grid chrome).
+func TestPhotoToolTheme_cautionDistinctFromPrimary(t *testing.T) {
+	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
+		th := NewPhotoToolTheme(v)
+		prim := th.Color(theme.ColorNamePrimary, v)
+		warn := th.Color(theme.ColorNameWarning, v)
+		if prim == warn {
+			t.Fatalf("variant %v: primary and warning must differ", v)
+		}
+	}
+}
+
 // Story 2.7 manual QA substitute: destructive (delete) buttons must stay visible on the app background in light and dark.
 func TestPhotoToolTheme_destructiveDistinctFromBackground(t *testing.T) {
 	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {

@@ -9,10 +9,10 @@ Status: done
 ## Story
 
 As a **photographer**,  
-I want **a dense grid that shows state at a glance**,  
-So that **I can triage quickly**.
+I want **an image-forward grid that still shows rating and reject at a glance**,  
+So that **photos stay primary while I triage quickly**.
 
-**Implements:** FR-07 (display tags/ratings context); supports FR-08/FR-29 display; UX-DR3.
+**Implements:** FR-07 (display tags/ratings context); supports FR-08/FR-29 display; UX-DR3, UX-DR16.
 
 ## Acceptance Criteria
 
@@ -20,6 +20,14 @@ So that **I can triage quickly**.
 2. **Given** an asset with **rating** or **reject** state in the DB, **when** its cell is shown in the grid, **then** **badges** reflect that DB state within the PRD **1 second** guideline for **single-user, local-library** use (PRD **SC-3** item 3; **FR-10** / **FR-07** display baseline). *Interpretation for this story:* after a filter change or initial load, visible cells must show **correct** `rating` / `rejected` from the same query row without stale placeholders beyond ~1s under normal local SQLite + decode latency; full **keyboard rating** persistence is Story **2.4**, but grid **display** must be truthful to DB.
 3. **Given** **decode failure** for an asset file, **when** the cell renders, **then** the user sees a **failed-decode** affordance (**placeholder + short explanation**), not a silent blank—per **UX-DR3** / UX component strategy (**failed decode**: icon + tooltip or caption).
 4. **Given** a **paged grid query** error (SQLite / I/O), **when** the list tries to bind a row, **then** the cell shows a **short, non-technical** explanation (no driver/SQL text in the UI); details go to **structured logs** (`slog`) for diagnosis—same spirit as AC3 for “no raw dumps” in the surface.
+
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+Epic rollup and **UX spec revision 2026-04-14** add **image-first** expectations beyond the numbered AC above:
+
+- **Default density:** **Thumbnail imagery** is the **largest** read in the cell; defer nonessential chrome to **hover/focus** where feasible (**UX-DR3**, **UX-DR16**).
+- **Evidence:** **Minimum** thumbnail edge at **1024×768** and **1920×1080** (and loupe minimum image region) are **documented** in Story **2.11** / `nfr-01-layout-matrix-evidence.md`—not ad hoc per tester.
+- **Threading:** Ingest/decode callbacks must land on the **Fyne main thread** (**UX-DR17**; already aligned with `fyne.Do` in tasks).
 
 ## Tasks / Subtasks
 
@@ -110,6 +118,9 @@ So that **I can triage quickly**.
 
 ## Change Log
 
+- 2026-04-14: Party mode **dev** session **2/2** (2.3, deepen) — simulated roundtable; challenged session **1/2** focus on **failure** paths: **pending decode** still used an empty `canvas.Image`, blurring UX-DR3 **pending** vs **failed**. Applied **`theme.MediaPhotoIcon()`** as `Resource` while `WriteThumbnailJPEG` runs; clear `Resource` before binding cached `File`; **`slog.Error`** for page queries now includes **`page`** + **`rejected_mode`**; `go test ./...` green; story remains **done**.
+- 2026-04-14: Party mode **dev** session **1/2** (2.3) — simulated roundtable; **cached failed grid page** in `reviewAssetGrid` so a broken list query logs **once** per page and does not re-hit SQLite on every row bind/scroll; `bindGridRow` no longer duplicates `slog.Error`; sprint comment added; story remains **done**.
+- 2026-04-14: BMAD dev-story workflow (re-run) — `go test ./...` and `go build .` green; acceptance criteria and tasks re-verified against codebase; no code changes required; story/sprint remain **done**.
 - 2026-04-13: Dev-story workflow — `go test ./...` and `go build .` verified green; all acceptance criteria and tasks confirmed satisfied in codebase; status set to **review** for BMAD handoff (sprint synced).
 - 2026-04-13: Party mode session **2/2** (dev hook, deepen) — uniform **page-query** failure across row cells, **theme.ErrorIcon** + shared user copy, **one** `slog.Error` per failed fetch, `TestReviewGridUserFacingMessagesSanitized`; status **done**, sprint synced.
 
@@ -117,7 +128,9 @@ So that **I can triage quickly**.
 
 ### Agent Model Used
 
-Party mode (simulated headless, automated): **John (PM)**, **Sally (UX)**, **Winston (Architect)**, **Mary (Analyst)** — round 1; **John**, **Sally**, **Winston**, **Murat (TEA)** — round 2 (AC4 + store guards). Session **2/2** deepen: **Amelia (Dev)**, **Sally (UX)**, **Winston (Architect)**, **Murat (TEA)** — round 3 below; `_bmad/_config/agent-manifest.csv` absent in repo (roster from BMAD defaults). Implementation: Composer agent.
+Party mode (simulated headless, automated): **John (PM)**, **Sally (UX)**, **Winston (Architect)**, **Mary (Analyst)** — round 1; **John**, **Sally**, **Winston**, **Murat (TEA)** — round 2 (AC4 + store guards). Session **2/2** deepen: **Amelia (Dev)**, **Sally (UX)**, **Winston (Architect)**, **Murat (TEA)** — round 3. Session **1/2** (2026-04-14) dev hook: **Amelia**, **Sally**, **Winston**, **Mary** — round 4. Session **2/2** (2026-04-14) dev hook deepen: **Amelia**, **Sally**, **Winston**, **John** — round 5 below; roster from `_bmad/_config/agent-manifest.csv`. Implementation: Composer agent.
+
+**2026-04-14:** BMAD dev-story workflow executed on this artifact; verification-only pass (Composer).
 
 ### Debug Log References
 
@@ -128,8 +141,11 @@ Party mode (simulated headless, automated): **John (PM)**, **Sally (UX)**, **Win
 - Failed decode / missing file: user-facing copy in cell (`Can't preview — …`), not raw errors.
 - **Session 2 hardening:** grid **page/SQL** failures use sanitized cell copy + `slog.Error`; store tests cover invalid list pagination args; code comment documents **main-thread** paged query during list bind (small `LIMIT` tradeoff).
 - **Session 2/2 deepen:** page fetch errors apply to **all** cells in the visible row (not column-0 only); **ErrorIcon** + shared constants for decode vs page copy; **single** log line per bind row on query failure; `TestReviewGridUserFacingMessagesSanitized` guards against SQL-ish leakage in UI strings.
+- **Session 2/2 (2026-04-14) dev hook — pending vs failed:** While thumbnails decode, cells show **`MediaPhotoIcon`** (Fyne `Resource`) instead of a blank image region; success path clears `Resource` before `File = cacheAbs`. Page-query `slog.Error` adds **`page`** and **`rejected_mode`** for supportability without UI leaks.
+- **Session 1/2 (2026-04-14) dev hook:** **page-level** failure cache (`pageFailed` + `errReviewGridPageFailed`) so scroll/recycle does not **re-query** a known-bad page or spam logs; real driver error logged **once** in `ensurePageLocked`; UI still uses sanitized `reviewGridMsgPageLoadFail`.
 - **Manual QA:** scroll a large library; confirm cache fills under `.cache/thumbnails/` and filter changes reset the grid.
 - **2026-04-13 (Composer):** `go test ./...` and `go build .` green after session 2/2; story **done**, sprint **done**.
+- **2026-04-14 (Composer):** Dev-story workflow — full test suite + root build green; AC1–AC4 and task list confirmed in `internal/store/review_query.go`, `internal/app/review_grid.go`, `internal/app/thumbnail_disk.go`; status unchanged **done**.
 
 ### File List
 
@@ -178,3 +194,27 @@ Party mode (simulated headless, automated): **John (PM)**, **Sally (UX)**, **Win
 **Murat (TEA):** Agree with Amelia on **log spam** and column-0-only failure. Add a **regression** that the two canonical user strings never contain `sqlite` / `near ` / `syscall` — cheap guardrail since we will not parse Fyne trees in CI.
 
 **Orchestrator synthesis:** Refactor to `showUserFailure(msg)` + constants; stack **ErrorIcon** + label; on page error **log once** in `bindGridRow` then call `showUserFailure` for **every** cell in the row; add `TestReviewGridUserFacingMessagesSanitized`; mark story/sprint **done** after green `go test ./...`.
+
+### Party mode — round 4 (session 1/2, dev hook — challenges round 3)
+
+**Amelia (Dev):** Round 3 fixed **column coverage** and duplicate `slog` between cells in one bind, but **`ensurePageLocked` still re-queries** whenever `pages[pageIdx]` is empty. Fyne **re-binds** rows on scroll; you **hammer SQLite** and can still get **log noise** if anything logs per bind. Move **one** `slog.Error` to the **first** query failure and **memoize failure** per `pageIdx` until `reset` / `invalidatePages`.
+
+**Sally (UX):** Users won’t read logs — they need the grid to **stay** in a calm failure state without **flickering** or feeling like it is constantly “retrying.” Caching failure matches **stable** error tone (UX-DR18 spirit).
+
+**Winston (Architect):** Do not persist the raw `error` in view state — that invites accidental leaks in dumps. Track **`pageFailed`** + sentinel `errReviewGridPageFailed` for control flow; keep the **first** underlying error **only** in the log line.
+
+**Mary (Analyst):** Risk: a **transient** I/O blip looks **permanent** until the user changes filters or something calls `invalidatePages`. That is acceptable if copy promises **user-triggered recovery** (“try changing the filter”); note the tradeoff in code.
+
+**Orchestrator synthesis:** Add `pageFailed`, sentinel error, log once in `ensurePageLocked`, remove duplicate log from `bindGridRow`, clear `pageFailed` on `reset` / `invalidatePages`; run `go test ./...` + `go build .`; story/sprint stay **done**.
+
+### Party mode — round 5 (session 2/2, 2026-04-14 — challenges rounds 3–4)
+
+**Amelia (Dev):** Rounds 3–4 hardened **error** and **SQLite churn**; the **happy path** still left **`canvas.Image` empty** until the goroutine finished. Fast scroll reads as **flicker** or “missing photo.” Bind **`theme.MediaPhotoIcon()`** as `Resource` for the pending window; **`Resource = nil`** before applying **`File`** on success so Fyne doesn’t keep the placeholder.
+
+**Sally (UX):** I’ll nitpick **image-first**: an icon is **chrome**. **`MediaPhotoIcon`** is the lightest-weight **pending** signal we get without a second widget layer—better than a **dead** rectangle that users confuse with **failed decode** (**ErrorIcon** path stays distinct).
+
+**Winston (Architect):** Fyne **`File` vs `Resource`** is exclusive in practice; the success branch must **zero `Resource`** first. **`clear()` / `showUserFailure`** already nil out both—no new state machine.
+
+**John (PM):** This doesn’t change AC text—it closes the **UX-DR3 pending** gap the numbered ACs imply but didn’t spell out. **Observability:** add **`page`** to the page-query log so support can correlate **scroll position** with failures without opening the UI.
+
+**Orchestrator synthesis:** Implement pending **`MediaPhotoIcon`** in `bindRow`, structured **`slog`** fields in `ensurePageLocked`, re-run **`go test ./...`**; story/sprint remain **done**.

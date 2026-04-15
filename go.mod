@@ -5,7 +5,9 @@ go 1.25.4
 require (
 	fyne.io/fyne/v2 v2.7.3
 	github.com/dsoprea/go-exif/v3 v3.0.1
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/spf13/cobra v1.9.1
+	golang.org/x/time v0.15.0
 	modernc.org/sqlite v1.48.2
 )
 
@@ -38,7 +40,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.5.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -52,7 +53,6 @@ require (
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.70.0 // indirect

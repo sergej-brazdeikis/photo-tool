@@ -1,6 +1,6 @@
 # Story 3.3: Read-only share HTML page (image + rating)
 
-Status: review
+Status: in-progress
 
 <!-- Sprint key: `3-3-read-only-share-html-page` → this spec (`3-3-share-html-readonly.md`). -->
 <!-- create-story workflow (2026-04-14): Epic 3 Story 3.3 — HTML/CSS share page, image bytes route, snapshot rating; builds on 3.1 mint payload + 3.2 loopback handler. -->
@@ -78,6 +78,18 @@ So that **I can review without installing the app**.
 - [x] No token/URL logging; no GPS / filename leaks in HTML for this story.
 - [x] Rendered HTML contains **no** `rel_path`, **asset id**, **content_hash**, or token-in-query patterns; rating is **not color-only** (stars + label/text).
 - [x] `go test ./...` green; share HTTP tests cover HTML + image + 404 parity + payload parse goldens + **`/i/`** query parity + identifier-leak checks as listed in Tasks.
+
+### Review Findings
+
+<!-- BMAD code-review (2026-04-14), headless run: patch items left open; deferred items recorded. -->
+
+- [ ] [Review][Patch] Image-route error logs drop the underlying error — add `err` to `slog.Error` for open/stat/seek failures so operators can diagnose permission/I/O issues without guessing [`internal/share/handler.go` ~396–411]
+
+- [x] [Review][Defer] Package share HTML captions include numeric asset id and basename derived from `rel_path` (Epic 4.1 path in `servePackageHTML`) — conflicts with Story 3.3 AC6 wording if interpreted for all `/s/` pages; track under Epic 4.1 privacy/copy rules [`internal/share/handler.go` ~239–246] — deferred, pre-existing / epic boundary
+
+- [x] [Review][Defer] `TestShareHTTP_HTML_doesNotLeakIdentifiers` only bans literal substrings like `asset_id` / `rel_path`; it does not assert the numeric `assets.id` never appears in HTML — consider a stricter assertion if row ids are stable/large enough to avoid collisions with rating text [`internal/share/http_test.go` ~250–310] — deferred, optional hardening
+
+- [x] [Review][Defer] `os.Open` on resolved path follows symlinks — same residual risk called out in story Risks; O_NOFOLLOW or platform policy is a follow-up [`internal/share/handler.go` ~390] — deferred, pre-existing risk
 
 ## Dev Notes
 

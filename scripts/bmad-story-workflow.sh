@@ -45,6 +45,10 @@
 # Example (your backlog, minimal prompts, party after create+dev):
 #   ./scripts/bmad-story-workflow.sh --hands-free --party --skip-readiness --skip-retro 1.6-thru-4.1
 #
+# Shell line continuation: backslash must be the **last** character on the line (no spaces after \).
+# If you see "unexpected EOF while looking for matching '\"'" at the end of this script, the file may be
+# truncated or an edit left a string open — run: make scripts-check   (or: bash -n scripts/bmad-story-workflow.sh)
+#
 # Workspace gate (after --phase=all|dev|verify|review for each run, once all stories finish):
 #   go mod tidy → go fmt ./... → go mod verify → go vet ./... → go test ./... → go build .
 #   Optional: staticcheck (if on PATH; set SKIP_STATICCHECK=1 to skip), golangci-lint (GOLANGCI_LINT=1),
@@ -260,6 +264,12 @@ fi
 if [[ ! -f "${CONFIG}" ]]; then
 	echo "error: BMAD config missing: ${CONFIG}" >&2
 	exit 1
+fi
+
+# One startup hint for party/retro (avoids repeating the same manifest warning in every party round log).
+BMAD_MANIFEST="${REPO}/_bmad/_config/agent-manifest.csv"
+if [[ ! -f "${BMAD_MANIFEST}" ]] && { [[ ${PARTY_ROUNDS} -gt 0 ]] || [[ "${PHASE}" == "retro" ]]; }; then
+	echo "note: ${BMAD_MANIFEST} missing — party/retro use skill defaults. Add roster via ./scripts/bmad-bootstrap-method.sh or npx bmad-method install." >&2
 fi
 
 story_paths() {
@@ -717,7 +727,7 @@ phase_retrospective() {
 		echo "warning: skip retrospective — missing ${RETRO_WF}" >&2
 		return 0
 	}
-	local manifest="${REPO}/_bmad/_config/agent-manifest.csv"
+	local manifest="${BMAD_MANIFEST}"
 	if [[ ! -f "${manifest}" ]]; then
 		echo "warning: retrospective workflow expects ${manifest}. Run ./scripts/bmad-bootstrap-method.sh or \`npx bmad-method install\`. Running simplified retro prompt anyway." >&2
 	fi
@@ -757,7 +767,7 @@ party_runs_on_hook() {
 
 party_mode_prompt() {
 	local ver="$1" story_file="$2" hook="$3" pr="$4" total="$5"
-	local manifest="${REPO}/_bmad/_config/agent-manifest.csv"
+	local manifest="${BMAD_MANIFEST}"
 	cat <<EOF
 photo-tool — **BMAD party mode** (automated headless), hook **${hook}**, Epic ${ver%%.*} Story ${ver}, session **${pr}/${total}**.
 

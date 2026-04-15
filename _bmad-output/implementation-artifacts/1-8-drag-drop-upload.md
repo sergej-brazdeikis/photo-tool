@@ -111,9 +111,9 @@ _Roster: `agent-manifest.csv` not present in-repo; round simulated. Communicatio
 
 **Murat (Test Architect):** Disagree with Amelia on “tests are enough.” We still **don’t** unit-test `dropHitTest` because it binds `fyne.CurrentApp().Driver()` — call that out as **manual / GUI** risk, not pretend it’s covered. I want **one** more boundary case on `uriLocalPath` (`file://` with no path) in the table — that’s cheap insurance.
 
-**Winston (Architect):** I’ll push back on Sally’s instinct to soften failures: **unsupported-only** must stay *factual* and *visible*; whether that’s `ShowError` vs `ShowInformation` is UX policy, not architecture. What matters is **no silent no-op** — we already satisfy that. For **scroll + hit-test**, document reliance on Fyne’s absolute positioning so we don’t “fix” it twice on every platform.
+**Winston (Architect):** John, a toast on empty URIs forks the AC5 pattern (ignore non-actionable input). Treat an empty payload like no signal. Amelia's helper also pins precedence if both `awaitingPostImportStep` and `importInFlight` were ever true: post-import must win.
 
-**Sally (UX Designer):** I disagree with Murat framing unsupported-only as an “error.” Users who drop a `.pdf` didn’t break the app — **error dialogs feel punitive**. Prefer **`ShowInformation`** with title **“No supported images”** and the same detail lines; keep **`ShowError`** for real I/O or DB failures elsewhere. Mixed-drop can stay information + receipt flow.
+**Sally (UX Designer):** I disagree with John on empty lists — extra dialogs are nagging, not proportionate honesty. Import-in-flight must stay information tone, not error chrome; users did nothing wrong.
 
 **Orchestrator synthesis (applied):** Use **`dialog.ShowInformation("No supported images", …)`** for unsupported-only drops (Sally + Winston: honest, proportionate tone). Extend **`TestURILocalPath`** table with **`file://`** empty-path case (Murat + Amelia). Document **scroll / absolute position** assumption beside `SetOnDropped` (Winston). Explicitly note **`dropHitTest` is not headless-unit-tested** in the risk register below. No `slog` in drop handler for this story.
 
@@ -126,9 +126,9 @@ _Roster: `agent-manifest.csv` not present in-repo; round simulated. Communicatio
 
 _Roster: `agent-manifest.csv` not present in-repo; round simulated. Communication: English (default)._
 
-**Sally (UX Designer):** I am pushing back on session 1's "mixed drop = second dialog after import." That pattern is honest but **modal-heavy**; we should eventually fold skip reasons into receipt-adjacent copy. For **this** story, keep it — changing receipt layout is scope creep — but track it as UX debt in the risk register.
+**Sally (UX Designer):** I disagree with John on empty lists — extra dialogs are nagging, not proportionate honesty. Import-in-flight must stay information tone, not error chrome; users did nothing wrong.
 
-**Winston (Architect):** Session 1 underplayed **state coupling**. While `postImport` is visible, the `paths` slice still holds the ingested batch; a second drop or another **Import** would **re-run ingest on the full list** — that violates "same pipeline" *semantics* (duplicate work, confusing receipts). **Hard gate** the batch until Confirm/Cancel: disable picker actions too, not only the drop path.
+**Winston (Architect):** John, a toast on empty URIs forks the AC5 pattern (ignore non-actionable input). Treat an empty payload like no signal. Amelia's helper also pins precedence if both `awaitingPostImportStep` and `importInFlight` were ever true: post-import must win.
 
 **Mary (Analyst):** AC5 says drops off-target are silent; good. We still lack proof that **`Visible()`** on nested stacks matches the user mental model for "blocked." Prefer an explicit **`awaitingPostImportStep` flag** tied to the same transitions as the receipt UI — auditable in code review.
 
@@ -151,9 +151,9 @@ _Roster: `agent-manifest.csv` not present in-repo; round simulated. Communicatio
 
 **Amelia (Dev):** Pushback: that’s not a Fyne bug — it’s our **mutation contract**. **`tryAddUniquePath`** (or `addAbsolute` returning **added?**) fixes it cleanly and also avoids pointless **`Refresh`** when the picker selects the same file twice. I’ll wire **`anyNew`** so we **skip** `runImportBatch` when the drop adds nothing.
 
-**Winston (Architect):** Murat is right on the symptom; Amelia’s fix matches the architecture rule: **a batch ingest is a function of the current path set**, and you don’t advance the operation without a **set delta**. This is smaller than a queue and doesn’t fork **`IngestWithAssetIDs`**.
+**Winston (Architect):** John, a toast on empty URIs forks the AC5 pattern (ignore non-actionable input). Treat an empty payload like no signal. Amelia's helper also pins precedence if both `awaitingPostImportStep` and `importInFlight` were ever true: post-import must win.
 
-**Sally (UX Designer):** If nothing new lands, don’t punish users with an **error** — **`ShowInformation("No new files to import", …)`** with a short explanation. When it’s **all duplicates plus** skipped junk, **one** dialog that stacks “already in list” **then** skip lines beats two back-to-back modals.
+**Sally (UX Designer):** I disagree with John on empty lists — extra dialogs are nagging, not proportionate honesty. Import-in-flight must stay information tone, not error chrome; users did nothing wrong.
 
 **Orchestrator synthesis (applied):** Introduce **`tryAddUniquePath`**; drop handler sets **`anyNew`** and **only then** calls **`runImportBatch`**; if **`!anyNew`**, show **`ShowInformation("No new files to import", …)`** combining duplicate-list copy with unsupported lines when present. Add **`TestTryAddUniquePath`**. Extend manual QA with **“drop files already in list (after picker add)”**. **`dropHitTest`** remains integration-heavy (unchanged from dev 1/2).
 
@@ -162,6 +162,44 @@ _Roster: `agent-manifest.csv` not present in-repo; round simulated. Communicatio
 - **Pre-import duplicate re-ingest (closed in code):** Drops that resolve only to paths **already** in the upload list no longer trigger **`runImportBatch`**; user sees **information**, not a second silent ingest.
 - **`dropHitTest` / driver coupling (open):** Same as dev 1/2 — manual / GUI validation on scrolled layouts.
 - **Windows `file:` URI edge cases (open):** Unchanged; validate on Windows when available.
+
+## Party mode round (automated headless, **dev** hook, session **1/2**, 2026-04-14 — deepen)
+
+_Roster: `_bmad/_config/agent-manifest.csv`; round simulated (single process). Communication: English (`_bmad/core/config.yaml`). This pass challenges prior "we are done" closure without repeating the 2026-04-13 dev 1/2 URI-table narrative._
+
+📋 **John (PM):** The acceptance criteria never mention an empty `uris` slice. A silent return is defensible, but it is also invisible. I am briefly tempted by a "Nothing was dropped" hint until I notice that is indistinguishable from punishing users for OS quirks.
+
+💻 **Amelia (Developer):** I am not debating philosophy — I am blocking on engineering. Post-import versus in-flight messaging was duplicated as string literals; that is how inconsistent copy ships. Centralize the branching and unit-test it.
+
+🏗️ **Winston (Architect):** John, a toast on empty URIs forks the AC5 pattern (ignore non-actionable input). Treat an empty payload like no signal. Amelia's helper also pins precedence if both `awaitingPostImportStep` and `importInFlight` were ever true: post-import must win.
+
+🎨 **Sally (UX Designer):** I disagree with John on empty lists — extra dialogs are nagging, not proportionate honesty. Import-in-flight must stay information tone, not error chrome; users did nothing wrong.
+
+
+**Orchestrator synthesis (applied):** Add `dropBlockedDialogInfo` + `TestDropBlockedDialogInfo`; route `SetOnDropped` through it; document **empty `uris`** as intentional no-op; add `TestClassifyDroppedURIs_statErrors` for inaccessible paths; extend manual QA with **drop during active import**.
+
+## Risk register (party mode / dev review, session **1/2** run 2026-04-14)
+
+- **Empty `uris` slice (intent closed):** No dialog — documented in `upload.go`; aligns with treating non-actionable platform callbacks like off-target drops.
+- **Stat failures in classification (test-closed):** Injected `stat` error yields a single **not accessible** skip line; regression-tested.
+
+## Party mode round (automated headless, **dev** hook, session **2/2**, 2026-04-14 — sequencing challenge)
+
+_Roster: `_bmad/_config/agent-manifest.csv`; round simulated (single process). Communication: English (`_bmad/core/config.yaml`). This pass challenges the prior "drop UX is settled" closure: **when** mixed-drop skip feedback appears relative to async ingest._
+
+🎨 **Sally (UX Designer):** We keep telling users the pipeline is “honest,” then we pop “Some items were skipped” **while** “Importing…” is still on screen. That is two competing stories at once. The manual QA row even nudged **after import** — the code was still **before** completion.
+
+💻 **Amelia (Developer):** Agree — it is not AC3’s silent failure, it is **ordering**. Queue skip lines on `pendingDropSkipLines`, flush in `applyImportResult` after receipt + post-import shell is up. `resetBatchUI` must nil the pending slice so Confirm/Cancel cannot leak state.
+
+🏗️ **Winston (Architect):** Keep the flush **inside** the same `fyne.Do` closure as receipt updates so we do not reorder UI mutations across callbacks. No second ingest path — only the shared `applyImportResult` path.
+
+📋 **John (PM):** Pushback on Sally: overlapping **Importing…** plus a skip dialog is annoying, not dishonest — AC3 is already satisfied. I still want the change so our **manual QA script** matches what engineers test, not because users were “lied to.”
+
+**Orchestrator synthesis (applied):** Defer mixed-drop **"Some items were skipped"** to **`applyImportResult`** via **`takePendingStringSlice`** + unit test; clear pending in **`resetBatchUI`**.
+
+## Risk register (party mode / dev review, session **2/2** sequencing)
+
+- **Mixed-drop dialog vs import progress (closed in code):** Skip summary dialog runs **after** ingest completes and receipt/post-import UI is shown, not concurrently with **Importing…**.
 
 ## Dev Agent Record
 
@@ -175,6 +213,12 @@ BMAD party mode (automated headless, **dev** hook), session **1/2**, 2026-04-13 
 
 BMAD party mode (automated headless, **dev** hook), session **2/2**, 2026-04-13 — simulated round (Murat / Amelia / Winston / Sally); **pre-import duplicate-drop re-ingest** guard via **`tryAddUniquePath`** + **`anyNew`**, combined **“No new files to import”** dialog, **`TestTryAddUniquePath`**.
 
+BMAD party mode (automated headless, **dev** hook), session **1/2** deepen, 2026-04-14 — John / Amelia / Winston / Sally; **`dropBlockedDialogInfo`** + tests, **`TestClassifyDroppedURIs_statErrors`**, empty-`uris` rationale comment, manual QA **drop during import** row.
+
+BMAD party mode (automated headless, **dev** hook), session **2/2** sequencing, 2026-04-14 — Sally / Amelia / Winston / John; mixed-drop **skipped items** dialog deferred to **`applyImportResult`** via **`pendingDropSkipLines`** + **`takePendingStringSlice`** + **`TestTakePendingStringSlice`**.
+
+BMAD **dev-story** workflow re-run, 2026-04-14 — verified all tasks/ACs against `internal/app/upload.go` + `drop_paths.go`; `go test ./...` and `go build .` green; minor doc-comment placement on `classifyDroppedURIs` + `resetBatchUI` indentation tidy.
+
 ### Debug Log References
 
 ### Completion Notes List
@@ -183,7 +227,9 @@ BMAD party mode (automated headless, **dev** hook), session **2/2**, 2026-04-13 
 - Session **2/2:** **`awaitingPostImportStep`** blocks accidental **re-ingest** (drop dialog; **Add / Clear / Import** disabled until collection Confirm/Cancel). **`rectContainsPoint`** + tests; **duplicate URI** classification test.
 - Session **dev 1/2:** Unsupported-only drops use **`ShowInformation("No supported images", …)`**; table-driven **`TestURILocalPath`** includes `file://` empty path; **`SetOnDropped`** comment documents scroll/absolute-position assumption; story risk register notes **`dropHitTest`** not covered headless.
 - Session **dev 2/2:** **`tryAddUniquePath`** centralizes list dedupe; drop path skips **`runImportBatch`** when the drop adds **no** new paths (avoids duplicate ingest when files were already accumulated via picker); **`TestTryAddUniquePath`**.
-- **Tests / verification:** `go test ./...` and `go build .` pass. Manual QA matrix captured below (execute on macOS GUI baseline before marking story **done**).
+- Session **dev 1/2 deepen (2026-04-14):** **`dropBlockedDialogInfo`** keeps post-import / in-flight copy consistent; **`TestClassifyDroppedURIs_statErrors`** covers **`stat`** failures; empty **`uris`** documented as intentional no-op.
+- Session **dev 2/2 sequencing (2026-04-14):** Mixed-drop unsupported lines stored in **`pendingDropSkipLines`**, shown in **`applyImportResult`** after receipt/post-import UI updates (avoids overlapping **Importing…** + skip dialog); **`takePendingStringSlice`** + test.
+- **Tests / verification:** `go test ./...` and `go build .` pass (re-confirmed 2026-04-14). Manual QA matrix captured below (execute on macOS GUI baseline before marking story **done**).
 
 ### Manual QA checklist (macOS baseline; GUI)
 
@@ -192,8 +238,9 @@ Run the desktop app with a writable library root. Check each row; note failures 
 - [ ] **Single file drop** — Drop one `.jpg` (or other allowed type) onto the bordered “Drop images here” target. Expect: path appears in list, ingest runs, receipt + post-import (collection) UI matches picker + Import behavior.
 - [ ] **Multi-file drop** — Drop several allowed images at once. Expect: all appear (deduped if duplicates), single import batch, receipt reflects combined outcome.
 - [ ] **Unsupported-only** — Drop only `.txt`, a folder, or non-`file` expectation where applicable. Expect: **information** dialog titled **“No supported images”** with factual detail lines; **no** silent no-op; **no** ingest/receipt that hides rejection.
-- [ ] **Mixed supported/unsupported** — Drop one good image + one bad item. Expect: supported ingested per normal pipeline; user sees follow-up about skipped items (second dialog after import is acceptable for this story).
+- [ ] **Mixed supported/unsupported** — Drop one good image + one bad item. Expect: supported ingested per normal pipeline; **after** import finishes and receipt/post-import UI is visible, an information dialog lists skipped items (not while **Importing…** is still shown).
 - [ ] **Duplicate paths in one drop** — Drop the same file URI twice in one gesture. Expect: one logical add (no duplicate rows); ingest behaves consistently.
+- [ ] **Drop during active import** — Start an import (picker + **Import** or a supported drop). While **Importing…** is visible, drop another supported file onto the drop target. Expect: **information** dialog **“Import in progress”**; list does not grow and no second ingest starts until the first completes.
 - [ ] **Drop files already in list (picker first)** — Use **Add images…** to add a file, **do not** tap Import; drop the **same** file onto the drop target. Expect: **information** dialog **“No new files to import”** explaining files are already listed; **no** ingest/receipt; user can still tap **Import selected files** once to run the batch.
 - [ ] **Drop while `postImport` visible** — After a successful drop/import, while receipt/collection UI is showing: attempt another drop on the target. Expect: **informational** dialog (“Finish collection step…”); **Add images…**, **Clear list**, and **Import** remain **disabled** until **Confirm** or **Cancel**; then controls reset per existing Story 1.5 flow.
 - [ ] **Off-target drop (AC5)** — Release files on the window **outside** the drop zone (e.g. on the path list). Expect: **no** ingest and **no** error dialog.
@@ -208,9 +255,24 @@ Run the desktop app with a writable library root. Check each row; note failures 
 
 ## Change Log
 
+- **2026-04-14:** Party mode **dev** session **2/2** sequencing — mixed-drop **Some items were skipped** deferred to `applyImportResult` (`pendingDropSkipLines`, `takePendingStringSlice`, `TestTakePendingStringSlice`); manual QA mixed-drop row clarified; status remains **review**.
+- **2026-04-14:** Party mode **dev** session **1/2** deepen — `dropBlockedDialogInfo`, `TestDropBlockedDialogInfo`, `TestClassifyDroppedURIs_statErrors`, empty-`uris` comment in `SetOnDropped`; manual QA row **Drop during active import**; story risk register + party round recorded; status remains **review**.
+- **2026-04-14:** Dev-story workflow verification — AC/task parity check; `classifyDroppedURIs` godoc moved above the correct function; `resetBatchUI` indentation; `go test ./...` + `go build .` green; status remains **review** (sprint `1-8-drag-drop-upload` already **review**).
 - **2026-04-13:** Marked Tests / verification complete; added Manual QA checklist to Dev Agent Record; confirmed `go test ./...` and `go build .` green.
 - **2026-04-13 (party dev1/2):** Unsupported-only drop → information dialog; expanded `TestURILocalPath`; scroll/hit-test comment in `upload.go`; story risk register + party round recorded.
 - **2026-04-13 (party dev2/2):** `tryAddUniquePath` + drop **`anyNew`** gate prevents duplicate ingest when drops add only paths already in the list; `TestTryAddUniquePath`; story party round + manual QA row updated.
+
+### Review Findings
+
+_BMAD code review (Epic 1 Story 1.8 scoped diff), 2026-04-14 — Blind Hunter, Edge Case Hunter, Acceptance Auditor; triage complete._
+
+- [x] [Review][Defer] Drop hit-test and AC5 depend on `AbsolutePositionForObject` + `rectContainsPoint` inside a `Scroll`; not covered by headless unit tests (`internal/app/upload.go` ~344–347, `internal/app/drop_paths.go` ~147–158) — deferred; complete manual QA matrix (off-target, scrolled target).
+
+- [x] [Review][Defer] `SetCloseIntercept` is registered only from the upload view; the code comments warn about chaining, but any future shell-level close guard must compose with this handler instead of replacing it (`internal/app/upload.go` ~414–424) — deferred until shell adds quit confirmation.
+
+- [x] [Review][Defer] The scoped diff also changes async ingest, receipt chrome, and `CreateCollectionAndLinkAssets`; sign-off Story 1.8 should include a short Story 1.5 / FR-06 regression smoke (confirm/cancel, no orphan collection) — deferred as cross-story verification.
+
+- [x] [Review][Defer] `uriLocalPath` relies on `fyne.URI.Path()` for `file:` URIs; Windows-specific path/encoding edge cases are not exercised in CI (`internal/app/drop_paths.go` ~49–61) — deferred; validate on Windows when available.
 
 ---
 

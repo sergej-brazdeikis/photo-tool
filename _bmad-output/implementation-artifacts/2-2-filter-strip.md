@@ -22,6 +22,10 @@ So that **browsing matches my mental model**.
 4. **Given** keyboard focus, **when** the user **Tabs** through the filter strip, **then** focus moves **in layout order** through the strip controls and **focus is visibly indicated** in both dark and light themes using the existing `PhotoToolTheme` focus role (UX-DR2; builds on Story 2.1 / UX-DR15 baseline).
 5. **Given** default browse rules from architecture, **when** filters run against the library, **then** queries **exclude** `rejected = 1` and **exclude** soft-deleted assets (`deleted_at_unix IS NOT NULL`) unless a future story explicitly defines a different surface (architecture §3.4, §4.5 **Agent MUST** rules).
 
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+- **One row + overflow:** The strip must **not** grow into a **second nav bar**. **At most one** default **row** of filter controls; additional sort/scope/advanced filters use a **sheet, drawer, or “More filters”** pattern (**UX-DR2** clarification in epics). If MVP has no extra filters yet, document the overflow pattern for the next control added.
+
 ## Tasks / Subtasks
 
 - [x] **Replace Review placeholder with Review layout + filter strip** (AC: 1, 4)
@@ -118,6 +122,7 @@ So that **browsing matches my mental model**.
 | **Session vs persisted defaults** | FR-16 targets **fresh session**; persisting last-used filters is **optional**—if added, document preference keys and ensure **first run** still matches FR-16. |
 | **Empty library / zero-row collection** | Count **0** is valid; strip must not error—empty `collections` table still shows sentinel + no real collection options (or only sentinel). |
 | **Duplicate collection display names** | `Select` matches by label string; identical names are ambiguous. Mitigation: treat as data-quality issue for now; Story 2.x could enforce unique names or use “Name (id)” labels. |
+| **Duplicate tag display names** | Same `Select` label collision as collections once Story 2.5 lists real tags. Mitigation: first matching option wins (documented on `buildFilters`); later enforce unique tag labels or disambiguate in UI. |
 
 ### Party mode — session 1/2 (automated, `create` hook)
 
@@ -147,6 +152,18 @@ Roundtable (simulated): **Winston (Architect)** argued that `ReviewFilterWhereSu
 
 **Resolution:** Export **`store.ReviewBrowseBaseWhere`** and compose **`CountAssetsForReview`** with it (Story 2.3 **must** reuse the same constant). **`NewReviewView`** delegates to **`newReviewViewWithoutDB`** when `db == nil`, preserving the full strip + **`TestNewReviewView_nilDB_honestLabel`**. **`TestReviewBrowseBaseWhere_contract`** guards accidental edits. **ListCollections-only** failure injection stays deferred (no DI seam yet); degraded behavior remains covered by **collections-unavailable suffix** + **closed DB** tests.
 
+### Party mode — session 1/2 (automated, `dev` hook; 2026-04-14 revisit)
+
+Roundtable (simulated): **Amelia (Dev)** argued pairwise `ReviewFilterWhereSuffix` tests are insufficient now that **tag** is a first-class dimension—**collection+rating** and **collection+tag** do not prove a three-knob query keeps **`?` order** aligned with fragment concatenation. **Winston (Architect)** called that paranoid until someone hand-rewrites the suffix builder; **Amelia** shot back that one swapped `append(args, …)` ships silent wrong counts. **Sally (UX)** raised the same **duplicate-label** trap for **tags** as for albums—users cannot tell which row they picked if two tags share a label. **Mary (Analyst)** confirmed this stays a **data-quality** issue for MVP but must not pretend uniqueness exists in code.
+
+**Resolution:** Add **`TestReviewFilterWhereSuffix_collectionMinRatingTagArgOrder`** (collection id → min rating → tag id). Document **first matching option wins** for duplicate **collection or tag** labels beside **`buildFilters`** in `review.go`.
+
+### Party mode — session 2/2 (automated, `dev` hook; ListIDs vs grid parity deepen)
+
+Roundtable (simulated): **Winston (Architect)** challenged the prior round’s narrow focus on `ReviewFilterWhereSuffix` fragments: **`ListAssetIDsForReview`** is the spine for **“Share filtered set”** and other multi-asset flows, and it can drift from the grid **without** any typo in the suffix—e.g. a future edit changes **`ORDER BY`** in one query but not the other, or a LIMIT-less ID enumerator accidentally reorders ties. **Amelia (Dev)** countered that duplicating the `ORDER BY` string is still fine for MVP if CI proves the three surfaces agree on real data. **Murat (Test Architect)** insisted on an **integration** test with **collection + min rating + tag** all active so cardinality and **sort order** stay locked across `CountAssetsForReview`, `ListAssetsForReview`, and `ListAssetIDsForReview`. **Sally (UX)** framed the failure mode as user-visible **distrust**: the strip shows **N** matches while a filtered package preview silently iterates a different ordering or length.
+
+**Orchestrator synthesis:** Land **`TestListAssetIDsForReview_matchesCountAndListAssetsForReviewOrder`** in `internal/store/review_query_test.go` (two-row match, one row excluded by min-rating under the same album+tag scope; asserts `len(ids)==count` and row/`id` order parity including `capture_time_unix DESC`).
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -157,10 +174,13 @@ Composer (Cursor AI coding agent)
 
 ### Completion Notes List
 
+- **2026-04-14 (dev-story re-run):** `go test ./...` and `go build .` green; all acceptance criteria and tasks remain satisfied. **UX backlog (one row + overflow):** additional sort/scope/advanced filters after MVP should use a sheet, drawer, or “More filters” control—not a second full-width nav row (UX-DR2 / epics alignment).
 - Review panel uses **`NewReviewView`** (`internal/app/review.go`): labeled strip **Collection → Minimum rating → Tags**, defaults **No assigned collection / Any rating / Any tag**, live **`CountAssetsForReview`** label, honest **Story 2.3** grid placeholder.
 - **`ReviewFilterWhereSuffix`** centralizes filter SQL for **count vs future list** parity (session 2 architect constraint). **`dev` party session 1** adds **suffix unit tests** plus **degraded-DB** label behavior (count still runs; list failure surfaces as a suffix warning when count works).
 - **`dev` party session 2/2:** **`ReviewBrowseBaseWhere`** pins the shared **rejected / soft-delete** predicate for Story 2.3; **`newReviewViewWithoutDB`** + **`TestNewReviewView_nilDB_honestLabel`** cover nil `*sql.DB` without dropping strip chrome.
 - **AC4 keyboard/focus:** `internal/app/review_test.go` runs Fyne `test.FocusNext` over `NewReviewView` in **dark and light** `PhotoToolTheme`; asserts canvas focus visits the three `Select` widgets in layout order. `internal/app/theme_test.go` asserts `ColorNameFocus` ≠ `ColorNameInputBackground` per variant (focus ring vs strip control chrome).
+- **2026-04-14 (party dev1/2 revisit):** `TestReviewFilterWhereSuffix_collectionMinRatingTagArgOrder` pins **three-knob** bind order; `review.go` comment documents **duplicate album/tag labels** → first `Select` match.
+- **2026-04-14 (party dev2/2 deepen):** `TestListAssetIDsForReview_matchesCountAndListAssetsForReviewOrder` locks **filtered ID lists** to the same **count + sort** contract as the Review grid query (package / filtered-share path cannot silently diverge).
 
 ### File List
 
@@ -169,7 +189,7 @@ Composer (Cursor AI coding agent)
 - `internal/store/migrations/003_review_filters.sql` — `rating` column + index
 - `internal/store/migrate.go` — schema v3
 - `internal/domain/review_filter.go`, `internal/domain/review_filter_test.go`
-- `internal/store/review_query.go`, `internal/store/review_query_test.go` — `ReviewBrowseBaseWhere`, `ReviewFilterWhereSuffix`, `CountAssetsForReview`
+- `internal/store/review_query.go`, `internal/store/review_query_test.go` — `ReviewBrowseBaseWhere`, `ReviewFilterWhereSuffix`, `CountAssetsForReview`, `ListAssetsForReview`, `ListAssetIDsForReview` (+ triple-filter arg-order contract test + ListIDs/count/order parity test)
 - `internal/store/collections.go` — `ListCollections`, `CollectionRow`
 - `internal/store/store_test.go` — expect schema version 3
 - `internal/app/review.go`, `internal/app/review_test.go` — Review UI + strip label order test
@@ -177,7 +197,10 @@ Composer (Cursor AI coding agent)
 
 ## Change Log
 
+- **2026-04-14:** Party mode **`dev` session 2/2** (deepen) — `TestListAssetIDsForReview_matchesCountAndListAssetsForReviewOrder` guards filtered ID lists vs grid **count + sort** (`internal/store/review_query_test.go`); sprint note updated; story **done** unchanged.
+- **2026-04-14:** BMAD dev-story workflow re-run for Story 2.2 — verified implementation vs AC/tasks; `go test ./...` and `go build .` green; sprint `2-2-filter-strip` remains **done**; UX-DR2 overflow pattern for future controls noted in Completion Notes.
 - **2026-04-13:** Story 2.2 — completed remaining Keyboard/focus task: automated Tab-order tests for Review filter strip (dark/light theme) and theme test for focus ring vs input background; `go test ./...` green.
 - **2026-04-13:** Party mode **`dev` session 1/2** — `ReviewFilterWhereSuffix` contract tests, closed-DB Review label test, and `refreshCount` behavior when `ListCollections` fails but counting remains valid.
 - **2026-04-13:** Party mode **`dev` session 2/2** — `ReviewBrowseBaseWhere` + contract test; nil-DB Review path (`newReviewViewWithoutDB`) and `TestNewReviewView_nilDB_honestLabel`; story marked **done**.
+- **2026-04-14:** Party mode **`dev` session 1/2** (revisit) — suffix **collection+rating+tag** arg-order test; duplicate-label note on `buildFilters`.
 

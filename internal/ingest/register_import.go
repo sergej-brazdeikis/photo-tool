@@ -112,7 +112,7 @@ func RegisterInPlacePath(db *sql.DB, libraryRoot, absPath string, sum *domain.Op
 	}
 
 	createdAt := time.Now().Unix()
-	err = store.InsertAssetWithCamera(db, hashHex, relPath, captureUnix, createdAt, cam.Make, cam.Model)
+	_, err = store.InsertAssetWithCamera(db, hashHex, relPath, captureUnix, createdAt, cam.Make, cam.Model)
 	if err != nil {
 		if isUniqueContentHash(err) {
 			sum.SkippedDuplicate++

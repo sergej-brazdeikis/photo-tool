@@ -1,6 +1,6 @@
 # Story 1.5: Desktop upload flow with collection confirm and receipt
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -10,7 +10,7 @@ As a **photographer**,
 I want **to pick files, optionally assign an upload collection, and confirm before anything is created**,  
 So that **I get predictable organization without surprise albums**.
 
-**Implements:** FR-04, FR-05, FR-06; NFR-04; UX-DR6.
+**Implements:** FR-04, FR-05, FR-06; NFR-04; UX-DR6, UX-DR17.
 
 ## Acceptance Criteria
 
@@ -18,6 +18,11 @@ So that **I get predictable organization without surprise albums**.
 2. **Given** the upload flow offers collection assignment, **when** the user has not confirmed, **then** no new collection and no links are persisted (FR-06).
 3. **Given** the default collection name pattern `Upload YYYYMMDD`, **when** the user confirms, **then** the collection is created/updated and all batch assets are linked as specified (FR-04, FR-05).
 4. **Given** the user clears or renames the collection name before confirm, **when** they confirm, **then** the persisted name matches their input.
+
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+- **Image-first ingest:** On multi-file pick, the confirm step should surface **large batch previews** (UX **Direction E**); receipt stays readable and may be **collapsible** for repeat users.
+- **Main thread:** After async ingest, **Fyne** updates run on the **main thread** (**UX-DR17**).
 
 ## Tasks / Subtasks
 
@@ -112,6 +117,9 @@ Composer (Cursor agent)
 
 ### Completion Notes List
 
+- **2026-04-14 (party mode dev session 2/2):** Challenged session 1/2: (1) **Window close vs async ingest** — `SetCloseIntercept` blocks close while `importInFlight` so a worker cannot schedule `fyne.Do` after teardown; `UploadViewOptions.DisableImportCloseIntercept` for special cases (document: chain if shell adds its own intercept). (2) **UX backlog (epics delta)** — receipt wrapped in **Fyne `Accordion`** (default open, user-collapsible) + **“Files in this batch: N”** line for batch-at-a-glance without full thumbnail grid yet. (3) **AC4 / FR-04 tests** — `TestUpload_flow_renameFromDefault_persistsCollectionName`, `TestUpload_flow_duplicatePathsInBatch_singleLinkRow`. (4) **Label walk** — `collectLabelsDeep` recurses into `Accordion` so upload copy smoke tests still find receipt placeholders.
+- **2026-04-14 (party mode dev session 1/2):** Challenged UX-DR17 on Upload: ingest no longer blocks the Fyne event thread in production — `go` + `ingest.IngestWithAssetIDs` + `fyne.Do` for receipt/collection UI; `importInFlight` + “Importing…” label; drop blocked while import runs. Headless tests set `UploadViewOptions.SynchronousIngest` because the fyne test driver does not serialize `fyne.Do` after the Import handler returns (avoids Tap(Confirm) racing background ingest).
+- **2026-04-14 (dev-story close):** Confirm path uses `store.CreateCollectionAndLinkAssets` so collection insert and membership writes commit or roll back together. Orphan-collection and “no linkable assets” gates remain: assignment runs only when `len(link) > 0`; completion copy uses `summarizeDoneMessage` with `actuallyLinked`. Import / Add / Clear stay disabled while `awaitingPostImportStep` (regression: `TestUpload_flow_duringCollectionStep_importAddClearDisabled`).
 - Implemented `store.AssetIDByContentHash` and `ingest.IngestWithAssetIDs` so each source path maps to a canonical `assets.id` (added or duplicate) without extra hashing passes.
 - Fyne’s stock `dialog.FileOpen` is single-file; multi-file selection is **Add images…** repeatedly to accumulate absolute paths (equivalent per story).
 - Default collection name date: **`batchStart := time.Now()`** at the start of **Import** (ingest kickoff), local `Upload YYYYMMDD`; `CreateCollection` receives matching `display_date` ISO for that same local calendar day.
@@ -121,6 +129,8 @@ Composer (Cursor agent)
 
 - main.go
 - internal/app/upload.go
+- internal/app/upload_fr06_flow_test.go
+- internal/app/e2e_shell_journeys_test.go (`collectLabelsDeep` Accordion walk)
 - internal/ingest/ingest.go
 - internal/ingest/ingest_test.go
 - internal/store/assets.go
@@ -129,16 +139,19 @@ Composer (Cursor agent)
 
 ### Change Log
 
+- 2026-04-14: Party mode dev session 2/2 (1-5) — import close intercept, receipt accordion + batch file count, AC4 rename + duplicate-batch link tests, `collectLabelsDeep` Accordion walk; status → review.
+- 2026-04-14: Party mode dev session 1/2 — UX-DR17 upload path: async ingest + `fyne.Do`, import single-flight + drop guard, `SynchronousIngest` test option; status → review.
+- 2026-04-14: Story 1.5 — code review follow-up: transactional `CreateCollectionAndLinkAssets` on confirm; UI test for disabled Import/Add/Clear during collection step; review findings resolved; status → review.
 - 2026-04-13: Story 1.5 — desktop upload with ingest receipt, optional collection confirm, `AssetIDByContentHash` + `IngestWithAssetIDs`, store/ingest tests; sprint status → review.
 - 2026-04-13: BMAD code review — findings below; status → in-progress until patches addressed.
 
 ### Review Findings
 
-- [ ] [Review][Patch] Orphan collection when assign succeeds but nothing is linkable — If every selected path fails ingest (or all `lastAssetIDs` filter to empty), `CreateCollection` still runs when the user assigns a non-empty name, `LinkAssetsToCollection` returns immediately on an empty ID list, and `summarizeDoneMessage` still reports that assets were linked. Prefer gating collection creation on at least one resolved asset ID and aligning the completion copy with actual links. [`internal/app/upload.go` ~166–188]
+- [x] [Review][Patch] Orphan collection when assign succeeds but nothing is linkable — Gated: collection path runs only when `wantedAssign && len(link) > 0`; completion copy uses `actuallyLinked` (`summarizeDoneMessage`). Covered by `TestUpload_flow_allFailedIngest_assignDoesNotCreateCollection`.
 
-- [ ] [Review][Patch] Import can run again before collection confirm — The Import button stays enabled after the first ingest, so the user can re-run the batch, overwrite the receipt/`batchStart` (shifting default `Upload YYYYMMDD`), and blur Journey A’s “receipt then confirm” step. Prefer disabling Import until Confirm/Cancel (or require clearing paths explicitly). [`internal/app/upload.go` ~135–151, ~159–164]
+- [x] [Review][Patch] Import can run again before collection confirm — `awaitingPostImportStep` disables Import, Add images…, and Clear list until Confirm or Cancel. Covered by `TestUpload_flow_duringCollectionStep_importAddClearDisabled`.
 
-- [ ] [Review][Patch] Create + link is not atomic — If `CreateCollection` succeeds and `LinkAssetsToCollection` fails, an empty orphan collection remains; only the link error is shown. Prefer a single transactional API (create+link) or compensating delete on link failure. [`internal/app/upload.go` ~171–184]
+- [x] [Review][Patch] Create + link is not atomic — Confirm uses `store.CreateCollectionAndLinkAssets` (single transaction; rollback on link failure).
 
 - [x] [Review][Defer] `isUniqueContentHash` relies on SQLite error substring matching — Acceptable MVP risk; revisit if driver/sqlite wording changes. [`internal/ingest/ingest.go` ~174–183] — deferred, pre-existing pattern extended in this story
 

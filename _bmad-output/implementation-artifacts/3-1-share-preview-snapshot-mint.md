@@ -28,6 +28,10 @@ So that **I never mint the wrong asset**.
 7. **Regression tests:** **Given** CI runs `go test`, **when** store and app tests execute, **then** new tests cover: **(a)** successful mint inserts expected `share_links` columns; **(b)** rejected and soft-deleted assets fail eligibility; **(c)** cancel path leaves **zero** new `share_links` rows; **(d)** confirm path increases row count by one. Prefer **`internal/store`** table-driven tests for persistence; **`internal/app`** pure helpers tested headlessly (**(e)** preview vs loupe asset alignment predicate for AC8).
 8. **Navigation / TOCTOU:** **Given** the loupe **Share** flow reads the row at **Share** tap time, **when** the user navigates prev/next **without** closing the preview confirm dialog, **then** **Create link** does **not** mint unless the loupe’s **current** asset id still matches the previewed asset (session 2/2 hardening). **When** they match, **then** mint targets that **asset id**. **When** they differ, **then** the user sees a factual message to close the preview and start Share again—**no** DB or clipboard side effects.
 
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+- **Share preview failures (UX-DR7):** When mint is **denied** or fails for **permissions**, **size**, **IO**, etc., the preview sheet must show a **clear failure** state with **next steps**—**no** silent dismiss and **no** URL copied unless mint succeeded. Tightens AC6 for **non-DB** failure classes called out in UX **Party follow-ups**.
+
 ## Tasks / Subtasks
 
 - [x] **Schema: `share_links`** (AC: 2, 7)
@@ -46,6 +50,18 @@ So that **I never mint the wrong asset**.
 - [x] **Cross-story alignment** (AC: 2, 7)
   - [x] Resolve `TODO(Epic 3)` on `AssetEligibleForDefaultShare` by documenting mint’s transactional re-check (`reject.go`).
   - [x] **Port / base URL:** none in 3.1; Story **3.2** owns `http://127.0.0.1:{port}/s/{token}` (or agreed canonical form).
+
+### Review Findings
+
+<!-- BMAD code review (2026-04-14): scoped to Epic 3 Story 3.1 paths; adversarial + edge + AC audit; headless run (findings recorded, no sprint status sync). -->
+
+- [ ] [Review][Decision] Success dialog vs Story 3.1 “token-only until 3.2” wording — `showLoupeShareMintSuccess` builds a loopback URL and offers **Copy link** when `shareLoopback` is non-nil (`internal/app/share_loupe.go`), while this story’s tasks still say there is no loopback URL until Story 3.2. Decide whether to update the story/epics text to match integrated 3.2 behavior, or gate URL/copy-link until an explicit capability flag.
+
+- [ ] [Review][Patch] Share affordance silent no-op when no photo loaded — `openShare` returns without feedback when `!loupeRatingKeyAllowed(currentID)` (`internal/app/review_loupe.go:~529-531`). Other loupe actions use `dialog.ShowInformation` for the empty state; Share should match for discoverability.
+
+- [ ] [Review][Patch] Preview image IO not validated before confirm — `buildLoupeSharePreview` always loads `ImageFromFile` with no existence check (`internal/app/share_loupe.go:~128-137`). Missing or unreadable files can yield a weak preview, conflicting with AC5 / UX-DR7 backlog on clear failure states for IO.
+
+- [x] [Review][Defer] Preview capture time when `CaptureTimeUnix == 0` — label shows Unix epoch; misleading but depends on ingest/EXIF policy elsewhere (`internal/app/share_loupe.go:~132`) — deferred, pre-existing data-quality edge.
 
 ## Risks & mitigations (party mode create 1/2 + 2/2)
 

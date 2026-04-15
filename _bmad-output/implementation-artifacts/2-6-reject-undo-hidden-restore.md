@@ -114,6 +114,13 @@ _Simulated round — `_bmad/_config/agent-manifest.csv` not present._
   - [x] Optional: pure **unit** test for stack **clear-on-nav** contract if extracted from Fyne. *(LIFO, cap/trim, Clear covered in `reject_undo_stack_test.go`; nav clear wired in `shell.go`.)*
   - [ ] Manual: keyboard reject binding **not** adjacent to **1–5**; light/dark caution visibility.
 
+### Review Findings
+
+_BMAD code review (2026-04-14), scoped to Story 2.6 code paths + current review-grid changes affecting Rejected. Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor (in-process). 5 items dismissed as noise/false positives._
+
+- [x] [Review][Defer] Grid page failure cache never auto-retries — transient list query errors pin `pageFailed[page]` until reset/invalidate; user may need filter change or navigation to recover (`internal/app/review_grid.go` `ensurePageLocked`) — deferred, pre-existing risk pattern hardened by logging once
+- [x] [Review][Defer] Rejected bucket list uses capture-time ordering (parity with default Review), not `rejected_at_unix` — confirm product intent for “recently hidden” vs “newest photo first” (`internal/store/review_query.go` `ListRejectedForReview`) — deferred, pre-existing design choice
+
 ## Dev Notes
 
 ### Product / architecture rules

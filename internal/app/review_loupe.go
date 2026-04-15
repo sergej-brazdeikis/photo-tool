@@ -26,9 +26,9 @@ import (
 //  1–5 — set rating (instant persist)
 //   ← / → — prev / next (clamped, no wrap)
 //   Esc — close loupe, return focus to grid
-//   R — reject current photo (caution action; letter key is not adjacent to the 1–5 rating row)
+// Reject has no letter shortcut: R sits under 4 on QWERTY (adjacent to rating keys). Use the Reject button.
 // Cmd/Ctrl+Shift+D — open the same delete confirmation as the “Move to library trash…” button (Story 2.7 AC5).
-// Cmd/Ctrl+Shift+S — open Share… (Story 3.1); S is not used for rating and sits away from 1–5 and R (UX-DR5).
+// Cmd/Ctrl+Shift+S — open Share… (Story 3.1); S is not used for rating (UX-DR5).
 // Delete / Backspace alone are not bound to destructive commit (instant delete forbidden).
 //
 // Focus (UX-DR15): filter strip → thumbnail grid (inside Review scroll) → loupe overlay.
@@ -591,10 +591,6 @@ func openReviewLoupe(win fyne.Window, grid *reviewAssetGrid, startIdx int, onRev
 
 	cnv.SetOnTypedRune(func(r rune) {
 		if closed.Load() {
-			return
-		}
-		if r == 'r' || r == 'R' {
-			applyReject()
 			return
 		}
 		if !loupeRatingKeyAllowed(currentID) {

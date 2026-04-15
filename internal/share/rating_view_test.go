@@ -13,7 +13,7 @@ func TestRatingViewModel(t *testing.T) {
 	three := 3
 	cases := []struct {
 		name      string
-		p store.ShareSnapshotPayload
+		p         store.ShareSnapshotPayload
 		wantLabel string
 		wantStars int // filled count when rated; -1 means unrated (all hollow)
 	}{

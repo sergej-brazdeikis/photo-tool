@@ -172,3 +172,15 @@ _(none)_
 ## Change Log
 
 - **2026-04-14:** Implemented Story 4.1 — package share schema, mint/resolve, package HTML + `/i/{token}/{n}` bytes, Review package preview flow, tests; story and sprint status set to **review**.
+
+### Review Findings
+
+_BMAD code review (2026-04-14), scoped to Story 4.1; layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor; working tree / `main`._
+
+- [ ] [Review][Decision] **500-cap timing vs manifest preview (AC3c / AC1)** — `PackagePrepareEligibleForMint` returns `ErrPackageTooManyAssets` when the eligible set exceeds 500 **before** the preview dialog runs (`internal/app/share_package_flow.go` via `store.PackagePrepareEligibleForMint`), while AC3c phrases failure at **confirm/mint** time and AC1 expects the preview step to help the user understand why confirm might fail. Decide: keep fail-fast (current), or show preview with full/eligible counts and block confirm / fail only in `MintPackageShareLink`.
+
+- [ ] [Review][Patch] **AC2 “preset never skips preview” regression coverage is thin** — `TestPackageSharePreviewMandatoryBeforeMint` only asserts `PackageSharePreviewMandatoryBeforeMint()` is true (`internal/app/share_package_flow_test.go`); it does not fail if a future change bypasses `ShowCustomConfirm` or mints on preset change. Add UI-level, callback, or refactor-with-pure-helper coverage per story AC7(e).
+
+- [ ] [Review][Patch] **Silent error on package HTML caption hydration** — `servePackageHTML` ignores `ListReviewGridRowsByIDsInOrder` errors (`err == nil` branch only, `internal/share/handler.go` ~232–237), so DB failures degrade captions with no log. Prefer `slog.Error` (or equivalent) on non-nil error while still rendering snapshot slots.
+
+- [x] [Review][Defer] **Double package resolve on each member image request** [`internal/share/handler.go` `serveImage`] — deferred, pre-existing pattern tradeoff: `ResolvePackageShareLink` runs again for every `/i/{token}/{n}` hit; acceptable MVP, revisit if profiling shows hot path cost.

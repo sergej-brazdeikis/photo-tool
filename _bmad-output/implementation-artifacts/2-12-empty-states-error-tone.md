@@ -1,6 +1,6 @@
 # Story 2.12: Empty states and error tone
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- create-story workflow (2026-04-13): Epic 2 Story 2.12 — UX-DR9 primary CTAs on empty surfaces + proportionate error copy; brownfield `review.go`, `rejected.go`, `collections.go`, `shell.go`, `collection_store_err_text.go`. -->
@@ -11,7 +11,7 @@ As a **photographer**,
 I want **helpful empty states and honest errors**,  
 So that **I never feel lost after import or filtering**.
 
-**Implements:** UX-DR9; cross-cutting UX quality (epics).
+**Implements:** UX-DR9, UX-DR18; cross-cutting UX quality (epics).
 
 ## Acceptance Criteria
 
@@ -22,6 +22,10 @@ So that **I never feel lost after import or filtering**.
 5. **Proportionate honesty — IO/DB errors:** **Given** user-visible failures from **store** or **filesystem** operations (count/list/load paths in Review, Rejected, Collections, upload ingest), **when** an error is shown (**`dialog.ShowError` / `ShowInformation` / inline label**), **then** copy is **factual** (what failed, at a high level) and includes a **concrete next step** (retry, check library path, reset filters, go to Upload, etc.). **Avoid** cheerful or dismissive empty/error tone (UX spec anti-pattern: “cheerful empty errors”). **Do not** surface raw SQLite/driver strings to users where a mapped message exists — extend **`collectionStoreErrText`** or a **small shared helper** only if needed; keep SQL in **`internal/store`**.
 6. **Themes & layout:** **Given** new empty-state blocks, **when** rendered in **dark** and **light** themes (**UX-DR1**), **then** text remains readable (semantic theme colors / labels, no ad-hoc grays). **And** empty-state chrome stays consistent with **NFR-01** safe regions (no mandatory horizontal scroll of the **shell** to reach the primary CTA at **1024×768** — align with Story **2.11** evidence mindset).
 7. **Regression / tests:** **Given** headless tests in **`internal/app`**, **when** they run in CI, **then** add or extend tests that pin **presence** of empty-state CTAs or **key strings** for the three UX-DR9 Review/Rejected cases (and Collections detail empty if practical), without requiring interactive window focus. **And** existing story tests (**e.g.** `TestCollectionsView_zeroAlbums_emptyStateHidesList`) remain green or are updated if copy/structure changes.
+
+### UX backlog delta (epics.md alignment 2026-04-14)
+
+- **AC-LIST-STATES (UX-DR18):** Primary **Review/collection grid** must define UX for **loading** and **error** (copy + which actions are disabled), not only empty/populated. Extend tests or manual matrix accordingly.
 
 ## Party mode — session 1/2 (automated headless, hook **create**, 2026-04-13)
 
@@ -193,6 +197,16 @@ Party mode **create** sessions 1/2 + 2/2 (simulated roundtable) + implementation
 - **2026-04-14:** Dev-story workflow — verification only (`go test ./...`, `go build .`); story and sprint status unchanged at **review**.
 - **2026-04-14:** Party mode dev session 1/2 — `userFacingCollectionWriteErrText`, DnD `dropRejectReason`, tests; story remains **review**.
 - **2026-04-14:** Party mode dev session 2/2 — AC5 `ShowInformation` / receipt polish (`droppedSkipSummaryForDialog`, import failed next step); story remains **review**.
+
+### Review Findings
+
+BMAD code review (2026-04-14), scoped to Story 2.12 implementation delta vs `origin/main` (`internal/app/upload.go`, `drop_paths*.go`, `shell.go`, `review.go` comment).
+
+- [ ] [Review][Patch] **Drop “not accessible” lines lack AC5 recovery hint** — `classifyDroppedURIs` formats stat failures as `"%s: not accessible"` (`internal/app/drop_paths.go` ~129–132) without a concrete next step; import completion copy (`summarizeDoneMessage`) already tells users to check permissions and re-add from Upload. Align drop skip copy with that tone for consistency with AC5.
+
+- [x] [Review][Defer] **Default async ingest path is not exercised in CI** — production `newUploadView` uses a worker + `fyne.Do`; all `NewUploadViewWithOptions` tests set `SynchronousIngest: true` because the test driver does not queue across taps (`internal/app/upload.go`, `upload_fr06_flow_test.go`). Documented tradeoff; revisit if Fyne test harness gains async scheduling.
+
+- [x] [Review][Defer] **UX-DR18 / AC-LIST-STATES backlog** — story “UX backlog delta” calls for loading/error states on the primary grid; not part of AC1–AC7 closure and not changed in this diff — track with epics backlog.
 
 ## References
 

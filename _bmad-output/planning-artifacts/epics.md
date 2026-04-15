@@ -6,6 +6,7 @@ stepsCompleted:
   - step-03-create-stories
   - step-04-final-validation
 completedDate: '2026-04-12'
+backlogAlignedWithUxSpec: '2026-04-14'
 inputDocuments:
   - _bmad-output/planning-artifacts/PRD.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -17,7 +18,15 @@ author: Sergej Brazdeikis
 
 This document decomposes the PRD, solution architecture, and UX design specification into user-value epics and implementable stories with acceptance criteria.
 
-**Inputs used:** PRD.md, architecture.md, ux-design-specification.md. No additional documents were excluded.
+**Inputs used:** PRD.md, architecture.md, ux-design-specification.md (full revision completed **2026-04-14**, including **Party mode follow-ups** and **UX consistency patterns**). No additional documents were excluded.
+
+---
+
+## Backlog alignment (UX spec revision 2026-04-14)
+
+The UX specification now treats **image-first** layout as non-negotiable: the **thumbnail / loupe stage** dominates the window; **filter strip + cell chrome** are the main **control-soup** risks. This epic rollup adds **UX-DR16–UX-DR19**, tightens **UX-DR2** / **UX-DR3** wording, and extends **acceptance criteria** on key stories so Fyne work traces to the same bar.
+
+Canonical detail: `_bmad-output/planning-artifacts/ux-design-specification.md` (**Party mode follow-ups (2026-04-14)**, **Image stage and density**, **Form patterns** for filter overflow).
 
 ---
 
@@ -90,8 +99,8 @@ Photo Tool is a local-first photo library product (Go + Fyne desktop, minimal HT
 ### UX design requirements (actionable)
 
 - **UX-DR1:** Implement **dual Fyne themes** (dark default + light peer) from one semantic role table (background, surface, primary, destructive, reject/caution, focus, text primary/secondary).
-- **UX-DR2:** **Filter strip** component: order **Collection → minimum rating → tags**; defaults **no collection**, **any rating**; keyboard traversal and visible focus.
-- **UX-DR3:** **Thumbnail grid cell**: rating badge, reject indicator, non-hover duplicates for key actions; pending/failed decode states.
+- **UX-DR2:** **Filter strip** component: order **Collection → minimum rating → tags**; defaults **no collection**, **any rating**; keyboard traversal and visible focus; **one row** by default—**overflow** advanced filters to a **sheet/drawer** so the strip does **not** read as a **second nav bar**.
+- **UX-DR3:** **Thumbnail grid cell**: rating badge, reject indicator, non-hover duplicates for key actions; pending/failed decode states; at **default density**, **image** remains the **dominant** read in the cell—**defer** nonessential chrome to **hover/focus** where feasible (**comfortable** tier per UX spec).
 - **UX-DR4:** **Review loupe**: image up to **~90%** footprint, letterboxed full image, prev/next affordances; safe chrome for **1:1–21:9** (NFR-01).
 - **UX-DR5:** **Reject** control/key **not** adjacent to rating keys **1–5**; Reject uses **caution** styling; **Delete** uses **destructive** styling and confirm.
 - **UX-DR6:** **Operation receipt** pattern after batch import/scan: added / duplicate / failed (+ consistent CLI).
@@ -104,6 +113,10 @@ Photo Tool is a local-first photo library product (Go + Fyne desktop, minimal HT
 - **UX-DR13:** Primary nav areas: **Upload**, **Review**, **Collections**, **Rejected** (consistent order/labels).
 - **UX-DR14:** **Drag-and-drop** target for upload alongside file picker (same pipeline).
 - **UX-DR15:** Document **focus order** filter strip → grid → loupe for desktop QA.
+- **UX-DR16 (Image stage prominence):** On **Review** and **collection detail**, the **thumbnail grid stage** occupies the **majority** of the window at default layout; **combined** top chrome (nav + filter strip) stays within a **documented height budget**; **minimum thumbnail edge** and **minimum loupe image region** are **validated** in Story **2.11** evidence (numeric thresholds in layout matrix / NFR-01 notes—not ad hoc per screen).
+- **UX-DR17 (AC-UI-THREAD):** After **async** work (ingest, decode, DB), **Fyne** mutations run on the **main thread**; **`-race`** smoke on ingest + grid paths remains green.
+- **UX-DR18 (AC-LIST-STATES):** Primary asset **grid** shows defined UX for **empty**, **loading**, **error**, and **populated** (copy + disabled actions per UX spec matrix).
+- **UX-DR19 (AC-RESIZE):** At **NFR-01 minimum** window size, **primary** actions are **not clipped**; **Tab** reaches all **visible** controls **without** focus traps on **hidden** widgets.
 
 ---
 
@@ -122,8 +135,9 @@ Photo Tool is a local-first photo library product (Go + Fyne desktop, minimal HT
 | NFR-03 | Epic 1 | Single dedup path |
 | NFR-04 | Epic 1 + Epic 2 | Summary type + GUI receipts |
 | NFR-05, NFR-06 | Epic 3 | Share perf + security posture |
-| UX-DR1, UX-DR13, UX-DR15 | Epic 2 | Shell + themes + a11y doc |
-| UX-DR2–UX-DR5, UX-DR8–UX-DR10 | Epic 2 | Components and flows |
+| UX-DR1, UX-DR13, UX-DR15–UX-DR19 | Epic 2 | Shell, themes, layout QA, thread + list states |
+| UX-DR2–UX-DR5, UX-DR8–UX-DR10, UX-DR16 | Epic 2 | Components, flows, image prominence |
+| UX-DR17 | Epic 1 + Epic 2 | Async → UI thread (ingest + grid) |
 | UX-DR6, UX-DR14 | Epic 1 | Receipts + DnD |
 | UX-DR7 | Epic 3 | Share preview |
 | UX-DR11–UX-DR12 | Epic 3 | Web share a11y |
@@ -138,15 +152,15 @@ Photo Tool is a local-first photo library product (Go + Fyne desktop, minimal HT
 
 **FRs covered:** FR-01–FR-06, FR-26 (minimum for placement + progressive completeness), FR-27–FR-28  
 **NFRs addressed:** NFR-02, NFR-03, NFR-04  
-**UX / arch:** UX-DR6, UX-DR14; architecture ingest path, `OperationSummary`, SQLite/migrations as needed.
+**UX / arch:** UX-DR6, UX-DR14, **UX-DR17** (async ingest → UI thread); architecture ingest path, `OperationSummary`, SQLite/migrations as needed.
 
 ### Epic 2: Review, filter, organize, and curate
 
-**Goal:** The user can browse with **filters**, rate/tag, use **loupe** with resilient layout, manage **collections** on full pages, and use **reject** / **delete** with recovery paths—using **dual themes** and navigation that match the UX spec.
+**Goal:** The user can browse **image-first**: **filters** and **nav** stay compact while the **grid/loupe** dominates; rate/tag, **loupe** with resilient layout, **collections** on full pages, and **reject** / **delete** with recovery paths—using **dual themes** and navigation that match the UX spec.
 
 **FRs covered:** FR-07–FR-12, FR-15–FR-25, FR-29–FR-31  
 **NFRs addressed:** NFR-01, NFR-04 (GUI), NFR-07  
-**UX:** UX-DR1–UX-DR5, UX-DR8–UX-DR10, UX-DR13, UX-DR15.
+**UX:** UX-DR1–UX-DR5, UX-DR8–UX-DR10, UX-DR13, UX-DR15–UX-DR19.
 
 ### Epic 3: Share a single photo for browser review
 
@@ -176,7 +190,7 @@ So that **my data has a stable home and upgrades apply safely**.
 
 - **Given** no `PHOTO_TOOL_LIBRARY` env var, **when** the app resolves the library root, **then** it uses an absolute path under the OS user config area (`…/photo-tool/library` per architecture) **and** creating the library succeeds.
 - **Given** `PHOTO_TOOL_LIBRARY` set to a path, **when** the app starts, **then** that path is used (absolute) and standard subdirs exist (`.phototool`, `.trash`, `.cache/thumbnails`).
-- **Given** a fresh library, **when** the store opens, **then** SQLite is created under `.phototool/library.sqlite`, migrations apply, and `schema_meta.version` is **1**.
+- **Given** a fresh library, **when** the store opens, **then** SQLite is created under `.phototool/library.sqlite`, embedded migrations apply successfully, and `schema_meta.version` equals the codebase’s authoritative target (see `store.TargetSchemaVersion` / `internal/store/migrate.go` — advances as new migrations ship; not a fixed literal **1**).
 - **Given** the assets table exists, **when** two active rows would share the same `rel_path`, **then** the database rejects the second insert (partial unique index).
 - **And** existing implementation in `internal/config`, `internal/paths`, `internal/filehash`, `internal/store` satisfies the above (regression tests stay green).
 
@@ -246,8 +260,10 @@ So that **I get predictable organization without surprise albums**.
 - **Given** the upload flow offers collection assignment, **when** the user has not confirmed, **then** no new collection and no links are persisted (FR-06).
 - **Given** the default collection name pattern `Upload YYYYMMDD`, **when** the user confirms, **then** the collection is created/updated and all batch assets are linked as specified (FR-04, FR-05).
 - **Given** the user clears or renames the collection name before confirm, **when** they confirm, **then** the persisted name matches their input.
+- **Given** a multi-file pick, **when** the confirm step is shown, **then** the UI surfaces **large previews** of the batch (image-first **ingest** stage per UX **Direction E**); the **operation receipt** remains readable and may be **collapsed** after the user has learned the pattern (UX spec **feedback patterns**).
+- **Given** ingest work runs off the UI thread, **when** results are applied, **then** **Fyne** widgets update on the **main thread** (UX-DR17).
 
-**Implements:** FR-04, FR-05, FR-06; NFR-04; UX-DR6.
+**Implements:** FR-04, FR-05, FR-06; NFR-04; UX-DR6, UX-DR17.
 
 ---
 
@@ -317,8 +333,9 @@ So that **long sessions are comfortable and I always know where I am**.
 - **Given** the app launches, **when** the main window loads, **then** primary areas exist: **Upload**, **Review**, **Collections**, **Rejected** (UX-DR13).
 - **Given** theme toggle or preference, **when** switched, **then** both **dark** and **light** themes apply semantic roles (primary, destructive, reject/caution, focus) without feature gaps (UX-DR1).
 - **And** focus visibility is visible on standard Fyne controls (baseline for UX-DR15).
+- **And** primary **navigation** is **compact** (single obvious row / rail per **Direction A**); it does **not** compete with the **Review** image stage for vertical space (UX-DR16 baseline).
 
-**Implements:** UX-DR1, UX-DR13; enables FR-07+ UI work.
+**Implements:** UX-DR1, UX-DR13, UX-DR16 (shell); enables FR-07+ UI work.
 
 ---
 
@@ -334,6 +351,7 @@ So that **browsing matches my mental model**.
 - **Given** a fresh session, **when** Review opens, **then** defaults are **no assigned collection** and **any rating** (FR-16).
 - **Given** the user changes filters, **when** applied, **then** the result set updates without silent mismatch (UX-DR2).
 - **And** keyboard users can traverse the strip with visible focus (UX-DR2).
+- **And** the strip occupies **at most one** default **row** of controls; additional filters or sort/scope controls use **overflow** (sheet, drawer, or equivalent)—not a **second** horizontal **nav** (UX-DR2).
 
 **Implements:** FR-15, FR-16; UX-DR2.
 
@@ -342,16 +360,18 @@ So that **browsing matches my mental model**.
 ### Story 2.3: Paged thumbnail grid with rating and reject badges
 
 As a **photographer**,  
-I want **a dense grid that shows state at a glance**,  
-So that **I can triage quickly**.
+I want **an image-forward grid that still shows rating and reject at a glance**,  
+So that **photos stay primary while I triage quickly**.
 
 **Acceptance criteria:**
 
 - **Given** filtered assets, **when** the grid loads, **then** thumbnails load incrementally (paged or windowed) without loading all pixmaps at once (architecture).
 - **Given** an asset with rating or reject state, **when** shown in grid, **then** badges reflect DB state within the PRD **1 second** guideline for local single-user use (FR-10, SC-3 / FR-07 baseline for display).
 - **Given** decode failure, **when** a cell renders, **then** user sees failed-decode affordance (placeholder + explanation) per UX-DR3.
+- **And** at default density, **thumbnail imagery** is the **largest** element in the cell; nonessential chrome **defers** to **hover/focus** where feasible (UX-DR3, UX-DR16).
+- **And** **minimum** thumbnail **readability** at **1024×768** and **1920×1080** reference layouts is **recorded** in Story **2.11** / NFR-01 evidence (numeric thresholds—not ad hoc).
 
-**Implements:** FR-07 (display tags/ratings context); supports FR-08/FR-29 display; UX-DR3.
+**Implements:** FR-07 (display tags/ratings context); supports FR-08/FR-29 display; UX-DR3, UX-DR16.
 
 ---
 
@@ -367,8 +387,9 @@ So that **I can review on any aspect ratio monitor**.
 - **Given** keyboard **1–5** or star control, **when** used, **then** rating persists without extra confirm dialog (FR-10).
 - **Given** window aspects from **1:1** to **21:9**, **when** resized manually per NFR-01 matrix, **then** primary controls remain in viewport (FR-11, NFR-01).
 - **And** Reject shortcut is **not** bound adjacent to **1–5** (UX-DR5).
+- **And** **chrome** does **not** **overlap** the **letterboxed** image **by default**; **minimum loupe image region** is asserted in Story **2.11** evidence (UX-DR4, UX-DR16).
 
-**Implements:** FR-09–FR-12, FR-25 (desktop portion); NFR-01; UX-DR4, UX-DR5.
+**Implements:** FR-09–FR-12, FR-25 (desktop portion); NFR-01; UX-DR4, UX-DR5, UX-DR16.
 
 ---
 
@@ -479,8 +500,9 @@ So that **ultrawide and laptop both work**.
 - **Given** the NFR-01 matrix (1024×768 through 5120×1440, square/16:9/21:9), **when** QA runs on tier-1 OS targets, **then** results are recorded (pass/fail + notes) for Review + loupe.
 - **Given** 125% and 150% OS scaling on macOS and Windows, **when** checked each major milestone, **then** NFR-07 checklist is updated.
 - **And** failures become tracked defects with UX/layout owner.
+- **And** evidence captures **UX-DR16** thresholds where applicable: **min thumb edge** (grid), **min loupe image region**, **combined nav+filter height budget**, plus **UX-DR19**: at **minimum** window, **primary** actions **not clipped** and **Tab** order has **no** focus trap on **hidden** widgets.
 
-**Implements:** NFR-01, NFR-07.
+**Implements:** NFR-01, NFR-07; UX-DR16, UX-DR19.
 
 ---
 
@@ -494,8 +516,9 @@ So that **I never feel lost after import or filtering**.
 
 - **Given** empty library, no filter results, or empty Rejected, **when** the user opens that surface, **then** they see **one primary CTA** per UX-DR9.
 - **Given** IO/DB errors, **when** shown, **then** copy is factual with next steps (UX spec “proportionate honesty”).
+- **Given** the primary **Review** (or collection) **grid**, **when** in **loading** or **error** state, **then** UI matches the **AC-LIST-STATES** matrix (copy + which actions are disabled) (UX-DR18).
 
-**Implements:** UX-DR9; cross-cutting UX quality.
+**Implements:** UX-DR9, UX-DR18; cross-cutting UX quality.
 
 ---
 
@@ -512,6 +535,7 @@ So that **I never mint the wrong asset**.
 - **Given** share from loupe, **when** the user has not confirmed, **then** no token/URL is persisted or copied (FR-32, UX-DR7).
 - **Given** confirm, **when** mint succeeds, **then** a **snapshot** row exists tying token hash to asset identity at mint time (FR-32, architecture).
 - **Given** a **rejected** asset, **when** user attempts default share flow, **then** share is blocked (FR-29, FR-32).
+- **Given** mint **fails** (permissions, size limits, IO), **when** the preview sheet is open, **then** the user sees a **clear failure** state with **next steps**—**no** silent close and **no** URL copied (UX-DR7; UX spec **share preview** failure states).
 
 **Implements:** FR-32; FR-29 (share side); UX-DR7.
 
@@ -606,7 +630,7 @@ So that **friends see exactly the package I intended**.
 |-------|--------|
 | Every FR FR-01–FR-32 mapped to ≥1 story | **Pass** (FR-33 → Epic 4) |
 | NFR-01–NFR-07 addressed in stories | **Pass** |
-| UX-DR1–UX-DR15 covered | **Pass** |
+| UX-DR1–UX-DR19 covered | **Pass** |
 | Epics ordered by user value, not layers | **Pass** |
 | Stories avoid forward dependencies within epic | **Pass** (sequential enablement) |
 | DB/migrations only when story needs them | **Pass** (1.1 assets; 1.4 collections/tags as stated) |

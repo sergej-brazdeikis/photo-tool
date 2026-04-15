@@ -117,7 +117,7 @@ So that **I can reconcile large archives safely**.
 
 ### Agent Model Used
 
-Party mode (automated headless), hook **dev**, sessions **1/2** and **2/2** — roundtables with **simulated** agent voices (`_bmad/_config/agent-manifest.csv` not present in tree).
+Party mode (automated headless), hook **dev** — roundtables with **simulated** agent voices from `_bmad/_config/agent-manifest.csv` (orchestrator-led when subagents are not spawned).
 
 ### Party round 1/2 (dev hook — simulated voices)
 
@@ -143,19 +143,47 @@ Party mode (automated headless), hook **dev**, sessions **1/2** and **2/2** — 
 
 **Orchestrator synthesis:** Add `TestRunScan_dryRun_countsMatch_liveSeparateLibraries_recursive`; add `scan` command `Long` in `internal/cli/root.go`; extend regression task wording; mark story and sprint **done** for `1-6-scan-cli`.
 
+### Party round 2026-04-14 (dev hook — session 1/2, deepen)
+
+- **Murat (Test Architect):** Happy-path parity on flat and recursive trees is table stakes. **AC2** promises the dry-run receipt matches what would happen—**including `Failed`** when per-file work breaks. We never asserted **mixed success + failure** across two empty libraries; a regression could make dry-run optimistic while live records copy/insert errors differently.
+
+- **Winston (Architect):** Agree on the test, but keep it **Unix-only** where we use `chmod 0`—mirror `TestRunScan_exitErrorWhenFileFails`’s skip. **Do not** stub the DB to force `AssetIDByContentHash` errors; that belongs in `internal/ingest` tests. CLI scope is “same cobra path, real sqlite, real files.”
+
+- **John (Product Manager):** Operators run dry-run before big jobs precisely to see **failure counts**. If dry and live diverge on partial failure, we violate the trust story behind FR-27. One test pays for that narrative.
+
+- **Amelia (Developer):** **Pushback:** two JPEGs + chmod is enough; no third “walk error” case in the same test—`WalkDir` walkErr already increments `Failed` in `RunScan` and is covered indirectly. I’ll add `TestRunScan_dryRun_countsMatch_liveSeparateLibraries_partialFailures` and assert **`Updated` stays zero** for scan.
+
+**Orchestrator synthesis:** Add the partial-failure parity test in `internal/cli/scan_test.go`; append sprint-status comment for traceability; extend Dev Agent Record—**no** AC change (already implies parity). Correct manifest path note above.
+
+### Party round 2026-04-14 (dev hook — session 2/2, deepen)
+
+- **Winston (Architect):** Session 1 hardened **Failed** parity, but AC2's "as if the run completed" also covers **same bytes, different paths** in one tree. Live inserts once, then dedups from SQLite; dry-run never saw the first insert and was double-counting **Added**. That is not a rare edge case; burst duplicates and copy trees do this constantly.
+
+- **Amelia (Developer):** Root cause is the `dryRun` branch in `ingestOne`: **Added++** without remembering the hash for the rest of the batch. Thread an optional `drySeen map[string]struct{}`: `IngestPaths` and `RunScan` allocate it when `dryRun`; single-path `IngestPath` callers pass `nil`. Live path unchanged.
+
+- **John (PM):** Dry-run is the rehearsal for big jobs. Inflated **Added** destroys the FR-27 trust story even when nothing failed. This is P0 for the receipt, not polish.
+
+- **Sally (UX Designer):** No new labels; users already read **Added** / **Skipped duplicate**. The integers must match what a live run would have done.
+
+**Orchestrator synthesis:** Implement `drySeen` for dry-run batches; add `TestIngestPaths_dryRun_matchesLiveWhenSameBytesTwoPaths` and `TestRunScan_dryRun_countsMatch_liveSeparateLibraries_sameBytesTwoFiles`; document in Dev Agent Record; keep `1-6-scan-cli` **done** in `sprint-status.yaml`.
+
 
 ### Debug Log References
 
 ### Completion Notes List
 
 - `phototool scan --dir DIR [--recursive] [--dry-run]` via Cobra; **no CLI args** → `main` opens Fyne UI (`internal/cli` stays Fyne-free).
-- Dry-run: `ingest.IngestPath` / `IngestPaths` with `dryRun=true` — hash + SELECT dedup only; no copy/insert.
+- Dry-run: `ingest.IngestPath` / `IngestPaths` with `dryRun=true` — hash + SELECT dedup plus an optional **per-batch** `drySeen` map (scan + multi-path dry ingest) so identical bytes across paths match live **Added**/**Skipped duplicate**; no copy/insert.
 - Scan uses `filepath.WalkDir` (recursive) or `ReadDir` (flat) — one file at a time; NFR-02 note on `RunScan` + `BenchmarkScanWalkDir_processingPattern`.
 - Fyne app ID centralized as `internal/app.FyneAppID` (was duplicated from `main`).
 - Single extension source in `internal/ingest/extensions.go` — `.heic`/`.dng` included for both CLI scan and GUI picker (`PickerFilterExtensions`); `TestRunScan_secondPass_skipsDuplicates` exercises end-to-end duplicate counts after a second scan.
 - **Session 1/2 party:** `TestRunScan_dryRun_countsMatch_liveSeparateLibraries` (CLI dry vs live on two fresh libraries, same tree); `TestScanDirInsideLibrary` for `scanDirInsideLibrary`; story task text aligned with `extensions.go`.
 - **Session 2/2 party:** `TestRunScan_dryRun_countsMatch_liveSeparateLibraries_recursive` (same parity under `--recursive`); `scan` **`Long`** help text for non-recursive default; story + sprint closed **done**.
+- **2026-04-14 party session 1/2 (deepen):** `TestRunScan_dryRun_countsMatch_liveSeparateLibraries_partialFailures` — dry vs live on separate libraries when one file is unreadable (`chmod 0`, Unix); asserts `Updated == 0`.
+- **2026-04-14 party session 2/2 (deepen):** `drySeen` in-run dedup for dry-run; `TestIngestPaths_dryRun_matchesLiveWhenSameBytesTwoPaths`; `TestRunScan_dryRun_countsMatch_liveSeparateLibraries_sameBytesTwoFiles`.
 - **Verification (2026-04-13):** `go test ./...` and `go build .` green.
+- **Verification (2026-04-14):** Dev-story workflow re-run — `go test ./...` and `go build .` green (full suite including `internal/app`, `tests/e2e`).
+- **Verification (2026-04-14, party 2/2):** `go test ./...` green after dry-run in-batch dedup fix.
 
 ### File List
 
@@ -172,6 +200,9 @@ Party mode (automated headless), hook **dev**, sessions **1/2** and **2/2** — 
 - 2026-04-13: Party mode (dev hook) session **1/2** — CLI parity test for dry-run vs live summaries on separate empty libraries; `scanDirInsideLibrary` unit test; story tasks synced with `internal/ingest/extensions.go`.
 - 2026-04-13: Party mode (dev hook) session **2/2** — **Recursive** dry vs live parity on separate libraries; `scan` command `Long` (non-recursive default); story **done**, sprint `1-6-scan-cli` **done**.
 - 2026-04-13: Dev-story run — `go test ./...` / `go build .` green; initial `scan` tests (e.g. `TestRunScan_dryRun_afterLive_skipsAllDuplicates`); status advanced to **review**, then **done** after party sessions **1/2–2/2**.
+- 2026-04-14: Dev-story workflow — no code changes; all tasks remain complete; `go test ./...` / `go build .` verified green; story status remains **done** (`sprint-status.yaml` `1-6-scan-cli`: done).
+- 2026-04-14: Party mode dev session **1/2** (deepen) — partial-failure dry vs live CLI parity test; Dev Agent Record manifest note corrected; sprint comment added.
+- 2026-04-14: Party mode dev session **2/2** (deepen) — dry-run **in-batch** content-hash dedup (`drySeen`) so same-byte multi-path trees match live AC2; ingest + CLI tests; story completion notes updated.
 
 ---
 

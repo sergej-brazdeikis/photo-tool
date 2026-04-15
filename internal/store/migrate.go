@@ -11,7 +11,8 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
-const targetSchemaVersion = 7
+// TargetSchemaVersion is the schema_meta.version after all embedded migrations apply.
+const TargetSchemaVersion = 7
 
 func currentVersion(db *sql.DB) (int, error) {
 	var n int
@@ -35,7 +36,7 @@ func migrate(db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-		if v >= targetSchemaVersion {
+		if v >= TargetSchemaVersion {
 			return nil
 		}
 		switch {
@@ -68,7 +69,7 @@ func migrate(db *sql.DB) error {
 				return fmt.Errorf("migration 007: %w", err)
 			}
 		default:
-			return fmt.Errorf("store migrate: unsupported schema version %d (target %d)", v, targetSchemaVersion)
+			return fmt.Errorf("store migrate: unsupported schema version %d (target %d)", v, TargetSchemaVersion)
 		}
 	}
 }

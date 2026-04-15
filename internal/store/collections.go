@@ -241,9 +241,12 @@ ON CONFLICT(asset_id, collection_id) DO NOTHING`)
 	return nil
 }
 
-// LinkAssetsToCollection creates asset_collections rows for each assetID.
-// Idempotency: duplicate (asset_id, collection_id) pairs are skipped via ON CONFLICT DO NOTHING.
+// LinkAssetsToCollection creates asset_collections rows for each assetID in one transaction.
+// Idempotency: duplicate (asset_id, collection_id) pairs are skipped via ON CONFLICT DO NOTHING,
+// including when the same asset ID appears multiple times in assetIDs.
+// If any insert fails (e.g. FK), the transaction rolls back — no partial links.
 // Invalid asset_id or collection_id yields a foreign-key error wrapped with context.
+// An empty assetIDs slice is a no-op (no transaction opened); collection existence is not checked.
 func LinkAssetsToCollection(db *sql.DB, collectionID int64, assetIDs []int64) error {
 	if len(assetIDs) == 0 {
 		return nil
@@ -263,8 +266,9 @@ func LinkAssetsToCollection(db *sql.DB, collectionID int64, assetIDs []int64) er
 	return nil
 }
 
-// DeleteCollection removes the collection and all asset_collections rows for it (FR-20).
-// Junction rows are removed via ON DELETE CASCADE on asset_collections.collection_id.
+// DeleteCollection deletes the collection row. Referencing asset_collections rows are removed
+// by foreign-key ON DELETE CASCADE, satisfying FR-20 (no orphaned membership).
+// If the id is missing (never existed or already deleted), wraps [ErrCollectionNotFound].
 func DeleteCollection(db *sql.DB, collectionID int64) error {
 	res, err := db.Exec(`DELETE FROM collections WHERE id = ?`, collectionID)
 	if err != nil {

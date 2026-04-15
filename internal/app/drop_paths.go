@@ -16,6 +16,23 @@ type droppedPaths struct {
 	Unsupported []string
 }
 
+// dropBlockedDialogInfo returns the information-dialog title/body when the upload flow
+// must reject a file drop (post-import confirm step or import worker still running).
+func dropBlockedDialogInfo(awaitingPostImportStep, importInFlight bool) (title, message string, blocked bool) {
+	switch {
+	case awaitingPostImportStep:
+		return "Finish collection step",
+			"Confirm or cancel the upload collection step before dropping more files.",
+			true
+	case importInFlight:
+		return "Import in progress",
+			"Wait for the current import to finish before adding more files.",
+			true
+	default:
+		return "", "", false
+	}
+}
+
 // tryAddUniquePath appends abs to paths if not already present (after filepath.Clean).
 // Returns whether paths changed.
 func tryAddUniquePath(paths *[]string, abs string) bool {
@@ -77,13 +94,24 @@ func droppedSkipSummaryForDialog(lines []string) string {
 	return head + fmt.Sprintf("\n\n… and %d more — use Add images… if you need to pick files manually.", rest)
 }
 
-// classifyDroppedURIs turns OS drop URIs into supported paths and human-facing skip lines.
-// stat follows [os.Stat] — inject in tests.
 func rectContainsPoint(absPos, topLeft fyne.Position, size fyne.Size) bool {
 	return absPos.X >= topLeft.X && absPos.Y >= topLeft.Y &&
 		absPos.X < topLeft.X+size.Width && absPos.Y < topLeft.Y+size.Height
 }
 
+// takePendingStringSlice moves a non-empty pending slice out of *pending, clears *pending, and reports whether anything was taken.
+// Used so mixed-drop "skipped items" can be shown once after batch ingest finishes (UX-DR14 / Story 1.8) without racing "Importing…".
+func takePendingStringSlice(pending *[]string) ([]string, bool) {
+	if pending == nil || len(*pending) == 0 {
+		return nil, false
+	}
+	out := append([]string(nil), *pending...)
+	*pending = nil
+	return out, true
+}
+
+// classifyDroppedURIs turns OS drop URIs into supported paths and human-facing skip lines.
+// stat follows [os.Stat] — inject in tests.
 func classifyDroppedURIs(uris []fyne.URI, stat func(string) (fs.FileInfo, error)) droppedPaths {
 	seen := make(map[string]struct{})
 	var out droppedPaths
@@ -100,7 +128,7 @@ func classifyDroppedURIs(uris []fyne.URI, stat func(string) (fs.FileInfo, error)
 
 		fi, err := stat(path)
 		if err != nil {
-			out.Unsupported = append(out.Unsupported, fmt.Sprintf("%s: not accessible", filepath.Base(path)))
+			out.Unsupported = append(out.Unsupported, fmt.Sprintf("%s: could not be opened — check it exists and you have permission, or use Add images…", filepath.Base(path)))
 			continue
 		}
 		if fi.IsDir() {

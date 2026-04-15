@@ -29,6 +29,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Bash syntax — bmad-story-workflow.sh
+        run: bash -n scripts/bmad-story-workflow.sh
+
       - name: Windows — system DPI for NFR-07 AC3 (LogPixels)
         if: runner.os == 'Windows'
         shell: pwsh

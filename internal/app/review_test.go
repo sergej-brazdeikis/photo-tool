@@ -137,7 +137,7 @@ func TestReviewFilterStrip_tabFocusOrder_matchesSelectLayoutOrder(t *testing.T) 
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	sels := collectSelectWidgets(view)
 	if len(sels) < 3 {
 		t.Fatalf("expected at least 3 Select widgets in Review view, got %d", len(sels))
@@ -170,7 +170,7 @@ func TestReviewFilterStrip_tabFocusOrder_matchesSelectLayoutOrder(t *testing.T) 
 func TestNewReviewView_nilDB_honestLabel(t *testing.T) {
 	test.NewTempApp(t)
 
-	view := NewReviewView(nil, nil, "", nil, nil, nil)
+	view := NewReviewView(nil, nil, "", nil, nil, nil, nil)
 	got := matchingAssetsLabelText(t, view)
 	if !strings.Contains(got, "no database") {
 		t.Fatalf("label: %q", got)
@@ -196,7 +196,7 @@ func TestReviewView_closedDB_matchingLabelHonest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	got := matchingAssetsLabelText(t, view)
 	if !strings.HasPrefix(got, "Matching assets: —") {
 		t.Fatalf("label: %q", got)
@@ -219,7 +219,7 @@ func TestReviewFilterStrip_tabFocusOrder_lightTheme(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	sels := collectSelectWidgets(view)
 	if len(sels) < 3 {
 		t.Fatalf("expected at least 3 Select widgets, got %d", len(sels))
@@ -280,7 +280,7 @@ func TestStory210_ReviewViewBulkAssignPresentAndDisabledWithoutAlbums(t *testing
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	var sawAssignLabel bool
 	for _, lb := range collectLabels(view) {
 		if lb.Text == "Assign selection" {
@@ -311,7 +311,7 @@ func TestStory210_ReviewViewHasAssignTargetSelect(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	sels := collectSelectWidgets(view)
 	if len(sels) < 4 {
 		t.Fatalf("expected at least 4 Select widgets (strip + assign target), got %d", len(sels))
@@ -340,7 +340,7 @@ func TestStory210_AssignTargetOptionsExcludeBrowsePredicate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	sels := collectSelectWidgets(view)
 	if len(sels) < 4 {
 		t.Fatalf("expected strip + assign Selects, got %d", len(sels))
@@ -385,7 +385,7 @@ func TestStory212_ReviewEmptyLibrary_goToUploadCTA(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 
 	var uploadCalls int32
-	view := NewReviewView(nil, db, root, nil, func() { atomic.AddInt32(&uploadCalls, 1) }, nil)
+	view := NewReviewView(nil, db, root, nil, func() { atomic.AddInt32(&uploadCalls, 1) }, nil, nil)
 	findLabelContaining(t, view, "Your library has no photos")
 	uploadBtn := findButtonByText(t, view, "Go to Upload")
 	test.NewTempWindow(t, view)
@@ -414,7 +414,7 @@ func TestStory212_ReviewFiltersEmpty_resetFiltersCTA(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	view := NewReviewView(nil, db, root, nil, nil, nil)
+	view := NewReviewView(nil, db, root, nil, nil, nil, nil)
 	sels := collectSelectWidgets(view)
 	if len(sels) < 3 {
 		t.Fatalf("expected filter strip selects, got %d", len(sels))
