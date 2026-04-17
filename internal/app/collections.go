@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
@@ -30,9 +31,10 @@ type CollectionsView struct {
 
 	stack *fyne.Container
 
-	collRows []store.CollectionRow
-	list     *widget.List
-	listMsg  *widget.Label
+	collRows           []store.CollectionAlbumListRow
+	albumListThumbBind sync.Map
+	list               *widget.List
+	listMsg            *widget.Label
 
 	detailCollectionID   int64
 	detailCollectionName string
@@ -63,16 +65,8 @@ func NewCollectionsView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoR
 			}
 			return len(v.collRows)
 		},
-		func() fyne.CanvasObject {
-			return widget.NewLabel("collection")
-		},
-		func(id widget.ListItemID, o fyne.CanvasObject) {
-			lbl, ok := o.(*widget.Label)
-			if !ok || id < 0 || int(id) >= len(v.collRows) {
-				return
-			}
-			lbl.SetText(v.collRows[id].Name)
-		},
+		newAlbumListRowTemplate,
+		v.bindAlbumListItem,
 	)
 	v.list.HideSeparators = true
 	v.list.OnSelected = func(id widget.ListItemID) {
@@ -91,6 +85,91 @@ func NewCollectionsView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoR
 
 // CanvasObject returns the root canvas object for the shell content region.
 func (v *CollectionsView) CanvasObject() fyne.CanvasObject { return v.stack }
+
+func newAlbumListRowTemplate() fyne.CanvasObject {
+	sz := fyne.NewSize(float32(uxImageAlbumListCoverMin), float32(uxImageAlbumListCoverMin))
+	bg := canvas.NewRectangle(theme.Color(theme.ColorNameInputBackground))
+	bg.CornerRadius = 4
+	bg.SetMinSize(sz)
+	img := canvas.NewImageFromFile("")
+	img.FillMode = canvas.ImageFillContain
+	img.SetMinSize(sz)
+	thumb := container.NewStack(bg, img)
+	lbl := widget.NewLabel("album")
+	lbl.Truncation = fyne.TextTruncateEllipsis
+	lbl.Wrapping = fyne.TextWrapOff
+	return container.NewHBox(thumb, container.NewMax(lbl))
+}
+
+func (v *CollectionsView) bindAlbumListItem(id widget.ListItemID, o fyne.CanvasObject) {
+	rowBox, ok := o.(*fyne.Container)
+	if !ok || len(rowBox.Objects) != 2 {
+		return
+	}
+	thumbStack, ok := rowBox.Objects[0].(*fyne.Container)
+	if !ok || len(thumbStack.Objects) != 2 {
+		return
+	}
+	maxBox, ok := rowBox.Objects[1].(*fyne.Container)
+	if !ok || len(maxBox.Objects) != 1 {
+		return
+	}
+	lbl, ok := maxBox.Objects[0].(*widget.Label)
+	if !ok || id < 0 || int(id) >= len(v.collRows) {
+		return
+	}
+	bg, _ := thumbStack.Objects[0].(*canvas.Rectangle)
+	img, _ := thumbStack.Objects[1].(*canvas.Image)
+	row := v.collRows[id]
+	lbl.SetText(row.Name)
+
+	v.albumListThumbBind.Delete(img)
+	img.File = ""
+	img.Resource = nil
+	img.Refresh()
+	if row.CoverAssetID == 0 {
+		if bg != nil {
+			bg.FillColor = theme.Color(theme.ColorNameInputBackground)
+			bg.Refresh()
+		}
+		img.Resource = theme.MediaPhotoIcon()
+		img.Show()
+		// Skip img.Refresh: decoding built-in icon resources can panic in headless Fyne tests (review grid pending path).
+		return
+	}
+	if bg != nil {
+		bg.FillColor = theme.Color(theme.ColorNameInputBackground)
+		bg.Refresh()
+	}
+	img.Resource = theme.MediaPhotoIcon()
+	img.Show()
+	wantID := row.CoverAssetID
+	imgRef := img
+	v.albumListThumbBind.Store(imgRef, wantID)
+
+	go func() {
+		srcAbs := filepath.Join(v.libraryRoot, filepath.FromSlash(row.CoverRelPath))
+		cacheAbs := ThumbnailCachePath(v.libraryRoot, row.CoverAssetID, row.CoverContentHash)
+		err := WriteThumbnailJPEG(srcAbs, cacheAbs)
+		fyne.Do(func() {
+			stored, ok := v.albumListThumbBind.Load(imgRef)
+			if !ok || stored.(int64) != wantID {
+				return
+			}
+			if err != nil {
+				img.Resource = theme.ErrorIcon()
+				img.File = ""
+				img.Show()
+				img.Refresh()
+				return
+			}
+			img.Resource = nil
+			img.File = cacheAbs
+			img.Show()
+			img.Refresh()
+		})
+	}()
+}
 
 func (v *CollectionsView) notifyCollectionsMutated() {
 	if v.onCollectionsMutated != nil {
@@ -121,18 +200,18 @@ func (v *CollectionsView) listChrome() fyne.CanvasObject {
 	} else {
 		newBtn.Importance = widget.MediumImportance
 	}
+	title := widget.NewLabelWithStyle("Albums", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	// One scrollable header row: more vertical room for list rows + larger cover thumbs (image-forward album list).
+	header := container.NewHScroll(container.NewHBox(title, newBtn, renBtn, delBtn))
 	return container.NewBorder(
-		container.NewVBox(
-			widget.NewLabelWithStyle("Albums", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-			container.NewHBox(newBtn, renBtn, delBtn),
-		),
+		header,
 		nil, nil, nil,
 		container.NewVBox(v.listMsg, v.list),
 	)
 }
 
 func (v *CollectionsView) reloadCollectionRows() {
-	rows, err := store.ListCollections(v.db)
+	rows, err := store.ListCollectionAlbumListRows(v.db)
 	if err != nil {
 		slog.Error("collections: list", "err", err)
 		v.collRows = nil
@@ -231,14 +310,15 @@ func (v *CollectionsView) buildDetailView() fyne.CanvasObject {
 	}
 
 	title := widget.NewLabelWithStyle(v.detailCollectionName, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	title.Truncation = fyne.TextTruncateEllipsis
 
 	v.replaceDetailBody(detailBody)
 
+	groupLbl := widget.NewLabelWithStyle("Group:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
 	top := container.NewVBox(
 		container.NewHBox(back, layout.NewSpacer(), editBtn, delBtn),
-		title,
-		widget.NewLabelWithStyle("Group photos", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
-		group,
+		container.NewHBox(title, layout.NewSpacer()),
+		container.NewHBox(groupLbl, group),
 		widget.NewSeparator(),
 	)
 	return container.NewBorder(top, nil, nil, nil, container.NewScroll(detailBody))
@@ -418,6 +498,7 @@ func (v *CollectionsView) promptEditDetailAlbum() {
 func (v *CollectionsView) showAlbumForm(collectionID int64) {
 	var saving atomic.Bool
 	nameEntry := widget.NewEntry()
+	nameEntry.SetPlaceHolder("Album name")
 	dateEntry := widget.NewEntry()
 	dateEntry.SetPlaceHolder("YYYY-MM-DD (optional)")
 	errLbl := widget.NewLabel("")
@@ -595,7 +676,7 @@ func (v *CollectionsView) newSectionThumbnailGrid(total int64, fetch func(pageId
 		func() fyne.CanvasObject {
 			cells := make([]fyne.CanvasObject, reviewGridColumns)
 			for i := range cells {
-				cells[i] = newReviewGridCell().object()
+				cells[i] = newReviewGridCell(false).object()
 			}
 			return container.NewHBox(cells...)
 		},
@@ -653,6 +734,10 @@ func (g *collectionSectionGrid) bindGridRow(rowIdx int, o fyne.CanvasObject) {
 			return
 		}
 		cells[col] = gc
+	}
+
+	for col := 0; col < reviewGridColumns; col++ {
+		cells[col].clear(&g.thumbnailBinding)
 	}
 
 	for col := 0; col < reviewGridColumns; col++ {

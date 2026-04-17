@@ -68,6 +68,23 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`,
 	return id, nil
 }
 
+// AssetRelPathContentHashByID returns library rel_path and content_hash for an active asset row.
+// Used for UI previews that must read the canonical library file after ingest (FR-06).
+func AssetRelPathContentHashByID(db *sql.DB, id int64) (relPath string, contentHash string, ok bool, err error) {
+	err = db.QueryRow(`
+SELECT rel_path, content_hash
+FROM assets
+WHERE id = ? AND deleted_at_unix IS NULL
+LIMIT 1`, id).Scan(&relPath, &contentHash)
+	if err == sql.ErrNoRows {
+		return "", "", false, nil
+	}
+	if err != nil {
+		return "", "", false, fmt.Errorf("asset rel_path by id: %w", err)
+	}
+	return relPath, contentHash, true, nil
+}
+
 // ActiveAssetByRelPath returns the active (non-deleted) row at rel_path, if any.
 func ActiveAssetByRelPath(db *sql.DB, relPath string) (id int64, contentHash string, captureUnix int64, ok bool, err error) {
 	err = db.QueryRow(`

@@ -69,16 +69,16 @@ func TestLoupeStepIndex_emptyTotal(t *testing.T) {
 	}
 }
 
-func TestLoupeImageLayout_reservesNinetyPercent(t *testing.T) {
+func TestLoupeImageLayout_reservesTwentyFourTwentyFifths(t *testing.T) {
 	t.Parallel()
 	var l loupeImageLayout
 	img := canvas.NewRectangle(color.NRGBA{A: 255})
 	parent := fyne.NewSize(1000, 800)
 	l.Layout([]fyne.CanvasObject{img}, parent)
-	if g, w := int(img.Size().Width), 900; g != w {
+	if g, w := int(img.Size().Width), 960; g != w {
 		t.Fatalf("width: got %d want %d", g, w)
 	}
-	if g, w := int(img.Size().Height), 720; g != w {
+	if g, w := int(img.Size().Height), 768; g != w {
 		t.Fatalf("height: got %d want %d", g, w)
 	}
 }

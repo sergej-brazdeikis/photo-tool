@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -125,18 +126,36 @@ func openLoupeShareFlow(win fyne.Window, grid *reviewAssetGrid, idx int, current
 	)
 }
 
+func shareLoupeBreakableRelPath(rel string) string {
+	// Zero-width spaces after slashes so wrapped labels don't force the dialog wider than the image min width.
+	return strings.ReplaceAll(filepath.ToSlash(rel), "/", "/\u200b")
+}
+
 func buildLoupeSharePreview(libraryRoot string, row store.ReviewGridRow) fyne.CanvasObject {
-	img := canvas.NewImageFromFile(filepath.Join(libraryRoot, filepath.FromSlash(row.RelPath)))
+	abs := filepath.Join(libraryRoot, filepath.FromSlash(row.RelPath))
+	img := canvas.NewImageFromFile("")
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.NewSize(280, 210))
+	img.SetMinSize(fyne.NewSize(uxImageShareLoupeW, uxImageShareLoupeH))
+	if raster, err := decodeImageFile(abs); err == nil {
+		img.Image = raster
+		img.File = ""
+		img.Resource = nil
+	} else {
+		img.Image = nil
+		img.File = abs
+		img.Resource = nil
+	}
+	img.Refresh()
 	when := time.Unix(row.CaptureTimeUnix, 0).UTC().Format("2006-01-02 15:04 MST")
-	lbl := widget.NewLabel(fmt.Sprintf("File: %s\nCaptured: %s\nLibrary ID: %d", row.RelPath, when, row.ID))
+	rel := shareLoupeBreakableRelPath(row.RelPath)
+	hint := "A link is created only after you tap Create link. Nothing is saved before that."
+	lbl := widget.NewLabel(fmt.Sprintf("File: %s\nCaptured: %s\nLibrary ID: %d\n\n%s", rel, when, row.ID, hint))
 	lbl.Wrapping = fyne.TextWrapWord
-	hint := widget.NewLabel("A link is created only after you tap Create link. Nothing is saved before that.")
-	hint.Wrapping = fyne.TextWrapWord
-	hintScroll := container.NewVScroll(hint)
-	hintScroll.SetMinSize(fyne.NewSize(440, 76))
-	return container.NewVBox(img, lbl, hintScroll)
+	metaScroll := container.NewVScroll(lbl)
+	metaScroll.SetMinSize(fyne.NewSize(uxImageShareLoupeW, uxShareLoupeMetaScrollH))
+	// Normative share hierarchy: the photo is the largest element; metadata stays below the image band in one short strip.
+	imgBand := container.NewMax(container.NewCenter(img))
+	return container.NewVBox(imgBand, metaScroll)
 }
 
 func showLoupeShareMintSuccess(win fyne.Window, loop *share.Loopback, rawToken string) {

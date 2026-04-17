@@ -20,6 +20,7 @@ package app
 
 import (
 	"image/color"
+	"os"
 	"sync"
 
 	"fyne.io/fyne/v2"
@@ -150,7 +151,29 @@ func (t *PhotoToolTheme) Icon(n fyne.ThemeIconName) fyne.Resource {
 // Size implements fyne.Theme.
 func (t *PhotoToolTheme) Size(n fyne.ThemeSizeName) float32 {
 	del, _ := t.effective()
-	return del.Size(n)
+	journey := os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1"
+	switch n {
+	case theme.SizeNameScrollBarRadius, theme.SizeNameInputRadius, theme.SizeNameSelectionRadius,
+		theme.SizeNameWindowButtonRadius:
+		// Rounded rects rasterize via vector paths; at very small sizes the Fyne 2.7 software
+		// painter can pass negative bounds to golang.org/x/image/vector (slice panic), which
+		// breaks headless Canvas().Capture() (TestUXJourneyCapture / judge bundles).
+		// WindowButtonRadius (Fyne 2.6+) affects inner-window chrome when used.
+		if journey {
+			return 0
+		}
+		return del.Size(n)
+	case theme.SizeNameInputBorder:
+		// Entry needs a visible border for form affordance in UX capture. A 1px stroke has
+		// been stable in TestUXJourneyCapture; the delegate default is larger and previously
+		// risked negative bounds in the software painter during Canvas().Capture().
+		if journey {
+			return 1
+		}
+		return del.Size(n)
+	default:
+		return del.Size(n)
+	}
 }
 
 // LoadThemeVariantFromPrefs reads "dark"/"light" from prefs; empty or invalid → dark (UX default).

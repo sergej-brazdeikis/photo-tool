@@ -27,7 +27,7 @@ func TestReviewFilterStripSegmentLabels_order(t *testing.T) {
 
 // Story 2.2 AC1/AC2 default option strings (MVP English literals; update story if copy changes).
 func TestReviewFilterStrip_defaultSentinels_matchStory22(t *testing.T) {
-	if reviewCollectionSentinel != "No assigned collection" {
+	if reviewCollectionSentinel != "Unassigned" {
 		t.Fatalf("collection sentinel: got %q", reviewCollectionSentinel)
 	}
 	if reviewRatingAny != "Any rating" {

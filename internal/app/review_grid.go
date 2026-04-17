@@ -25,11 +25,7 @@ import (
 
 const (
 	reviewGridPageSize = 48
-	reviewGridColumns  = 4
-	// reviewGridThumbMin is the minimum logical size for each thumbnail preview. Without this,
-	// canvas.Image reports a tiny MinSize before/without pixels and widget.List rows collapse
-	// to slivers (Review, Rejected, album detail grids).
-	reviewGridThumbMin = 120
+	reviewGridColumns = 4
 
 	// User-facing only — must stay free of driver/SQL fragments (Story 2.3 AC3–AC4).
 	reviewGridMsgPageLoadFail = "Can't load this page — library read failed. Try changing the filter or restarting the app."
@@ -127,12 +123,30 @@ func (t *tapLayer) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(t.Child)
 }
 
-func newReviewGridCell() *reviewGridCell {
+// newReviewGridCell builds one thumbnail cell. rejectedListTemplate must be true for Rejected-mode
+// grids so widget.List's template row MinSize includes the Restore button; hidden widgets contribute
+// no height and the list would fix row height too short, clipping Restore after bind.
+// newFilterZeroMatchPhotoPlate is a large neutral “photo-shaped” plate for zero-match filter empty
+// states so the viewport stays image-forward (UX spec) without implying a real library asset.
+func newFilterZeroMatchPhotoPlate() fyne.CanvasObject {
 	bg := canvas.NewRectangle(theme.Color(theme.ColorNameInputBackground))
 	bg.CornerRadius = 4
+	bg.SetMinSize(fyne.NewSize(uxImageLoupeMainMin, uxImageLoupeMainMin))
+	icon := canvas.NewImageFromResource(theme.MediaPhotoIcon())
+	icon.FillMode = canvas.ImageFillContain
+	icon.SetMinSize(fyne.NewSize(uxImageLoupeMainMin, uxImageLoupeMainMin))
+	return container.NewMax(bg, container.NewCenter(icon))
+}
+
+func newReviewGridCell(rejectedListTemplate bool) *reviewGridCell {
+	bg := canvas.NewRectangle(theme.Color(theme.ColorNameInputBackground))
+	bg.CornerRadius = 4
+	// Reserve thumb footprint even when img is Hidden (clear/empty slots) — hidden Images
+	// do not contribute to MinSize, so without this the List row collapses to slivers.
+	bg.SetMinSize(fyne.NewSize(uxImageGridThumbMin, uxImageGridThumbMin))
 	img := canvas.NewImageFromFile("")
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.NewSize(reviewGridThumbMin, reviewGridThumbMin))
+	img.SetMinSize(fyne.NewSize(uxImageGridThumbMin, uxImageGridThumbMin))
 	failIcon := widget.NewIcon(theme.ErrorIcon())
 	failIcon.Hide()
 	failLbl := widget.NewLabel("")
@@ -143,7 +157,11 @@ func newReviewGridCell() *reviewGridCell {
 	rejectBadge := widget.NewLabel("")
 	rejectBadge.Importance = widget.WarningImportance
 	restoreBtn := widget.NewButton("Restore", nil)
-	restoreBtn.Hide()
+	if rejectedListTemplate {
+		restoreBtn.Disable()
+	} else {
+		restoreBtn.Hide()
+	}
 	thumb := container.NewStack(bg, img, failIcon, failLbl)
 	ratingRow := container.NewHBox(rating, layout.NewSpacer(), rejectBadge)
 	// Full cell width so "Restore" is not clipped in narrow Rejected columns (NFR-01 / 4-up grid).
@@ -222,7 +240,7 @@ func newReviewAssetGrid(win fyne.Window, db *sql.DB, libraryRoot string, onLoupe
 		func() fyne.CanvasObject {
 			cells := make([]fyne.CanvasObject, reviewGridColumns)
 			for i := range cells {
-				cells[i] = newReviewGridCell().object()
+				cells[i] = newReviewGridCell(g.rejectedMode).object()
 			}
 			return container.NewHBox(cells...)
 		},
@@ -458,6 +476,13 @@ func (g *reviewAssetGrid) bindGridRow(rowIdx int, o fyne.CanvasObject) {
 		cells[col] = gc
 	}
 
+	// List rows are recycled: when the last row shrinks from 2 assets to 1, the second cell
+	// may not get another bind pass if Fyne keeps a single list row — clear every slot first
+	// so stale thumbnails and InputBackground tiles cannot sit beside an updated count.
+	for col := 0; col < reviewGridColumns; col++ {
+		cells[col].clear(&g.thumbnailBinding)
+	}
+
 	for col := 0; col < reviewGridColumns; col++ {
 		idx := rowIdx*reviewGridColumns + col
 		assetRow, have, err := g.rowAt(idx)
@@ -517,10 +542,9 @@ func (c *reviewGridCell) clear(thumbBind *sync.Map) {
 	}
 	// Slightly dimmer than a real thumbnail cell so empty grid slots do not read as “filled”.
 	c.bg.FillColor = theme.Color(theme.ColorNameBackground)
+	c.bg.Refresh()
 	c.img.File = ""
 	c.img.Resource = nil
-	c.img.Show()
-	c.img.Refresh()
 	c.failIcon.Hide()
 	c.failLbl.Hide()
 	c.failLbl.SetText("")
@@ -528,7 +552,11 @@ func (c *reviewGridCell) clear(thumbBind *sync.Map) {
 	c.rejectBadge.SetText("")
 	c.rejectBadge.Hide()
 	c.restoreBtn.Hide()
+	c.restoreBtn.Disable()
 	c.restoreBtn.OnTapped = nil
+	// Hide empty image (no placeholder tile); bg.SetMinSize(uxImageGridThumbMin) holds list row height.
+	c.img.Hide()
+	c.img.Refresh()
 }
 
 // showUserFailure is decode/page failure UX (AC3–AC4): icon + short copy, no raw errors.
@@ -537,6 +565,7 @@ func (c *reviewGridCell) showUserFailure(thumbBind *sync.Map, msg string) {
 		thumbBind.Delete(c.img)
 	}
 	c.bg.FillColor = theme.Color(theme.ColorNameInputBackground)
+	c.bg.Refresh()
 	c.img.File = ""
 	c.img.Resource = nil
 	c.img.Hide()
@@ -548,6 +577,7 @@ func (c *reviewGridCell) showUserFailure(thumbBind *sync.Map, msg string) {
 	c.rejectBadge.SetText("")
 	c.rejectBadge.Hide()
 	c.restoreBtn.Hide()
+	c.restoreBtn.Disable()
 	c.restoreBtn.OnTapped = nil
 	c.img.Refresh()
 }
@@ -558,6 +588,7 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 	} else {
 		c.bg.FillColor = theme.Color(theme.ColorNameInputBackground)
 	}
+	c.bg.Refresh()
 	c.img.Show()
 	c.failIcon.Hide()
 	c.failLbl.Hide()
@@ -566,6 +597,7 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 	if g.rejectedMode {
 		c.rejectBadge.Hide()
 		c.restoreBtn.Show()
+		c.restoreBtn.Enable()
 		c.restoreBtn.Importance = widget.MediumImportance
 		c.restoreBtn.OnTapped = func() {
 			if g.onRestoreAsset != nil {
@@ -574,6 +606,7 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 		}
 	} else {
 		c.restoreBtn.Hide()
+		c.restoreBtn.Disable()
 		c.restoreBtn.OnTapped = nil
 		if lbl := rejectBadgeLabel(row.Rejected); lbl != "" {
 			c.rejectBadge.SetText(lbl)

@@ -150,9 +150,9 @@ func newMainShell(win fyne.Window, db *sql.DB, libraryRoot string, omitSemanticS
 
 	panels := map[string]fyne.CanvasObject{
 		"upload":      upload,
-		"review":      container.NewScroll(review),
+		"review":      review,
 		"collections": collectionsView.CanvasObject(),
-		"rejected":    container.NewScroll(rejected),
+		"rejected":    rejected,
 	}
 	for _, it := range primaryNavItems {
 		if panels[it.key] == nil {

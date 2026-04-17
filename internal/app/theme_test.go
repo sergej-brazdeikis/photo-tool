@@ -103,6 +103,27 @@ func TestLoadThemeVariantFromPrefs_invalidFallsBackToDark(t *testing.T) {
 	}
 }
 
+func TestPhotoToolTheme_vectorSafeRadiiWhenApplied(t *testing.T) {
+	test.NewTempApp(t)
+	t.Setenv("PHOTO_TOOL_UX_JOURNEY_TEST", "1")
+	applyTestPhotoToolTheme(t, theme.VariantDark)
+	if g := theme.InputRadiusSize(); g != 0 {
+		t.Fatalf("InputRadiusSize after apply: got %v want 0", g)
+	}
+	if g := theme.SelectionRadiusSize(); g != 0 {
+		t.Fatalf("SelectionRadiusSize after apply: got %v want 0", g)
+	}
+	if g := theme.Current().Size(theme.SizeNameScrollBarRadius); g != 0 {
+		t.Fatalf("ScrollBarRadius after apply: got %v want 0", g)
+	}
+	if g := theme.Current().Size(theme.SizeNameWindowButtonRadius); g != 0 {
+		t.Fatalf("WindowButtonRadius after apply: got %v want 0", g)
+	}
+	if g := theme.Current().Size(theme.SizeNameInputBorder); g != 1 {
+		t.Fatalf("InputBorder after apply: got %v want 1", g)
+	}
+}
+
 func TestPhotoToolTheme_focusDistinctFromBackground(t *testing.T) {
 	for _, v := range []fyne.ThemeVariant{theme.VariantDark, theme.VariantLight} {
 		th := NewPhotoToolTheme(v)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"image/color"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ import (
 // After close, cleanup focuses the grid list so Tab order returns to the Review surface.
 // Loupe chrome is an HBox: Prev, rating1–5, Next, Close — before the letterboxed image (no extra focusable decoration).
 
-// loupeImageLayout reserves ~90% of the loupe body for the image region (FR-09 / UX-DR4).
+// loupeImageLayout reserves ~96% of the loupe body for the image region (FR-09 / UX-DR4).
 type loupeImageLayout struct{}
 
 func (loupeImageLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
@@ -50,8 +51,9 @@ func (loupeImageLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
 		return
 	}
 	img := objects[0]
-	mw := size.Width * 9 / 10
-	mh := size.Height * 9 / 10
+	// Slightly larger letterbox band than 90% so loupe chrome (nav + tags/albums) leaves the photo hero-readable.
+	mw := size.Width * 24 / 25
+	mh := size.Height * 24 / 25
 	if mw < 1 {
 		mw = 1
 	}
@@ -114,13 +116,17 @@ func openReviewLoupe(win fyne.Window, grid *reviewAssetGrid, startIdx int, onRev
 
 	img := canvas.NewImageFromFile("")
 	img.FillMode = canvas.ImageFillContain
+	img.SetMinSize(fyne.NewSize(uxImageLoupeMainMin, uxImageLoupeMainMin))
 
 	errLbl := widget.NewLabel(reviewGridMsgDecodeFail)
 	errLbl.Alignment = fyne.TextAlignCenter
 	errLbl.Wrapping = fyne.TextWrapWord
 	errLbl.Hide()
 
-	imgStack := container.NewStack(img, container.NewCenter(errLbl))
+	// Hidden canvas.Image does not contribute MinSize; keep image band height on load/error paths (UX spec: hero loupe).
+	imgBandFloor := canvas.NewRectangle(color.Transparent)
+	imgBandFloor.SetMinSize(fyne.NewSize(uxImageLoupeMainMin, uxImageLoupeMainMin))
+	imgStack := container.NewStack(imgBandFloor, img, container.NewCenter(errLbl))
 	imgArea := container.New(&loupeImageLayout{}, imgStack)
 
 	prevBtn := widget.NewButton("← Prev", nil)
@@ -228,15 +234,18 @@ func openReviewLoupe(win fyne.Window, grid *reviewAssetGrid, startIdx int, onRev
 
 	albumHeader := container.NewHBox(widget.NewLabel("Albums"), layout.NewSpacer(), newAlbumLoupeBtn)
 
-	top := container.NewVBox(
-		container.NewHBox(prevBtn, layout.NewSpacer(), ratingBox, layout.NewSpacer(), shareBtn, rejectBtn, deleteBtn, nextBtn, closeBtn),
+	// Image-dominant loupe: one compact nav row above the photo; tags + albums below so the hero band is not
+	// sandwiched between full-width control strips (UX spec image dominance / judge loupe captures).
+	navRow := container.NewHBox(prevBtn, layout.NewSpacer(), ratingBox, layout.NewSpacer(), shareBtn, rejectBtn, deleteBtn, nextBtn, closeBtn)
+	bottomChrome := container.NewVBox(
+		widget.NewSeparator(),
 		container.NewHBox(tagEntry, tagAdd, tagRem),
 		tagsLbl,
 		widget.NewSeparator(),
 		albumHeader,
 		albumScroll,
 	)
-	root := container.NewBorder(top, nil, nil, nil, imgArea)
+	root := container.NewBorder(navRow, bottomChrome, nil, nil, imgArea)
 
 	pop := widget.NewModalPopUp(root, cnv)
 
@@ -441,29 +450,33 @@ func openReviewLoupe(win fyne.Window, grid *reviewAssetGrid, startIdx int, onRev
 		errLbl.Hide()
 		img.File = ""
 		img.Resource = nil
+		img.Image = nil
 		img.Refresh()
 
-		go func() {
-			if _, statErr := os.Stat(abs); statErr != nil {
-				fyne.Do(func() {
-					if imgGen.Load() != g {
-						return
-					}
-					img.Hide()
-					errLbl.SetText(reviewGridMsgDecodeFail)
-					errLbl.Show()
-				})
-				return
+		// Stat + assign File on the UI thread so capture/tests and min-window modals do not frame
+		// between "cleared" and "loaded" (async fyne.Do was racing UX journey screenshots).
+		if _, statErr := os.Stat(abs); statErr != nil {
+			if imgGen.Load() == g {
+				img.Hide()
+				errLbl.SetText(reviewGridMsgDecodeFail)
+				errLbl.Show()
 			}
-			fyne.Do(func() {
-				if imgGen.Load() != g {
-					return
-				}
-				img.File = abs
-				img.Show()
-				img.Refresh()
-			})
-		}()
+			return
+		}
+		if imgGen.Load() != g {
+			return
+		}
+		if raster, decErr := decodeImageFile(abs); decErr == nil {
+			img.Image = raster
+			img.File = ""
+			img.Resource = nil
+		} else {
+			img.Image = nil
+			img.File = abs
+			img.Resource = nil
+		}
+		img.Show()
+		img.Refresh()
 
 		rebuildAlbumStrip(row.ID)
 	}

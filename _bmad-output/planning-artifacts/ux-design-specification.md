@@ -150,6 +150,18 @@ The following describe **what this revision rejects**—including the **current 
 6. **Layout is product** — **Aspect + OS scaling** prove **hero imagery** **and** **reachable chrome** together.
 7. **Recipients: smaller, safer, still visual** — **Read-only**, **accessible**, **privacy-bounded**—**photo still dominates**.
 
+### Normative criteria: image dominance (all primary flows)
+
+These bullets **operationalize** principle **1** and the tension rule **“default image prominence wins”** for **implementation** and **vision QA** (e.g. judge bundles, screenshot review). They do **not** replace per-story AC; they set a **cross-cutting bar**. **Window size:** at minimum **1024×768** (**NFR-01** band, layout stories **2-11**) and at **default regression capture** sizes, **all** of the following apply.
+
+1. **MUST (visual weight):** In **Upload** (idle, staged paths, and post-import receipt visible), **Review** (grid with filter strip), **Collections** (album list and album detail with member grid), **Rejected** (hidden-assets grid), and **Review loupe** (when open), the **aggregate on-screen region devoted to photographic pixels**—grid cells, loupe image band, upload preview strip / large drop target—**must read as larger than** any **single** non-image region (e.g. one full-width **stack** of filters + bulk actions **combined**, or the **main nav rail**, counted separately). If a screenshot’s **first read** is buttons and dropdowns with **accessory** thumbnails, the layout **fails** this spec.
+2. **MUST NOT (gates vs pixels):** Satisfying **NFR-01** / layout gates **only** by **shrinking** imagery, **clipping** primary CTA text without scroll affordance, or **hiding** essential navigation is **out of scope**—**hero imagery** and **legible, reachable chrome** are **joint** obligations (see **Explicit anti-patterns** above).
+3. **MUST (loupe):** The **active photo** uses **letterboxing** to preserve the whole image; **peripheral** rating / reject / delete / share / album controls **must not** occupy a **central band** whose **area** rivals the **image** rectangle. Treat the PRD **~90% loupe region** target as a **structural floor** for “image wins,” not a ceiling for idle chrome.
+4. **SHOULD (chrome before thumbs):** Prefer **compact filter strip**, **horizontal scroll** for wide strips, **collapse**, or **drawer** for filters/assignments **before** reducing grid cell or preview size **below** documented minimum thumb / preview targets in layout stories and shared dim constants.
+5. **MUST (share):** **Share preview / mint** and **recipient** surfaces keep the **shared asset** (or **large** package tile) as the **largest** content element in that dialog or page scope; list-first mint with **postage-stamp** media is **non-conformant**.
+
+**Verification (recommended pairing):** **NFR-01** layout gate tests + **UX journey / judge** PNGs including **minimum-window** frames; optional task tests for “time-to-first-useful-image” in each primary flow.
+
 ## Desired emotional response
 
 ### Primary emotional goals

@@ -87,8 +87,9 @@ func newNFR01GateShippingLoupeBody(t *testing.T) (fyne.CanvasObject, *canvas.Ima
 	albumHeader := container.NewHBox(widget.NewLabel("Albums"), layout.NewSpacer(), newAlbumLoupeBtn)
 
 	// Rating row order must match review_loupe.go (Share sits between rating cluster and Reject for min-width stress).
-	top := container.NewVBox(
-		container.NewHBox(prevBtn, layout.NewSpacer(), ratingBox, layout.NewSpacer(), shareBtn, rejectBtn, deleteBtn, nextBtn, closeBtn),
+	navRow := container.NewHBox(prevBtn, layout.NewSpacer(), ratingBox, layout.NewSpacer(), shareBtn, rejectBtn, deleteBtn, nextBtn, closeBtn)
+	bottomChrome := container.NewVBox(
+		widget.NewSeparator(),
 		container.NewHBox(tagEntry, tagAdd, tagRem),
 		tagsLbl,
 		widget.NewSeparator(),
@@ -98,11 +99,14 @@ func newNFR01GateShippingLoupeBody(t *testing.T) (fyne.CanvasObject, *canvas.Ima
 
 	cimg := canvas.NewImageFromImage(nfr01GateTestPatternImage(t))
 	cimg.FillMode = canvas.ImageFillContain
+	cimg.SetMinSize(fyne.NewSize(uxImageLoupeMainMin, uxImageLoupeMainMin))
 	errLbl := widget.NewLabel("")
 	errLbl.Hide()
-	imgStack := container.NewStack(cimg, container.NewCenter(errLbl))
+	imgBandFloor := canvas.NewRectangle(color.Transparent)
+	imgBandFloor.SetMinSize(fyne.NewSize(uxImageLoupeMainMin, uxImageLoupeMainMin))
+	imgStack := container.NewStack(imgBandFloor, cimg, container.NewCenter(errLbl))
 	imgArea := container.New(&loupeImageLayout{}, imgStack)
-	return container.NewBorder(top, nil, nil, nil, imgArea), cimg
+	return container.NewBorder(navRow, bottomChrome, nil, nil, imgArea), cimg
 }
 
 func findLabelByTextDeep(t *testing.T, root fyne.CanvasObject, want string) *widget.Label {
@@ -189,8 +193,10 @@ func assertReviewFilterStripOnScreen(t *testing.T, win fyne.Window, shell fyne.C
 func assertReviewBulkActionsOnScreen(t *testing.T, win fyne.Window, shell fyne.CanvasObject) {
 	t.Helper()
 	for _, label := range []string{
-		"Reject selected photos",
+		"Reject selected",
 		"Delete selected…",
+		"Share (selection)…",
+		"Share (filtered)…",
 		"Add tag to selection",
 		"Assign selection to album",
 	} {
@@ -262,15 +268,16 @@ func exerciseNFR01NonReviewRoutes(t *testing.T, db *sql.DB, root string, w, h in
 	assertPrimaryNavVisible(t, win, shell)
 	assertReviewFilterStripOnScreen(t, win, shell)
 	findButtonByText(t, shell, "Delete selected…")
-	var sawHiddenCount bool
+	assertObjectInWindowCanvas(t, win, findButtonByText(t, shell, "Back to Review"))
+	var sawRejectedCount bool
 	for _, lb := range collectLabelsDeep(shell) {
-		if strings.HasPrefix(lb.Text, "Hidden assets: ") && strings.Contains(lb.Text, "1") {
-			sawHiddenCount = true
+		if strings.HasPrefix(lb.Text, "Rejected: ") && strings.Contains(lb.Text, "1") {
+			sawRejectedCount = true
 			break
 		}
 	}
-	if !sawHiddenCount {
-		t.Fatal(`expected Rejected count line to include hidden asset count "1"`)
+	if !sawRejectedCount {
+		t.Fatal(`expected Rejected count line to include rejected count "1"`)
 	}
 	assertNFR01GateThumbnailGridListsOnCanvas(t, win, shell, "Rejected")
 }

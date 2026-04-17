@@ -26,6 +26,16 @@ type CollectionRow struct {
 	Name string
 }
 
+// CollectionAlbumListRow is a collection row plus an optional cover asset for image-forward album lists.
+// CoverAssetID is zero when the album has no visible members ([ReviewBrowseBaseWhere]).
+type CollectionAlbumListRow struct {
+	ID               int64
+	Name             string
+	CoverAssetID     int64
+	CoverRelPath     string
+	CoverContentHash string
+}
+
 // ListCollections returns all collections sorted by name (case-insensitive).
 func ListCollections(db *sql.DB) ([]CollectionRow, error) {
 	rows, err := db.Query(`SELECT id, name FROM collections ORDER BY name COLLATE NOCASE`)
@@ -44,6 +54,55 @@ func ListCollections(db *sql.DB) ([]CollectionRow, error) {
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list collections rows: %w", err)
+	}
+	return out, nil
+}
+
+// ListCollectionAlbumListRows returns every collection ordered by name with at most one cover asset each:
+// the newest by capture_time_unix (then id) among members matching default Review visibility.
+func ListCollectionAlbumListRows(db *sql.DB) ([]CollectionAlbumListRow, error) {
+	q := `
+WITH cover AS (
+  SELECT ac.collection_id,
+         a.id AS asset_id,
+         a.rel_path AS rel_path,
+         a.content_hash AS content_hash,
+         ROW_NUMBER() OVER (
+           PARTITION BY ac.collection_id
+           ORDER BY a.capture_time_unix DESC, a.id DESC
+         ) AS rn
+  FROM asset_collections ac
+  INNER JOIN assets a ON a.id = ac.asset_id
+  WHERE ` + ReviewBrowseBaseWhere + `
+)
+SELECT c.id, c.name,
+       cover.asset_id, cover.rel_path, cover.content_hash
+FROM collections c
+LEFT JOIN cover ON cover.collection_id = c.id AND cover.rn = 1
+ORDER BY c.name COLLATE NOCASE`
+	rows, err := db.Query(q)
+	if err != nil {
+		return nil, fmt.Errorf("list collection album rows: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []CollectionAlbumListRow
+	for rows.Next() {
+		var r CollectionAlbumListRow
+		var aid sql.NullInt64
+		var relPath, hash sql.NullString
+		if err := rows.Scan(&r.ID, &r.Name, &aid, &relPath, &hash); err != nil {
+			return nil, fmt.Errorf("list collection album rows scan: %w", err)
+		}
+		if aid.Valid {
+			r.CoverAssetID = aid.Int64
+			r.CoverRelPath = relPath.String
+			r.CoverContentHash = hash.String
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list collection album rows rows: %w", err)
 	}
 	return out, nil
 }

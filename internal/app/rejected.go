@@ -23,7 +23,7 @@ import (
 // onGotoReview switches primary nav to Review for the empty-state CTA (UX-DR9).
 func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoReview func()) fyne.CanvasObject {
 	if db == nil {
-		return widget.NewLabel("Hidden assets: — (no database)")
+		return widget.NewLabel("Rejected: — (no database)")
 	}
 
 	collectionIDs := []*int64{nil}
@@ -47,11 +47,11 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 	tagIDs := []*int64{nil}
 	tagOpts := []string{reviewTagAny}
 
-	countLabel := widget.NewLabel("Hidden assets: —")
+	countLabel := widget.NewLabel("Rejected: —")
 	deleteSelectedBtn := widget.NewButton("Delete selected…", nil)
 	deleteSelectedBtn.Importance = widget.MediumImportance
 	deleteSelectedBtn.Disable()
-	bulkHint := widget.NewLabel("Cmd/Ctrl+click thumbnails to select multiple hidden photos for bulk delete.")
+	bulkHint := widget.NewLabel("Cmd/Ctrl+click thumbnails to select multiple rejected photos for bulk delete.")
 	emptyHint := widget.NewLabel("")
 	emptyHint.Wrapping = fyne.TextWrapWord
 	emptyHint.Hide()
@@ -61,11 +61,8 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		}
 	})
 	backToReview.Hide()
-	// Full-width wrapped hint + CTA row (HBox+spacer beside the label squeezed it to one character per line).
-	emptyState := container.NewVBox(
-		emptyHint,
-		container.NewHBox(layout.NewSpacer(), backToReview),
-	)
+	resetFiltersBtn := widget.NewButton("Reset filters", nil)
+	resetFiltersBtn.Hide()
 
 	var colSel, minRatingSel, tagsSel *widget.Select
 	var suspendTagSelectRefresh bool
@@ -150,6 +147,30 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 
 	var grid *reviewAssetGrid
 	var gridScroll *container.Scroll
+	var zeroMatchPlate fyne.CanvasObject
+	var bulkBar *fyne.Container
+	var rejectedBulkCue *widget.Label
+
+	rejectedBulkAllowed := true
+	var rejectedAssetCount int64
+
+	syncRejectedBulkStrip := func() {
+		if bulkBar == nil || rejectedBulkCue == nil || grid == nil {
+			return
+		}
+		if !rejectedBulkAllowed || rejectedAssetCount <= 0 {
+			bulkBar.Hide()
+			rejectedBulkCue.Hide()
+			return
+		}
+		if len(grid.SelectedAssetIDs()) > 0 {
+			bulkBar.Show()
+			rejectedBulkCue.Hide()
+		} else {
+			bulkBar.Hide()
+			rejectedBulkCue.Show()
+		}
+	}
 
 	syncBulkDeleteUI := func() {
 		if grid == nil {
@@ -163,9 +184,11 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 			deleteSelectedBtn.Importance = widget.MediumImportance
 		}
 		deleteSelectedBtn.Refresh()
+		syncRejectedBulkStrip()
 	}
 
 	refreshRejectedData := func() {
+		rejectedBulkAllowed = true
 		var tagStripSyncErr error
 		if err := syncTagStrip(); err != nil {
 			slog.Error("rejected: sync tag strip", "err", err)
@@ -225,7 +248,7 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		f := buildFilters()
 		n, qerr := store.CountRejectedForReview(db, f)
 		if qerr != nil {
-			msg := fmt.Sprintf("Hidden assets: — (%s)", libraryErrText(qerr))
+			msg := fmt.Sprintf("Rejected: — (%s)", libraryErrText(qerr))
 			if listErr != nil {
 				msg += "; collections unavailable — " + libraryErrText(listErr)
 			}
@@ -242,14 +265,20 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 					onGotoReview()
 				}
 			}
+			resetFiltersBtn.Hide()
+			if zeroMatchPlate != nil {
+				zeroMatchPlate.Hide()
+			}
 			grid.reset(f, 0)
 			grid.syncGridScrollVisible(gridScroll, false)
 			if gridScroll != nil {
 				gridScroll.ScrollToTop()
 			}
+			rejectedAssetCount = 0
+			syncRejectedBulkStrip()
 			return
 		}
-		msg := fmt.Sprintf("Hidden assets: %d", n)
+		msg := fmt.Sprintf("Rejected: %d", n)
 		if listErr != nil {
 			msg += " (collections unavailable — " + libraryErrText(listErr) + ")"
 		}
@@ -258,11 +287,12 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		}
 		countLabel.SetText(msg)
 		if n == 0 {
+			resetFiltersBtn.Hide()
 			emptyHint.Show()
 			backToReview.Show()
 			backToReview.Importance = widget.HighImportance
 			if reviewFiltersAtFR16Defaults(f) {
-				emptyHint.SetText("Nothing is hidden or rejected yet. Items you reject or hide from Review will show up here.")
+				emptyHint.SetText("Nothing rejected yet. Photos you reject from Review appear here.")
 				backToReview.SetText("Back to Review")
 				backToReview.OnTapped = func() {
 					if onGotoReview != nil {
@@ -270,7 +300,7 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 					}
 				}
 			} else {
-				emptyHint.SetText("No hidden photos match these filters. Reset filters to list everything that is hidden, or adjust the filters above.")
+				emptyHint.SetText("No rejected photos match these filters. Reset filters to list everything in Rejected, or adjust the filters above.")
 				backToReview.SetText("Reset filters")
 				backToReview.OnTapped = func() {
 					if resetRejectedFiltersToFR16 != nil {
@@ -280,14 +310,37 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 			}
 		} else {
 			emptyHint.Hide()
-			backToReview.Hide()
+			backToReview.Show()
 			backToReview.Importance = widget.MediumImportance
+			backToReview.SetText("Back to Review")
+			backToReview.OnTapped = func() {
+				if onGotoReview != nil {
+					onGotoReview()
+				}
+			}
+			if reviewFiltersAtFR16Defaults(f) {
+				resetFiltersBtn.Hide()
+			} else {
+				resetFiltersBtn.Show()
+			}
+		}
+		if n == 0 && !reviewFiltersAtFR16Defaults(f) {
+			rejectedBulkAllowed = false
+			if zeroMatchPlate != nil {
+				zeroMatchPlate.Show()
+			}
+		} else {
+			if zeroMatchPlate != nil {
+				zeroMatchPlate.Hide()
+			}
 		}
 		grid.reset(f, n)
 		grid.syncGridScrollVisible(gridScroll, n > 0)
 		if gridScroll != nil {
 			gridScroll.ScrollToTop()
 		}
+		rejectedAssetCount = n
+		syncRejectedBulkStrip()
 	}
 
 	refreshAll := func() {
@@ -318,9 +371,9 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 			return
 		}
 		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-		title := "Move 1 hidden photo to library trash?"
+		title := "Move 1 rejected photo to library trash?"
 		if len(ids) != 1 {
-			title = fmt.Sprintf("Move %d hidden photos to library trash?", len(ids))
+			title = fmt.Sprintf("Move %d rejected photos to library trash?", len(ids))
 		}
 		dialog.ShowConfirm(
 			title,
@@ -385,6 +438,9 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		suspendTagSelectRefresh = false
 		refreshAll()
 	}
+	resetFiltersBtn.OnTapped = func() {
+		resetRejectedFiltersToFR16()
+	}
 
 	segLabels := ReviewFilterStripSegmentLabels()
 	strip := container.NewHBox(
@@ -394,20 +450,43 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		widget.NewSeparator(),
 		container.NewHBox(widget.NewLabel(segLabels[2]), tagsSel),
 	)
+	// Horizontal scroll so strip min-width does not widen the whole panel past the viewport (shell
+	// uses vertical [container.NewScroll] only — extra width was clipped, chopping right-edge CTAs).
+	stripScroll := container.NewHScroll(strip)
 
 	gridScroll = container.NewScroll(grid.canvasObject())
+	// Match Review grid floor so hidden/rejected thumbnails keep vertical budget vs chrome (image dominance).
+	gridScroll.SetMinSize(fyne.NewSize(120, 400))
+	plate := newFilterZeroMatchPhotoPlate()
+	plate.Hide()
+	zeroMatchPlate = plate
+	gridArea := container.NewStack(gridScroll, plate)
 
 	refreshAll()
 
-	bulkBar := container.NewVBox(
-		bulkHint,
-		container.NewHBox(layout.NewSpacer(), deleteSelectedBtn),
-	)
+	bulkHintAccordion := widget.NewAccordion()
+	bulkHintAccordion.Append(widget.NewAccordionItem("Bulk delete tips", bulkHint))
+	bulkHintAccordion.CloseAll()
+	// One band so hidden-asset grids keep more vertical room vs full-width stacked chrome (image dominance).
+	bulkBar = container.NewHBox(bulkHintAccordion, layout.NewSpacer(), deleteSelectedBtn)
 
-	body := container.NewBorder(
-		countLabel,
-		nil, nil, nil,
-		container.NewVBox(emptyState, gridScroll),
+	rejectedBulkCue = widget.NewLabel("Cmd/Ctrl+click thumbnails to select for bulk delete.")
+	rejectedBulkCue.Wrapping = fyne.TextWrapWord
+	rejectedBulkCue.Hide()
+	syncRejectedBulkStrip()
+
+	// Back before Reset in traversal order: when the empty-filter CTA relabels Back to "Reset filters",
+	// tests and users must not hit the hidden resetFiltersBtn (same label, default importance).
+	rejectedHeaderRow := container.NewHBox(countLabel, layout.NewSpacer(), backToReview, resetFiltersBtn)
+	topChrome := container.NewVBox(
+		stripScroll,
+		widget.NewSeparator(),
+		rejectedHeaderRow,
+		emptyHint,
+		rejectedBulkCue,
+		widget.NewSeparator(),
 	)
-	return container.NewPadded(container.NewVBox(strip, widget.NewSeparator(), bulkBar, widget.NewSeparator(), body))
+	bottomChrome := container.NewVBox(widget.NewSeparator(), bulkBar)
+	main := container.NewBorder(topChrome, bottomChrome, nil, nil, gridArea)
+	return container.NewPadded(main)
 }

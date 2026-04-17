@@ -13,7 +13,14 @@
 | Upload initial copy + FR-06 confirm/cancel (seeded paths) | [`internal/app/upload_test.go`](../../internal/app/upload_test.go) (`TestUX_upload_*`), [`internal/app/upload_fr06_flow_test.go`](../../internal/app/upload_fr06_flow_test.go) (`TestUpload_flow_*`) |
 | Review / Rejected / Collections | [`internal/app/review_test.go`](../../internal/app/review_test.go), [`rejected_test.go`](../../internal/app/rejected_test.go), [`collections_test.go`](../../internal/app/collections_test.go) |
 | Layout / DPI matrix | [`internal/app/nfr01_layout_gate_test.go`](../../internal/app/nfr01_layout_gate_test.go), CI matrix in [`.github/workflows/go.yml`](../../.github/workflows/go.yml) |
+| Review bulk actions at NFR-01 | Extend **`nfr01_layout_gate_test`** (or a headless widget test) to assert **Share** and **Delete selected…** bulk controls do not share overlapping layout bounds and primary labels are not truncated at **1024×768**—**`findButtonByText` presence** alone may not match painted overlap seen in screenshots |
+| Loupe share-preview (image-first vs metadata) | Prefer a small **builder/layout invariant** test on the mint dialog (e.g. preview band min size vs capped metadata scroll) so regressions fail before `TestUXJourneyCapture`; not yet a substitute for vision on real pixels |
+| Journey PNG smoke (flat preview plates) | Optional: after `TestUXJourneyCapture` writes `19_*`–`20_*`, `23_*`, `24_*`, assert the saved PNG’s central region is not a near-uniform slab (cheap variance threshold) to catch async-decode races before the LLM judge runs |
 | Share HTTP | [`internal/share/http_test.go`](../../internal/share/http_test.go) |
+
+**LLM judge gap (closed loop):** [`TestUXJourneyCapture`](../../internal/app/ux_journey_capture_test.go) screenshots **1280×800** for most steps, then **1024×768** frames: **`rejected_nfr01_min_window`** and **`upload_empty_nfr01_min_window`** mid-journey, plus **`review_grid_nfr01_min_window`**, **`review_loupe_nfr01_min_window`**, **`review_loupe_share_preview_nfr01_min_window`**, **`collections_album_detail_nfr01_min_window`**, and **`collections_album_list_nfr01_min_window`** (after **Back** from detail) appended after the FR-06 phase so filenames **01–21** stay stable. The vision judge **must** treat every `*_nfr01_min_window*` step as contractual for “no clipped primary chrome” at NFR-01 minimum. What remains **manual**: **theme toggling** mid-session (stale `canvas.Rectangle` fill vs refreshed widgets), OS-specific DPI, and native dialogs.
+
+**Image dominance (LLM + human):** The UX spec subsection **“Normative criteria: image dominance (all primary flows)”** is the cross-cutting bar: **photographic pixels** should **read larger** than any **single** non-image chrome block on primary flows. The vision judge ([`judge-prompt-v2-screenshots.md`](judge-prompt-v2-screenshots.md)) enforces this on **every** bundle PNG, not only min-window shots—**1024×768** frames are **necessary** for clip/density but **not sufficient** (wide captures can still fail image-first if chrome dominates).
 
 ---
 
@@ -39,7 +46,7 @@ Rate each **screen or flow** (Upload, Review, Collections, Rejected, loupe, shar
 5. **Error prevention** — Dry-run scan/import; confirm destructive actions.  
 6. **Recognition rather than recall** — Collection/tag options visible; share URLs copyable.  
 7. **Flexibility and efficiency** — Keyboard/modifiers for multi-select where documented; bulk actions.  
-8. **Aesthetic and minimalist design** — No redundant chrome; empty states guide next step.  
+8. **Aesthetic and minimalist design** — No redundant chrome; empty states guide next step. **Photo-tool:** on Upload / Review / Collections / Rejected / loupe / share preview, treat **image dominance** (UX spec **Normative criteria: image dominance**) as in scope here: non-image chrome should not **visually outweigh** the aggregate photo region.  
 9. **Help users recognize, diagnose, recover from errors** — Honest library/DB messages; next-step hints.  
 10. **Help and documentation** — In-app copy sufficient for primary tasks (manual README for power users is optional).
 

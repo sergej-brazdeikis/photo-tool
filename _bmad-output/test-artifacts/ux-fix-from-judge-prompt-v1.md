@@ -9,12 +9,12 @@ You are the **implementer**. Read the judge verdict and **minimal** UX/layout fi
 ## Inputs
 
 - `BUNDLE/verdict/judge-output.md` — gaps and per-step failures
-- `BUNDLE/ui/steps.json` — which screens were captured (`flow`, `id`, `intent`, `file` per step)
+- `BUNDLE/ui/steps.json` — which screens were captured (`flow`, `id`, `intent`, `file` per step). Steps with `id` containing `nfr01_min_window` are **1024×768** — fixes for clipping there must not regress wider layouts (run `go test ./internal/app/...` including layout gates).
 - Planning context (as needed): `_bmad-output/planning-artifacts/ux-design-specification.md`, `epics-v2-ux-aligned-2026-04-14.md`
 
 ## Requirements
 
-1. Implement **smallest** changes that address **Blocker** and **Major** items first; then **Minor** if time allows.
+1. Implement **smallest** changes that address **Blocker** and **Major** items first; then **Minor** if time allows. When the verdict cites layout or “image-first,” align with the UX spec subsection **Normative criteria: image dominance (all primary flows)** — prefer progressive disclosure, horizontal scroll on strips, or collapsing chrome **before** shrinking photo real estate (thumbnails, loupe band, upload previews). If the judge cited **story / FR gaps** tied to **`context/requirements-trace.md`**, prefer the **minimal** automated tests or `ui/steps.json` / capture updates that file lists for those rows.
 2. Prefer [`internal/app/upload.go`](../../internal/app/upload.go), [`internal/app/shell.go`](../../internal/app/shell.go), [`internal/app/review.go`](../../internal/app/review.go), [`internal/app/review_grid.go`](../../internal/app/review_grid.go), [`internal/app/review_loupe.go`](../../internal/app/review_loupe.go), [`internal/app/share_loupe.go`](../../internal/app/share_loupe.go), [`internal/app/collections.go`](../../internal/app/collections.go), [`internal/app/rejected.go`](../../internal/app/rejected.go) — do not refactor unrelated packages.
 3. Run from repo root:
 

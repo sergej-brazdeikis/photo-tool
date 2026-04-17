@@ -48,7 +48,7 @@ func openPackageShareFromReview(win fyne.Window, grid *reviewAssetGrid, candidat
 	dedupe := domain.StableDedupeAssetIDs(candidateIDs)
 	if len(dedupe) == 0 {
 		dialog.ShowInformation("Share package",
-			"Select photos first (Cmd/Ctrl+click in Review), or use “Share filtered set as package…” when your filters match the photos you want.",
+			"Select photos first (Cmd/Ctrl+click in Review), or use “Share (filtered)…” when your filters match the photos you want.",
 			win)
 		return
 	}
@@ -101,7 +101,7 @@ func openPackageShareFromReview(win fyne.Window, grid *reviewAssetGrid, candidat
 	for _, row := range gridRows {
 		img := canvas.NewImageFromFile(filepath.Join(grid.libraryRoot, filepath.FromSlash(row.RelPath)))
 		img.FillMode = canvas.ImageFillContain
-		img.SetMinSize(fyne.NewSize(120, 90))
+		img.SetMinSize(fyne.NewSize(uxImageSharePackageThumbW, uxImageSharePackageThumbH))
 		when := time.Unix(row.CaptureTimeUnix, 0).UTC().Format("2006-01-02 15:04")
 		lbl := widget.NewLabel(fmt.Sprintf("Library id %d · %s · %s", row.ID, row.RelPath, when))
 		lbl.Wrapping = fyne.TextWrapWord

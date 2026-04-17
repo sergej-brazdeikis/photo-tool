@@ -15,14 +15,14 @@ import (
 	"photo-tool/internal/store"
 )
 
-func hiddenAssetsLabelText(t *testing.T, view fyne.CanvasObject) string {
+func rejectedCountLabelText(t *testing.T, view fyne.CanvasObject) string {
 	t.Helper()
 	for _, lb := range collectLabels(view) {
-		if strings.HasPrefix(lb.Text, "Hidden assets:") {
+		if strings.HasPrefix(lb.Text, "Rejected:") {
 			return lb.Text
 		}
 	}
-	t.Fatal("no Hidden assets label in view")
+	t.Fatal("no Rejected count label in view")
 	return ""
 }
 
@@ -49,7 +49,7 @@ func TestRejectedView_closedDB_degradedSuffix_ordersCollectionsBeforeTags(t *tes
 	sels[1].SetSelected("1")
 	sels[1].SetSelected(reviewRatingAny)
 
-	got := hiddenAssetsLabelText(t, view)
+	got := rejectedCountLabelText(t, view)
 	iCol := strings.Index(got, "collections unavailable")
 	iTag := strings.Index(got, "tags unavailable")
 	if iCol < 0 || iTag < 0 {
@@ -84,7 +84,7 @@ func TestStory212_Rejected_defaultEmpty_backToReviewCTA(t *testing.T) {
 
 	var reviewCalls int32
 	view := NewRejectedView(nil, db, root, func() { atomic.AddInt32(&reviewCalls, 1) })
-	findLabelContaining(t, view, "Nothing is hidden")
+	findLabelContaining(t, view, "Nothing rejected yet")
 	btn := findButtonByText(t, view, "Back to Review")
 	if btn.Importance != widget.HighImportance {
 		t.Fatalf("Back to Review importance = %v want High", btn.Importance)
@@ -140,7 +140,7 @@ func TestStory212_Rejected_filterEmpty_resetFiltersCTA(t *testing.T) {
 	test.NewTempWindow(t, view)
 	sels[0].SetSelected("NoPhotos")
 
-	findLabelContaining(t, view, "No hidden photos match these filters")
+	findLabelContaining(t, view, "No rejected photos match these filters")
 	btn := findButtonByText(t, view, "Reset filters")
 	if btn.Importance != widget.HighImportance {
 		t.Fatalf("Reset filters importance = %v want High", btn.Importance)
