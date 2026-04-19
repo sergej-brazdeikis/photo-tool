@@ -211,8 +211,8 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 		},
 	)
 	pathListScroll := container.NewScroll(pathList)
-	// Enough height for multiple staged paths to read as a list (journey: two-file staging).
-	pathListScroll.SetMinSize(fyne.NewSize(100, 120))
+	// Keep path list secondary to the preview strip (image dominance); still fits two typical paths.
+	pathListScroll.SetMinSize(fyne.NewSize(100, 80))
 	stagedPhotoHeading := widget.NewLabelWithStyle("Selected photos", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	stagedPhotoHeading.Hide()
 	stagedPhotoStrip := container.NewHBox()

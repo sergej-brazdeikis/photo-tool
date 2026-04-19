@@ -3,6 +3,8 @@ package app
 import (
 	"database/sql"
 	"errors"
+	"image"
+	"image/color"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -45,6 +47,29 @@ func reviewGridListRowCount(total int64) int {
 // errReviewGridPageFailed is returned when a paged list query failed for this page.
 // It carries no driver/SQL text (Story 2.3 AC4); the first failure is logged once with the real error.
 var errReviewGridPageFailed = errors.New("review grid: page load failed")
+
+var uxJourneyGridPendingOnce sync.Once
+var uxJourneyGridPendingRaster image.Image
+
+// uxJourneyGridPendingThumbRaster is a decode-safe pending thumbnail for UX capture only (MediaPhotoIcon is SVG).
+func uxJourneyGridPendingThumbRaster() image.Image {
+	uxJourneyGridPendingOnce.Do(func() {
+		const w, h = 56, 42
+		rgba := image.NewRGBA(image.Rect(0, 0, w, h))
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				rgba.Set(x, y, color.NRGBA{
+					R: uint8(x * 255 / max(w-1, 1)),
+					G: uint8(y * 255 / max(h-1, 1)),
+					B: 105,
+					A: 255,
+				})
+			}
+		}
+		uxJourneyGridPendingRaster = rgba
+	})
+	return uxJourneyGridPendingRaster
+}
 
 func ratingBadgeText(r *int) string {
 	if r == nil {
@@ -545,6 +570,7 @@ func (c *reviewGridCell) clear(thumbBind *sync.Map) {
 	c.bg.Refresh()
 	c.img.File = ""
 	c.img.Resource = nil
+	c.img.Image = nil
 	c.failIcon.Hide()
 	c.failLbl.Hide()
 	c.failLbl.SetText("")
@@ -568,6 +594,7 @@ func (c *reviewGridCell) showUserFailure(thumbBind *sync.Map, msg string) {
 	c.bg.Refresh()
 	c.img.File = ""
 	c.img.Resource = nil
+	c.img.Image = nil
 	c.img.Hide()
 	c.failIcon.SetResource(theme.ErrorIcon())
 	c.failIcon.Show()
@@ -620,13 +647,15 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 	// Pending decode (UX-DR3): distinguish from final image and from failed-decode (ErrorIcon path).
 	c.img.File = ""
 	c.img.Resource = nil
+	c.img.Image = nil
 	c.img.Refresh()
-	c.img.Resource = theme.MediaPhotoIcon()
-	// Fyne test driver: decoding built-in MediaPhotoIcon in Refresh can panic during grid rebind
-	// (UX journey capture runs with PHOTO_TOOL_UX_JOURNEY_TEST=1). Real JPEG refresh below still runs.
-	if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") != "1" {
-		c.img.Refresh()
+	if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" {
+		// MediaPhotoIcon is SVG; Fyne's image path can panic during journey grid rebind — use a raster.
+		c.img.Image = uxJourneyGridPendingThumbRaster()
+	} else {
+		c.img.Resource = theme.MediaPhotoIcon()
 	}
+	c.img.Refresh()
 
 	srcAbs := filepath.Join(g.libraryRoot, filepath.FromSlash(row.RelPath))
 	cacheAbs := ThumbnailCachePath(g.libraryRoot, row.ID, row.ContentHash)
@@ -653,6 +682,7 @@ func (c *reviewGridCell) bindRow(g *reviewAssetGrid, row store.ReviewGridRow) {
 			c.failLbl.Hide()
 			c.img.Show()
 			c.img.Resource = nil
+			c.img.Image = nil
 			c.img.File = cacheAbs
 			c.img.Refresh()
 		})

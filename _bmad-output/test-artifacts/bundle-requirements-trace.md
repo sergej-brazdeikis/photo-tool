@@ -43,6 +43,8 @@
 
 **Bundle log gate (Story 1.5 / FR-06):** Row **1.5** is **OK** in steady state only when the judge bundle’s **primary** full-module logs (typically `logs/go-test.txt` and, if present, `logs/go-test-ci.txt`) show **`ok photo-tool/internal/app`** for the upload / FR-06 flow tests referenced in that row. If those logs are **red** while journey captures still list `upload_*` steps, treat **1.5** as **not loop-closed** for that iteration—the matrix **OK** is **distillate intent**, not proof against a contradictory bundled `go-test` artifact (refresh logs or defer in QA).
 
+**Vision gate (Story 1.5 — staged paths + FR-06 batch preview):** When the screenshot judge **fails** `upload_paths_staged` or `upload_fr06_collection_assign` on **Normative criteria: image dominance** (e.g. flat-plate thumbnails, chrome heavier than aggregate photo region), treat **advisory** loop closure for **photographic upload receipt** as **unmet** until remediated or re-captured—do not rely on row **1.5** **OK** alone when vision and automation disagree on “decoded photographic” weight.
+
 ### Epic 1 — Ingest
 
 | Story | FR / UX (short) | Artifact | Automated evidence | Journey capture | Loop risk |

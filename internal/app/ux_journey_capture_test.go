@@ -71,7 +71,7 @@ func TestUXJourneyCapture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cid, err := store.CreateCollection(db, "UXCaptureAlbum", "")
+	cid, err := store.CreateCollection(db, "UXCapAlb", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,8 +210,8 @@ func TestUXJourneyCapture(t *testing.T) {
 	test.Tap(closeBtn)
 	uxCaptureSettle()
 
-	setSelectAt(t, shell, 0, "UXCaptureAlbum")
-	capture("review", "review_filter_collection_album", "Review: Collection filter set to UXCaptureAlbum (in-album asset visible if any)")
+	setSelectAt(t, shell, 0, "UXCapAlb")
+	capture("review", "review_filter_collection_album", "Review: Collection filter set to UXCapAlb (in-album asset visible if any)")
 
 	setSelectAt(t, shell, 1, "5")
 	capture("review", "review_filter_min_rating_no_matches", "Review: Minimum rating 5 with zero matches — empty-state / guidance")

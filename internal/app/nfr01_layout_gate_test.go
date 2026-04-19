@@ -125,14 +125,30 @@ func writeTinyJPEG(t *testing.T, path string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
-	for y := 0; y < 4; y++ {
-		for x := 0; x < 4; x++ {
-			img.Set(x, y, color.NRGBA{R: 200, G: 100, B: 50, A: 255})
+	// Small but non-uniform rasters so grid/strip previews read as decoded photos (not solid plates)
+	// in UX journey captures and layout gates.
+	const w, h = 48, 36
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	seed := uint32(2166136261)
+	for i := 0; i < len(path); i++ {
+		seed ^= uint32(path[i])
+		seed *= 16777619
+	}
+	r0 := 35 + uint8(seed%90)
+	g0 := 40 + uint8((seed>>8)%100)
+	b0 := 45 + uint8((seed>>16)%95)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			dx := (x * 220) / max(w-1, 1)
+			dy := (y * 200) / max(h-1, 1)
+			r := min(255, int(r0)+dx)
+			g := min(255, int(g0)+dy)
+			b := min(255, int(b0)+(x+y)*65/max(w+h-2, 1))
+			img.Set(x, y, color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: 255})
 		}
 	}
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80}); err != nil {
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 85}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
