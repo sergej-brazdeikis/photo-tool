@@ -27,7 +27,7 @@ import (
 
 const (
 	reviewGridPageSize = 48
-	reviewGridColumns = 4
+	reviewGridColumns  = 4
 
 	// User-facing only — must stay free of driver/SQL fragments (Story 2.3 AC3–AC4).
 	reviewGridMsgPageLoadFail = "Can't load this page — library read failed. Try changing the filter or restarting the app."

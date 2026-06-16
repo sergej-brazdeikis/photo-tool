@@ -1,6 +1,6 @@
 //go:build !darwin
 
-package gui_macos_test
+package gui_macos
 
 import "testing"
 

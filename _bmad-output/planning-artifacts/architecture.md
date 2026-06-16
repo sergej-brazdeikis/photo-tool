@@ -17,9 +17,11 @@ inputDocuments:
 project_name: photo-tool
 author: Sergej Brazdeikis
 stack:
-  go: '1.25.4'
+  go: '1.26.2'
   fyne: v2.7.3
 ---
+
+> **Agent quick start:** see [`/AGENTS.md`](../../AGENTS.md) at the repository root.
 
 # Solution architecture — photo-tool
 
@@ -70,7 +72,7 @@ This document records **solution design decisions** so implementation (Fyne desk
 
 There is **no third-party app generator**. The foundation is:
 
-- **Language:** Go **1.25.4** (`go.mod`).
+- **Language:** Go **1.26.2** (`go.mod`).
 - **Desktop UI:** [Fyne](https://fyne.io/) **v2.7.3** (`fyne.io/fyne/v2`).
 - **Entrypoint today:** repository root `main.go` (minimal shell).
 
@@ -248,22 +250,29 @@ Phase 1 spec work (party synthesis: `initiative-fyne-image-first-phase1-party-20
 photo-tool/
 ├── go.mod
 ├── go.sum
-├── main.go                    # interim: launches GUI; migrate to cmd/ when subcommands land
-├── cmd/
-│   └── phototool/             # optional: future canonical main (GUI + cobra root)
+├── main.go                    # GUI when no args; CLI via internal/cli when args present
+├── AGENTS.md                  # agent / contributor quick start
+├── docs/                      # committed guides (env, codebase map, share NFR docs)
 ├── internal/
 │   ├── app/                   # Fyne application, navigation, theme wiring
-│   ├── domain/                # Asset, Collection, filters, invariants
+│   ├── cli/                   # cobra commands calling ingest/store (no Fyne)
+│   ├── config/                # PHOTO_TOOL_* env, library root, share HTTP config
+│   ├── domain/                # Asset, Collection, filters, OperationSummary
 │   ├── ingest/                # upload, scan, import; dedup; receipts
 │   ├── exifmeta/              # EXIF extraction facade
+│   ├── filehash/              # SHA-256 content hashing
+│   ├── paths/                 # canonical library path layout
 │   ├── store/                 # sqlite repo, migrations
-│   ├── share/                 # http server, handlers, template binding
-│   └── cli/                   # cobra commands calling ingest/store
+│   └── share/                 # http server, handlers, template binding
 ├── web/
 │   └── share/                 # HTML templates, static CSS for share pages
-├── assets/                    # optional: embedded icons for Fyne
+├── tests/
+│   ├── e2e/                   # CLI black-box tests
+│   └── gui_macos/             # optional macOS GUI smoke (darwin only)
 └── _bmad-output/planning-artifacts/
 ```
+
+**Note:** `cmd/phototool/` is deferred — `main.go` remains at repository root.
 
 ### 5.2 Boundaries
 

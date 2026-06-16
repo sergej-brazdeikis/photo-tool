@@ -1,0 +1,29 @@
+---
+description: Go naming, errors, and test conventions for photo-tool
+globs: **/*.go
+alwaysApply: false
+---
+
+# Go conventions
+
+Match existing package style. See [architecture.md](../../_bmad-output/planning-artifacts/architecture.md) §4.
+
+## Naming
+
+- Exported types: `CamelCase`; packages: single lowercase word
+- DB columns and JSON tags: `snake_case`
+
+## Errors
+
+- Wrap with `fmt.Errorf("context: %w", err)`
+- User-visible strings separate from error wrapping (Fyne dialogs vs `slog`)
+
+## Tests
+
+- Table-driven unit tests; temp dir + SQLite for integration
+- Name tests with story/NFR IDs when scoped (`TestStory210_*`, `TestNFR01*`)
+- Extend the closest existing `*_test.go` — do not duplicate HTTP scenarios outside `internal/share/http_test.go`
+
+## Logging
+
+- Use `log/slog` structured logging

@@ -1,6 +1,7 @@
 /_bmad/
 /.claude/
-/.cursor/
-/docs/
+# Allow tracked .cursor/rules/; ignore local Cursor debug logs only
+/.cursor/debug*.log
+/.cursor/**/debug-*.log
 /bin/
 photo-tool

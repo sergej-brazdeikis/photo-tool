@@ -1,0 +1,32 @@
+---
+description: Fyne UI patterns for internal/app
+globs: internal/app/**
+alwaysApply: false
+---
+
+# Fyne app (`internal/app`)
+
+See [docs/codebase-map.md](../../docs/codebase-map.md) for file navigation.
+
+## Structure
+
+- Shell nav: Upload → Review → Collections → Rejected (`shell.go`)
+- No SQL in widgets — call `internal/store` repositories
+- View constructors: `NewUploadView`, `NewReviewView`, `NewCollectionsView`, `NewRejectedView`
+
+## Async and layout
+
+- Heavy work (decode, IO, hashing) off UI thread; Fyne updates on main thread
+- Respect minimum sizes in `ux_image_dims.go` — align with UX spec
+- Coalesce UI refreshes on rapid scroll/batch updates
+
+## Tests
+
+- Use `fyne.io/fyne/v2/test` for widget tests
+- UX capture: `PHOTO_TOOL_UX_JOURNEY_TEST=1` + `PHOTO_TOOL_UX_CAPTURE_DIR`
+- Extend `e2e_shell_journeys_test.go` or feature-specific `*_test.go`
+
+## Themes
+
+- Custom theme in `theme.go`; dark default, light peer
+- Test override: `PHOTO_TOOL_TEST_THEME` via `applyTestPhotoToolTheme`

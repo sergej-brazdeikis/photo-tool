@@ -1,0 +1,31 @@
+---
+description: Share HTTP server, templates, and NFR constraints
+globs: internal/share/**,web/share/**
+alwaysApply: false
+---
+
+# Share HTTP
+
+Docs: [share-cold-load-nfr05.md](../../docs/share-cold-load-nfr05.md), [share-abuse-posture.md](../../docs/share-abuse-posture.md).
+
+## Security
+
+- Loopback bind by default (`127.0.0.1:8765`)
+- 32-byte random tokens; SHA-256 at rest only
+- No raw GPS in share HTML templates
+- 429 responses use fixed body — no token oracle
+
+## HTTP tests
+
+- **Single source of truth:** `internal/share/http_test.go`
+- Add route/contract scenarios there only
+
+## NFR gates
+
+- NFR-05: `TestNFR05_ShareColdLoadMedian` — median ≤ 3s, `DisableKeepAlives: true`
+- NFR-06: rate limiter in `ratelimit.go` — document posture changes in `docs/share-abuse-posture.md`
+
+## Templates
+
+- Embedded assets in `web/share/` via `go:embed`
+- Prefer semantic HTML for WCAG Level A

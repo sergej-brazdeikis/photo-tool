@@ -1,0 +1,31 @@
+---
+description: Core photo-tool layout, boundaries, and agent invariants
+alwaysApply: true
+---
+
+# photo-tool core
+
+Read [AGENTS.md](../../AGENTS.md) and [docs/README.md](../../docs/README.md) before large changes.
+
+## Module layout
+
+- Entry: `main.go` (GUI) / `internal/cli` (CLI) — CLI must not import Fyne
+- `internal/ingest` — single dedup path for upload, scan, import
+- `internal/store` — SQLite only; no SQL in `internal/app`
+- `internal/share` + `web/share` — loopback HTTP share pages
+
+## MUST rules
+
+- One `OperationSummary` for GUI and CLI (`internal/domain/summary.go`)
+- Hash-only share tokens in DB — never store raw tokens
+- Default queries exclude rejected and deleted assets
+- Share HTML must not emit raw GPS
+
+## Before submitting
+
+```bash
+make test    # minimum
+make gate    # before large or cross-package changes
+```
+
+Never add LLM/agent steps to CI.
