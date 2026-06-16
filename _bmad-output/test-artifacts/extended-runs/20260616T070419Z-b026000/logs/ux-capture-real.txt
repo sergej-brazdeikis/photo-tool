@@ -1,0 +1,225 @@
+2026/06/16 09:04:36 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:36   From: /home/user/repos/photo-tool/internal/app/upload.go:680
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:134
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:81
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/internal/widget/scroller.go:555
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/internal/widget/scroller.go:555
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/internal/widget/scroller.go:555
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/internal/widget/scroller.go:555
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/internal/widget/scroller.go:555
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/internal/widget/scroller.go:555
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/go/pkg/mod/fyne.io/fyne/v2@v2.7.3/container.go:112
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:83
+2026/06/16 09:04:37 *** Error in Fyne call thread, this should have been called in fyne.Do[AndWait] ***
+2026/06/16 09:04:37   From: /home/user/repos/photo-tool/internal/app/ux_journey_run.go:89
+X Error of failed request:  BadAccess (attempt to access private resource denied)
+  Major opcode of failed request:  152 (GLX)
+  Minor opcode of failed request:  5 (X_GLXMakeCurrent)
+  Serial number of failed request:  378
+  Current serial number in output stream:  378

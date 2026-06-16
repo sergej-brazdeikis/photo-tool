@@ -246,6 +246,103 @@ func TestCLI_scan_missingDir_nonZero(t *testing.T) {
 	}
 }
 
+func TestCLI_scan_recursive_ingestsNestedJPEG(t *testing.T) {
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	scanDir := filepath.Join(t.TempDir(), "scan")
+	nested := filepath.Join(scanDir, "nested")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeJPEGGray(t, filepath.Join(scanDir, "top.jpg"), 0x11)
+	writeJPEGGray(t, filepath.Join(nested, "deep.jpg"), 0x22)
+
+	env := []string{config.EnvLibraryRoot + "=" + libRoot}
+	out, errOut, code := runPhotoTool(t, env, "scan", "--dir", scanDir, "--recursive")
+	if code != 0 {
+		t.Fatalf("exit %d stderr=%q stdout=%q", code, errOut, out)
+	}
+	if !strings.Contains(out, "Added: 2") {
+		t.Fatalf("stdout:\n%s", out)
+	}
+
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM assets`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("assets count: got %d want 2", n)
+	}
+}
+
+func TestCLI_scan_duplicateIdempotent(t *testing.T) {
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	scanDir := filepath.Join(t.TempDir(), "scan")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(scanDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeJPEGGray(t, filepath.Join(scanDir, "dup.jpg"), 0x33)
+
+	env := []string{config.EnvLibraryRoot + "=" + libRoot}
+	out1, _, code1 := runPhotoTool(t, env, "scan", "--dir", scanDir)
+	if code1 != 0 || !strings.Contains(out1, "Added: 1") {
+		t.Fatalf("first scan: code=%d stdout=%q", code1, out1)
+	}
+	out2, _, code2 := runPhotoTool(t, env, "scan", "--dir", scanDir)
+	if code2 != 0 {
+		t.Fatalf("second scan exit %d stdout=%q", code2, out2)
+	}
+	if !strings.Contains(out2, "Skipped duplicate: 1") {
+		t.Fatalf("second scan stdout:\n%s", out2)
+	}
+}
+
+func TestCLI_import_recursive_backfill(t *testing.T) {
+	libRoot := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(libRoot); err != nil {
+		t.Fatal(err)
+	}
+	day := filepath.Join(libRoot, "2022", "03", "04")
+	nested := filepath.Join(day, "nested")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeJPEGGray(t, filepath.Join(day, "a.jpg"), 0x44)
+	writeJPEGGray(t, filepath.Join(nested, "b.jpg"), 0x55)
+
+	env := []string{config.EnvLibraryRoot + "=" + libRoot}
+	out, errOut, code := runPhotoTool(t, env, "import", "--dir", day, "--recursive")
+	if code != 0 {
+		t.Fatalf("exit %d stderr=%q stdout=%q", code, errOut, out)
+	}
+	if !strings.Contains(out, "Added: 2") {
+		t.Fatalf("stdout:\n%s", out)
+	}
+
+	db, err := store.Open(libRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM assets`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("assets: got %d want 2", n)
+	}
+}
+
 func TestCLI_import_dirOutsideLibrary_nonZero(t *testing.T) {
 	libRoot := filepath.Join(t.TempDir(), "lib")
 	outside := filepath.Join(t.TempDir(), "outside")

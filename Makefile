@@ -1,4 +1,4 @@
-.PHONY: all build run test test-e2e test-ci judge-bundle ux-judge-loop tidy clean fmt vet gate scripts-check
+.PHONY: all build run test test-e2e test-ci judge-bundle ux-judge-loop extended-test extended-test-loop tidy clean fmt vet gate scripts-check
 
 BIN_DIR := bin
 BINARY := $(BIN_DIR)/photo-tool
@@ -31,6 +31,14 @@ judge-bundle:
 ux-judge-loop:
 	./scripts/ux-judge-loop.sh
 
+# Extended matrix: functional + real-app UX capture (single pass; requires DISPLAY or xvfb).
+extended-test:
+	./scripts/extended-test-run.sh --all
+
+# Extended matrix hands-free loop until EXTENDED_RESULT=pass (requires agent CLI; not for CI).
+extended-test-loop:
+	./scripts/extended-test-loop.sh
+
 tidy:
 	go mod tidy
 
@@ -46,7 +54,7 @@ gate:
 
 # Catch unclosed quotes / truncated edits before long BMAD runs (see scripts/bmad-story-workflow.sh header).
 scripts-check:
-	bash -n scripts/bmad-story-workflow.sh scripts/assemble-judge-bundle.sh scripts/ux-judge-loop.sh
+	bash -n scripts/bmad-story-workflow.sh scripts/assemble-judge-bundle.sh scripts/ux-judge-loop.sh scripts/extended-test-setup.sh scripts/extended-test-run.sh scripts/extended-test-loop.sh scripts/extended-test-matrix-gen.sh
 
 clean:
 	rm -rf $(BIN_DIR)

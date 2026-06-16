@@ -67,3 +67,19 @@ See [`tests/gui_macos/README.md`](../tests/gui_macos/README.md).
 | `UX_BUNDLE_EMIT_PATH_ONLY` | unset | If `1`, `assemble-judge-bundle.sh` prints bundle path only. |
 
 See [`scripts/ux-judge-loop.sh`](../scripts/ux-judge-loop.sh) and [`tests/e2e/README.md`](../tests/e2e/README.md).
+
+## Tests — extended matrix loop (Linux, local only)
+
+Hands-free extended testing: functional + real-app UX capture + step/flow judges + parallel fix agents. **Not for CI.**
+
+| Variable | When to set |
+|----------|-------------|
+| `PHOTO_TOOL_GUI_E2E_LINUX` | Must be `1` for real-binary journey in `main.go` and `tests/gui_linux/`. |
+| `PHOTO_TOOL_UX_CAPTURE_APP_MODE` | `real_binary` for authoritative `step_ux` / `flow_ux` PNGs (Tier B). |
+| `PHOTO_TOOL_UX_CAPTURE_FLOWS` | Comma-separated flow filter (`upload,review`, …) for parallel capture shards. |
+| `PHOTO_TOOL_UX_CAPTURE_SOFTWARE_SUBDIR` | Set to `ui-software` when running Tier A software-driver capture via extended runner. |
+| `EXTENDED_LOOP_MAX` | Max rounds for `extended-test-loop.sh` (default `20`). |
+| `EXTENDED_PARALLEL_FIX` | Concurrent fix agents (default `4`). |
+| `EXTENDED_USE_XVFB` | Set by setup when `DISPLAY` unset and `xvfb-run` is available. |
+
+Scripts: [`scripts/extended-test-setup.sh`](../scripts/extended-test-setup.sh), [`scripts/extended-test-run.sh`](../scripts/extended-test-run.sh), [`scripts/extended-test-loop.sh`](../scripts/extended-test-loop.sh). Matrix package: [`tests/extended/`](../tests/extended/).

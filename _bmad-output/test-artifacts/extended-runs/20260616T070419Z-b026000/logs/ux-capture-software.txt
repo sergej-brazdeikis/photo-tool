@@ -1,0 +1,1 @@
+ok  	photo-tool/internal/app	8.583s

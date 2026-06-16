@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"time"
 
 	"fyne.io/fyne/v2"
 	fyneapp "fyne.io/fyne/v2/app"
@@ -69,6 +70,22 @@ func runGUI() {
 	))
 
 	w.SetContent(ptapp.NewMainShell(w, db, root, shareLoop))
+
+	if ptapp.UXJourneyRealBinaryMode() {
+		w.Resize(fyne.NewSize(1280, 800))
+		w.Show()
+		go func() {
+			time.Sleep(1500 * time.Millisecond)
+			if err := ptapp.RunUXJourneyRealApp(w, db, root); err != nil {
+				slog.Error("ux journey capture", "err", err)
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}()
+		a.Run()
+		return
+	}
+
 	w.Resize(fyne.NewSize(800, 560))
 	w.ShowAndRun()
 }

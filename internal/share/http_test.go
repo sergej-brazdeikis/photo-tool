@@ -128,6 +128,71 @@ func TestShareHTTP_resolve200_HTML(t *testing.T) {
 	}
 }
 
+// TestShareHTTP_HTML_wcagBaseline documents Story 3.4 best-effort a11y on minted share HTML (FR-14 / UX-DR11).
+func TestShareHTTP_HTML_wcagBaseline(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	rel := "2024/wcag-share.jpg"
+	full := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, minimalJPEG(t), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().Unix()
+	if err := store.InsertAsset(db, "wcag-share", rel, now, now); err != nil {
+		t.Fatal(err)
+	}
+	var id int64
+	if err := db.QueryRow(`SELECT id FROM assets WHERE content_hash = ?`, "wcag-share").Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	raw, _, err := store.MintDefaultShareLink(context.Background(), db, id, now+3600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(NewHTTPHandler(db, root))
+	t.Cleanup(srv.Close)
+	resp, err := srv.Client().Get(srv.URL + ShareHTTPPath(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	body := string(b)
+
+	checks := []struct {
+		name string
+		ok   bool
+	}{
+		{"html lang", strings.Contains(body, `<html lang="en">`) || strings.Contains(body, `lang="en"`)},
+		{"charset meta", strings.Contains(body, `charset="utf-8"`) || strings.Contains(body, `charset=utf-8`)},
+		{"viewport meta", strings.Contains(body, `name="viewport"`)},
+		{"document title", strings.Contains(body, "<title>") && strings.Contains(body, "</title>")},
+		{"skip link", strings.Contains(body, `class="skip-link"`) && strings.Contains(body, `#share-main`)},
+		{"main landmark", strings.Contains(body, `<main id="share-main"`)},
+		{"img alt", strings.Contains(body, `alt="Shared photo"`)},
+		{"rating group label", strings.Contains(body, `aria-labelledby="share-rating-summary"`)},
+		{"reduced motion css", strings.Contains(body, "prefers-reduced-motion")},
+		{"no raw geo", !strings.Contains(body, "latitude") && !strings.Contains(body, "longitude")},
+	}
+	for _, c := range checks {
+		if !c.ok {
+			t.Errorf("WCAG baseline %s: body snippet %q", c.name, truncate(body, 300))
+		}
+	}
+}
+
 func TestShareHTTP_imageMissingFile_404MatchesUnknown(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "lib")
 	if err := config.EnsureLibraryLayout(root); err != nil {
