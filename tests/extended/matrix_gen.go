@@ -49,6 +49,38 @@ type definitionsFile struct {
 		FR      []string `yaml:"fr"`
 		Message string   `yaml:"message"`
 	} `yaml:"manual_rows"`
+	ScaleUnit []struct {
+		ID            string   `yaml:"id"`
+		Tier          string   `yaml:"tier"`
+		FR            []string `yaml:"fr"`
+		Command       string   `yaml:"command"`
+		ParallelGroup string   `yaml:"parallel_group"`
+	} `yaml:"scale_unit"`
+	ScaleFunctional []struct {
+		ID            string   `yaml:"id"`
+		Tier          string   `yaml:"tier"`
+		FR            []string `yaml:"fr"`
+		Command       string   `yaml:"command"`
+		ParallelGroup string   `yaml:"parallel_group"`
+	} `yaml:"scale_functional"`
+	UxScaleSpot []struct {
+		Step  string `yaml:"step"`
+		Story string `yaml:"story"`
+		Flow  string `yaml:"flow"`
+		PNG   string `yaml:"png"`
+	} `yaml:"ux_scale_spot"`
+	UxEdge []struct {
+		Step  string `yaml:"step"`
+		Story string `yaml:"story"`
+		Flow  string `yaml:"flow"`
+		PNG   string `yaml:"png"`
+	} `yaml:"ux_edge"`
+	UxLayout []struct {
+		Step  string `yaml:"step"`
+		Story string `yaml:"story"`
+		Flow  string `yaml:"flow"`
+		PNG   string `yaml:"png"`
+	} `yaml:"ux_layout"`
 }
 
 // GenerateMatrix builds the full matrix from embedded definitions.
@@ -179,6 +211,71 @@ func GenerateMatrix(gitShort string) (*Matrix, error) {
 		}); err != nil {
 			return nil, err
 		}
+	}
+
+	const scaleJudge = "_bmad-output/test-artifacts/judge-prompt-scale-ux.md"
+	for _, s := range def.ScaleUnit {
+		if err := add(Row{
+			ID:            "scale-unit-" + s.ID,
+			Layer:         LayerScaleUnit,
+			FR:            s.FR,
+			Command:       s.Command,
+			ParallelGroup: s.ParallelGroup,
+			Message:       "tier=" + s.Tier + "; skipped with go test -short",
+			Automatable:   true,
+			Status:        StatusPending,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	for _, s := range def.ScaleFunctional {
+		if err := add(Row{
+			ID:            "scale-func-" + s.ID,
+			Layer:         LayerScaleFunctional,
+			FR:            s.FR,
+			Command:       s.Command,
+			ParallelGroup: s.ParallelGroup,
+			Message:       "tier=" + s.Tier + "; skipped with go test -short",
+			Automatable:   true,
+			Status:        StatusPending,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	addScaleUX := func(layer Layer, items []struct {
+		Step  string `yaml:"step"`
+		Story string `yaml:"story"`
+		Flow  string `yaml:"flow"`
+		PNG   string `yaml:"png"`
+	}) error {
+		for _, s := range items {
+			if err := add(Row{
+				ID:          fmt.Sprintf("%s-%s", layer, s.Step),
+				Story:       s.Story,
+				Flow:        s.Flow,
+				Step:        s.Step,
+				Layer:       layer,
+				UxAppMode:   UxAppRealBinary,
+				PNG:         s.PNG,
+				CaptureTool: "photo-tool-gui-journey",
+				JudgeSpec:   scaleJudge,
+				JudgeScope:  "single_step",
+				Automatable: true,
+				Status:      StatusPending,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := addScaleUX(LayerUxScaleSpot, def.UxScaleSpot); err != nil {
+		return nil, err
+	}
+	if err := addScaleUX(LayerUxEdge, def.UxEdge); err != nil {
+		return nil, err
+	}
+	if err := addScaleUX(LayerUxLayout, def.UxLayout); err != nil {
+		return nil, err
 	}
 
 	return m, nil

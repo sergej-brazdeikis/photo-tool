@@ -287,26 +287,23 @@ func NewRejectedView(win fyne.Window, db *sql.DB, libraryRoot string, onGotoRevi
 		}
 		countLabel.SetText(msg)
 		if n == 0 {
-			resetFiltersBtn.Hide()
 			emptyHint.Show()
 			backToReview.Show()
-			backToReview.Importance = widget.HighImportance
+			backToReview.Importance = widget.MediumImportance
+			backToReview.SetText("Back to Review")
+			backToReview.OnTapped = func() {
+				if onGotoReview != nil {
+					onGotoReview()
+				}
+			}
 			if reviewFiltersAtFR16Defaults(f) {
+				resetFiltersBtn.Hide()
 				emptyHint.SetText("Nothing rejected yet. Photos you reject from Review appear here.")
-				backToReview.SetText("Back to Review")
-				backToReview.OnTapped = func() {
-					if onGotoReview != nil {
-						onGotoReview()
-					}
-				}
+				backToReview.Importance = widget.HighImportance
 			} else {
+				resetFiltersBtn.Show()
+				resetFiltersBtn.Importance = widget.HighImportance
 				emptyHint.SetText("No rejected photos match these filters. Reset filters to list everything in Rejected, or adjust the filters above.")
-				backToReview.SetText("Reset filters")
-				backToReview.OnTapped = func() {
-					if resetRejectedFiltersToFR16 != nil {
-						resetRejectedFiltersToFR16()
-					}
-				}
 			}
 		} else {
 			emptyHint.Hide()

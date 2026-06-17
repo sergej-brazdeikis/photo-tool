@@ -11,6 +11,7 @@ const (
 	envUXUploadSeedPaths = "PHOTO_TOOL_UX_UPLOAD_SEED_PATHS"
 	envUXCaptureFlows    = "PHOTO_TOOL_UX_CAPTURE_FLOWS"
 	envUXCaptureAppMode  = "PHOTO_TOOL_UX_CAPTURE_APP_MODE"
+	envUXFixtureScale    = "PHOTO_TOOL_UX_FIXTURE_SCALE"
 	envGUIE2ELinux       = "PHOTO_TOOL_GUI_E2E_LINUX"
 )
 
@@ -54,4 +55,13 @@ func uxUploadSeedPathsFromEnv() []string {
 		return nil
 	}
 	return strings.Split(raw, "\n")
+}
+
+// UXFixtureScaleTier returns PHOTO_TOOL_UX_FIXTURE_SCALE or S1 default.
+func UXFixtureScaleTier() string {
+	raw := strings.TrimSpace(os.Getenv(envUXFixtureScale))
+	if raw == "" {
+		return "S1"
+	}
+	return raw
 }

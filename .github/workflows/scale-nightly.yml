@@ -1,0 +1,27 @@
+# Nightly scale functional + unit tests (no LLM judges, no real-binary capture).
+name: Scale nightly
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Scale unit tests
+        run: go test ./tests/fixture/... -run TestScale_ -count=1 -timeout=30m
+
+      - name: Scale functional tests
+        run: |
+          go test ./tests/e2e/... -run 'TestScale_' -count=1 -timeout=30m
+          go test ./tests/fixture/... -run 'TestScale_Ingest|TestScale_Import' -count=1
+          go test ./internal/share/... -run 'TestShareHTTP_scalePackage|TestShareHTTP_rateLimit_burst80|TestShareHTTP_scalePackageRejectExcluded' -count=1
+          go test ./internal/app/... -run TestScale_ -count=1

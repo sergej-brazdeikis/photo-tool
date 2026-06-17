@@ -95,6 +95,34 @@ func firstRadioGroupForJourney(root fyne.CanvasObject) *widget.RadioGroup {
 	return walk(root)
 }
 
+func collectEntriesForJourney(o fyne.CanvasObject) []*widget.Entry {
+	var out []*widget.Entry
+	var walk func(fyne.CanvasObject)
+	walk = func(x fyne.CanvasObject) {
+		if x == nil {
+			return
+		}
+		switch v := x.(type) {
+		case *widget.Entry:
+			out = append(out, v)
+		case *container.Scroll:
+			walk(v.Content)
+		case *widget.Accordion:
+			for _, it := range v.Items {
+				if it != nil {
+					walk(it.Detail)
+				}
+			}
+		case *fyne.Container:
+			for _, ch := range v.Objects {
+				walk(ch)
+			}
+		}
+	}
+	walk(o)
+	return out
+}
+
 func collectLabelsDeepForJourney(o fyne.CanvasObject) []*widget.Label {
 	var out []*widget.Label
 	var walk func(fyne.CanvasObject)

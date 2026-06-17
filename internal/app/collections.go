@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -779,6 +780,13 @@ func (c *reviewGridCell) bindCollectionThumbnail(g *collectionSectionGrid, row s
 
 	c.img.File = ""
 	c.img.Resource = nil
+	c.img.Image = nil
+	c.img.Refresh()
+	if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" {
+		c.img.Image = uxJourneyGridPendingThumbRaster()
+	} else {
+		c.img.Resource = theme.MediaPhotoIcon()
+	}
 	c.img.Refresh()
 
 	srcAbs := filepath.Join(g.libraryRoot, filepath.FromSlash(row.RelPath))
@@ -801,6 +809,8 @@ func (c *reviewGridCell) bindCollectionThumbnail(g *collectionSectionGrid, row s
 			c.failIcon.Hide()
 			c.failLbl.Hide()
 			c.img.Show()
+			c.img.Resource = nil
+			c.img.Image = nil
 			c.img.File = cacheAbs
 			c.img.Refresh()
 		})

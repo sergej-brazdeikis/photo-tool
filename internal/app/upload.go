@@ -132,6 +132,9 @@ func addUploadBatchPreviewCell(strip *fyne.Container, libraryRoot string, db *sq
 // imageOpenFilter limits the picker to the same extension set as CLI scan ([ingest.PickerFilterExtensions]).
 var imageOpenFilter = storage.NewExtensionFileFilter(ingest.PickerFilterExtensions())
 
+// uxJourneyUploadDropFn simulates a file drop bypassing hit-test (PHOTO_TOOL_UX_JOURNEY_TEST only).
+var uxJourneyUploadDropFn func(uris []fyne.URI)
+
 // uploadImportCloseBlocked is the policy behind [fyne.Window.SetCloseIntercept] for the upload view:
 // block while ingest runs (UX-DR17 worker may still schedule [fyne.Do]) and during the post-import collection step (FR-06).
 func uploadImportCloseBlocked(importInFlight, awaitingPostImportStep bool) (title, msg string, block bool) {
@@ -673,17 +676,11 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 
 	scroll := container.NewScroll(top)
 
-	// One handler per window; [fyne.Window.SetOnDropped] replaces any previous callback.
-	// Hit-test uses the same absolute coordinates as pointer events ([fyne.Driver.AbsolutePositionForObject]).
-	// The drop target lives inside a [container.Scroll]; the driver’s absolute position for [dropZone]
-	// includes scroll offset on supported platforms (macOS baseline — re-check Windows/Linux in QA).
-	win.SetOnDropped(func(absPos fyne.Position, uris []fyne.URI) {
-		// Empty payload: treat as no-op (no dialog). Some platforms may deliver an empty slice;
-		// there is nothing actionable to explain without inventing failure copy.
+	onUploadDrop := func(absPos fyne.Position, uris []fyne.URI, skipHitTest bool) {
 		if len(uris) == 0 {
 			return
 		}
-		if !dropHitTest(absPos, dropZone) {
+		if !skipHitTest && !dropHitTest(absPos, dropZone) {
 			return
 		}
 		if title, msg, blocked := dropBlockedDialogInfo(awaitingPostImportStep, importInFlight); blocked {
@@ -696,7 +693,6 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 			if len(res.Unsupported) > 0 {
 				msg = droppedSkipSummaryForDialog(res.Unsupported)
 			}
-			// Proportionate honesty (UX spec): wrong types are user-correctable — use information, not error chrome.
 			dialog.ShowInformation("No supported images", msg, win)
 			return
 		}
@@ -732,7 +728,17 @@ func newUploadView(win fyne.Window, db *sql.DB, libraryRoot string, opts UploadV
 			pendingDropSkipLines = append([]string(nil), res.Unsupported...)
 		}
 		runImportBatch()
+	}
+
+	// One handler per window; [fyne.Window.SetOnDropped] replaces any previous callback.
+	win.SetOnDropped(func(absPos fyne.Position, uris []fyne.URI) {
+		onUploadDrop(absPos, uris, false)
 	})
+	if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" {
+		uxJourneyUploadDropFn = func(uris []fyne.URI) {
+			onUploadDrop(fyne.NewPos(0, 0), uris, true)
+		}
+	}
 
 	for _, p := range opts.SeedPaths {
 		if tryAddUniquePath(&paths, filepath.Clean(p)) {

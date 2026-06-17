@@ -1,4 +1,4 @@
-.PHONY: all build run test test-e2e test-ci judge-bundle ux-judge-loop extended-test extended-test-loop tidy clean fmt vet gate scripts-check
+.PHONY: all build run test test-e2e test-ci judge-bundle ux-judge-loop extended-test extended-test-loop scale-test extended-test-scale extended-test-scale-ux scale-seed ux-scale-capture scale-report-open tidy clean fmt vet gate scripts-check
 
 BIN_DIR := bin
 BINARY := $(BIN_DIR)/photo-tool
@@ -38,6 +38,35 @@ extended-test:
 # Extended matrix hands-free loop until EXTENDED_RESULT=pass (requires agent CLI; not for CI).
 extended-test-loop:
 	./scripts/extended-test-loop.sh
+
+# Scale unit tests (heavy rows skip under go test -short).
+scale-test:
+	go test ./tests/fixture/... ./tests/e2e/... -run 'TestScale_' -count=1 -short
+
+# Real-binary scale/edge/layout UX capture (requires DISPLAY or xvfb).
+extended-test-scale-ux:
+	./scripts/extended-test-run.sh --layer=scale_ux --judges
+
+# Functional scale tests only (no PNG capture).
+extended-test-scale:
+	./scripts/extended-test-run.sh --layer=scale
+
+# Seed a tiered library: make scale-seed TIER=S5 OUT=/tmp/lib-500
+TIER ?= S5
+OUT_LIB ?= /tmp/photo-tool-scale-lib
+scale-seed:
+	go run ./tests/extended/cmd/seed-library -out $(OUT_LIB) -tier $(TIER)
+
+# Real-binary scale spot capture only.
+ux-scale-capture:
+	PHOTO_TOOL_UX_FIXTURE_SCALE=S5 PHOTO_TOOL_UX_CAPTURE_FLOWS=scale_spot PHOTO_TOOL_UX_CAPTURE_APP_MODE=real_binary \
+		PHOTO_TOOL_GUI_E2E_LINUX=1 ./bin/photo-tool
+
+# Open interactive scale report (RUN=path to extended run dir).
+RUN ?=
+scale-report-open:
+	@test -n "$(RUN)" || (echo "usage: make scale-report-open RUN=path/to/extended-run" && exit 1)
+	xdg-open "$(RUN)/scale-report.html" 2>/dev/null || open "$(RUN)/scale-report.html" 2>/dev/null || echo "Open $(RUN)/scale-report.html in a browser"
 
 tidy:
 	go mod tidy

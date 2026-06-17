@@ -156,3 +156,41 @@ func TestShareHTTP_rateLimit_HEAD429(t *testing.T) {
 		t.Fatalf("second HEAD want 429, got %d", resp2.StatusCode)
 	}
 }
+
+func TestShareHTTP_rateLimit_burst80(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := config.EnsureLibraryLayout(root); err != nil {
+		t.Fatal(err)
+	}
+	db, err := store.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	// No refill during the burst window — default 12/s would flake under parallel CI load.
+	cfg := rateLimitConfig{r: rate.Every(24 * time.Hour), burst: 80}
+	srv := httptest.NewServer(wrapRateLimitedHandler(newShareMuxHandler(db, root), cfg))
+	t.Cleanup(srv.Close)
+	client := srv.Client()
+	path := ShareHTTPPath("bogus-token-not-in-db-xxxxxxxxxxxxxxxxxxxxxxxxxx")
+
+	for i := 0; i < 80; i++ {
+		resp, err := client.Get(srv.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("request %d: status %d want 404", i, resp.StatusCode)
+		}
+	}
+	resp, err := client.Get(srv.URL + path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("81st request want 429, got %d", resp.StatusCode)
+	}
+}

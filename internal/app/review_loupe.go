@@ -357,6 +357,9 @@ func openReviewLoupe(win fyne.Window, grid *reviewAssetGrid, startIdx int, onRev
 		}
 		row := rows[0]
 		currentID = row.ID
+		if os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" {
+			setUXCaptureLoupeAssetID(row.ID)
+		}
 
 		allTags, terr := store.ListTags(grid.db)
 		if terr != nil {

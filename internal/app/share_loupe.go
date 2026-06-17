@@ -66,15 +66,31 @@ func openLoupeShareFlow(win fyne.Window, grid *reviewAssetGrid, idx int, current
 	f := grid.filters
 	grid.mu.Unlock()
 
-	rows, err := store.ListAssetsForReview(grid.db, f, 1, idx)
-	if err != nil || len(rows) == 0 {
-		slog.Error("share: load row", "err", err, "idx", idx)
-		dialog.ShowError(errors.New("could not load this photo for sharing — return to review and try again"), win)
-		return
+	var row store.ReviewGridRow
+	shareAssetID := int64(0)
+	if currentLoupeAssetID != nil {
+		shareAssetID = currentLoupeAssetID()
 	}
-	row := rows[0]
+	if shareAssetID > 0 {
+		rows, err := store.ListReviewGridRowsByIDsInOrder(grid.db, []int64{shareAssetID})
+		if err != nil || len(rows) == 0 {
+			slog.Error("share: load loupe asset", "err", err, "asset_id", shareAssetID)
+			dialog.ShowError(errors.New("could not load this photo for sharing — return to review and try again"), win)
+			return
+		}
+		row = rows[0]
+	} else {
+		rows, err := store.ListAssetsForReview(grid.db, f, 1, idx)
+		if err != nil || len(rows) == 0 {
+			slog.Error("share: load row", "err", err, "idx", idx)
+			dialog.ShowError(errors.New("could not load this photo for sharing — return to review and try again"), win)
+			return
+		}
+		row = rows[0]
+		shareAssetID = row.ID
+	}
 
-	if block, qerr := store.DefaultShareBlockedUserMessage(grid.db, row.ID); qerr != nil {
+	if block, qerr := store.DefaultShareBlockedUserMessage(grid.db, shareAssetID); qerr != nil {
 		dialog.ShowError(errors.New(userFacingDialogErrText(qerr)), win)
 		return
 	} else if block != "" {

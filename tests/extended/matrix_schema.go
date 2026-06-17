@@ -4,18 +4,23 @@ package extended
 type Layer string
 
 const (
-	LayerFunctional Layer = "functional"
-	LayerStepUX     Layer = "step_ux"
-	LayerFlowUX     Layer = "flow_ux"
+	LayerFunctional      Layer = "functional"
+	LayerScaleUnit       Layer = "scale_unit"
+	LayerScaleFunctional Layer = "scale_functional"
+	LayerStepUX          Layer = "step_ux"
+	LayerFlowUX          Layer = "flow_ux"
+	LayerUxScaleSpot     Layer = "ux_scale_spot"
+	LayerUxEdge          Layer = "ux_edge"
+	LayerUxLayout        Layer = "ux_layout"
 )
 
 // UxAppMode records whether UX evidence came from the real binary or software driver.
 type UxAppMode string
 
 const (
-	UxAppRealBinary      UxAppMode = "real_binary"
-	UxAppSoftwareDriver  UxAppMode = "software_driver"
-	UxAppNotApplicable   UxAppMode = ""
+	UxAppRealBinary     UxAppMode = "real_binary"
+	UxAppSoftwareDriver UxAppMode = "software_driver"
+	UxAppNotApplicable  UxAppMode = ""
 )
 
 // Status is the row outcome in a matrix run.

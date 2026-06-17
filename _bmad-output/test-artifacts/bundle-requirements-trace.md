@@ -23,7 +23,7 @@
 | FR-27–FR-28 | Epic 1 | CLI scan/import |
 | FR-33 | Epic 4 | Shareable packages (growth) |
 | NFR-01, NFR-07 | Epic 2 | Layout + OS scaling |
-| NFR-02 | Epic 1 | Large-tree scan/import |
+| NFR-02 | Epic 1 | Large-tree scan/import — `tests/e2e/scale_test.go`, S8 fixture |
 | NFR-03 | Epic 1 | Dedup integrity |
 | NFR-04 | Epic 1 + Epic 2 | OperationSummary / receipts |
 | NFR-05, NFR-06 | Epic 3 | Share perf + abuse posture |
@@ -97,6 +97,19 @@
 |----|----------|------|
 | NFR-01 matrix | `nfr-01-layout-matrix-evidence.md` | Human/layout evidence; complements `*_nfr01_min_window` PNGs |
 | NFR-07 | `nfr-07-os-scaling-checklist.md` | OS scaling checklist; not all in CI |
+
+### Scale / volume (S0–S8)
+
+| Id | Artifact / test | Role |
+|----|-----------------|------|
+| NFR-02 | `tests/e2e/scale_test.go` (`TestScale_Scan_dryRun10k`), `internal/cli/scan_test.go` | Large-tree scan walk + heap budget; S8 filesystem fixture |
+| SC-3 | `tests/fixture/scale_unit_test.go`, `internal/fixture/` | Tiered library seed (S0–S8), paging at 96, package 500/501, tag bulk 500+ |
+| Large-library UX | `internal/app/ux_journey_scale_run.go`, `ui-real-scale/`, `ui-real-edge/`, `ui-real-layout/` | Real-binary scale spot, edge pack, layout matrix (`PHOTO_TOOL_UX_FIXTURE_SCALE`, `scale_spot`/`edge`/`layout` flows) |
+| Share at volume | `internal/share/http_scale_test.go` | Package HTML at 50 and 500 members (S5 seed) |
+| Scale judge | `_bmad-output/test-artifacts/judge-prompt-scale-ux.md` | Vision rubric for scale/edge PNGs in extended loop |
+
+Make: `make scale-test` (unit, `-short` skips heavy rows); `make extended-test-scale-ux` (real-binary capture). Matrix layers: `scale_unit`, `scale_functional`, `ux_scale_spot`, `ux_edge`, `ux_layout` in [`tests/extended/definitions.yaml`](../../tests/extended/definitions.yaml).
+
 
 ---
 

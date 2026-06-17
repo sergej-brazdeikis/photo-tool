@@ -250,3 +250,318 @@ manual_rows:
     layer: manual
     fr: [NFR-07]
     message: Real Display scaling requires hardware matrix
+
+scale_unit:
+  - id: scale-paging-s4
+    tier: S4
+    fr: [FR-07]
+    command: go test ./tests/fixture/... -run TestScale_ListAssetsForReview_pagingAt96 -count=1
+    parallel_group: epic-2
+  - id: scale-paging-s2-s3
+    tier: S3
+    fr: [FR-07]
+    command: go test ./tests/fixture/... -run 'TestScale_ListAssetsForReview_underOnePage|TestScale_ListAssetsForReview_onePageBoundary' -count=1
+    parallel_group: epic-2
+  - id: scale-rejected-paging
+    tier: S5R
+    fr: [FR-07]
+    command: go test ./tests/fixture/... -run TestScale_ListRejectedForReview_paging -count=1
+    parallel_group: epic-2
+  - id: scale-collection-sections
+    tier: S5
+    fr: [FR-08]
+    command: go test ./tests/fixture/... -run TestScale_CollectionDetail_sectionPaging -count=1
+    parallel_group: epic-2
+  - id: scale-package-cap
+    tier: S6
+    fr: [FR-33]
+    command: go test ./tests/fixture/... -run TestScale_PackagePrepareEligible_cap501 -count=1
+    parallel_group: epic-4
+  - id: scale-tag-bulk
+    tier: S7
+    fr: [FR-07]
+    command: go test ./tests/fixture/... -run TestScale_TagBulk_link600 -count=1
+    parallel_group: epic-2
+  - id: scale-paging-parity
+    tier: S5
+    fr: [FR-07]
+    command: go test ./tests/fixture/... -run TestScale_ListAssetsForReview_pagingParity -count=1
+    parallel_group: epic-2
+
+scale_functional:
+  - id: scale-nfr02-10k-walk
+    tier: S8
+    fr: [NFR-02]
+    command: go test ./tests/e2e/... -run TestScale_Scan_dryRun10k -count=1 -timeout=30m
+    parallel_group: epic-1
+  - id: scale-share-http-package
+    tier: S5
+    fr: [FR-33, NFR-05]
+    command: go test ./internal/share/... -run TestShareHTTP_scalePackage -count=1
+    parallel_group: epic-3
+  - id: scale-ingest-dedup
+    tier: S5
+    fr: [NFR-03]
+    command: go test ./tests/fixture/... -run TestScale_Ingest_dedupStorm -count=1
+    parallel_group: epic-1
+  - id: scale-import-register
+    tier: S7
+    fr: [FR-27]
+    command: go test ./tests/fixture/... -run 'TestScale_Import_register1000|TestScale_Import_register100' -count=1
+    parallel_group: epic-1
+  - id: scale-app-grid-filter
+    tier: S5
+    fr: [FR-07, FR-15]
+    command: go test ./internal/app/... -run TestScale_ -count=1
+    parallel_group: epic-2
+  - id: scale-cli-deep-tree
+    tier: S4
+    fr: [FR-27]
+    command: go test ./tests/e2e/... -run TestScale_CLI_recursiveDeepTree -count=1
+    parallel_group: epic-1
+  - id: scale-share-reject-exclusion
+    tier: S5
+    fr: [FR-33]
+    command: go test ./internal/share/... -run TestShareHTTP_scalePackageRejectExcluded -count=1
+    parallel_group: epic-3
+  - id: scale-share-rate-burst80
+    tier: S5
+    fr: [NFR-03]
+    command: go test ./internal/share/... -run TestShareHTTP_rateLimit_burst80 -count=1
+    parallel_group: epic-3
+
+persona_rows:
+  - id: photographer_setup
+    journey: A
+    tier: S0
+    evidence: [review_library_empty]
+  - id: photographer_bulk
+    journey: A
+    tier: S4/S5
+    evidence: [upload_fr06_batch_50]
+  - id: photographer_triage
+    journey: B
+    tier: S4
+    evidence: [review_grid_bulk_20_selected, review_filter_collection_album, review_loupe_rating]
+  - id: album_curator
+    journey: C
+    tier: S5
+    evidence: [collections_list_scroll_50, collections_detail_500_stars, collections_detail_by_day_dense]
+  - id: noise_reduction
+    journey: E
+    tier: S5R
+    evidence: [rejected_grid_500, rejected_bulk_delete_confirm]
+  - id: share_vacation
+    journey: F
+    tier: S5/S6
+    evidence: [review_package_preview_100_truncated, review_package_blocked_501]
+  - id: power_user_cli
+    journey: D
+    tier: S8
+    evidence: [scale-nfr02-10k-walk]
+  - id: share_recipient
+    journey: 3.3/4.1
+    tier: S5
+    evidence: [scale-share-http-package]
+
+ux_scale_spot:
+  - step: review_grid_page1_full
+    story: "2.3"
+    flow: scale_spot
+    png: ui-real-scale/01_review_grid_page1_full.png
+  - step: review_grid_page2_top
+    story: "2.3"
+    flow: scale_spot
+    png: ui-real-scale/02_review_grid_page2_top.png
+  - step: review_grid_bulk_5_selected
+    story: "2.5"
+    flow: scale_spot
+    png: ui-real-scale/03_review_grid_bulk_5_selected.png
+  - step: review_grid_bulk_20_selected
+    story: "2.5"
+    flow: scale_spot
+    png: ui-real-scale/04_review_grid_bulk_20_selected.png
+  - step: review_filter_zero_5star
+    story: "2.12"
+    flow: scale_spot
+    png: ui-real-scale/05_review_filter_zero_5star.png
+  - step: review_filter_collection_album
+    story: "2.2"
+    flow: scale_spot
+    png: ui-real-scale/06_review_filter_collection_album.png
+  - step: review_filter_tag_uxcaptag
+    story: "2.2"
+    flow: scale_spot
+    png: ui-real-scale/07_review_filter_tag_uxcaptag.png
+  - step: review_loupe_rating
+    story: "2.4"
+    flow: scale_spot
+    png: ui-real-scale/08_review_loupe_rating.png
+  - step: review_loupe_share_rejected_block
+    story: "3.1"
+    flow: scale_spot
+    png: ui-real-scale/09_review_loupe_share_rejected_block.png
+  - step: review_loupe_share_preview
+    story: "3.1"
+    flow: scale_spot
+    png: ui-real-scale/10_review_loupe_share_preview.png
+  - step: share_post_mint_copy_url
+    story: "3.1"
+    flow: scale_spot
+    png: ui-real-scale/11_share_post_mint_copy_url.png
+  - step: collections_album_list_scale
+    story: "2.8"
+    flow: scale_spot
+    png: ui-real-scale/12_collections_album_list_scale.png
+  - step: collections_list_scroll_50
+    story: "2.8"
+    flow: scale_spot
+    png: ui-real-scale/13_collections_list_scroll_50.png
+  - step: collections_empty_album
+    story: "2.8"
+    flow: scale_spot
+    png: ui-real-scale/14_collections_empty_album.png
+  - step: collections_detail_500_stars
+    story: "2.8"
+    flow: scale_spot
+    png: ui-real-scale/15_collections_detail_500_stars.png
+  - step: collections_detail_by_day_dense
+    story: "2.8"
+    flow: scale_spot
+    png: ui-real-scale/16_collections_detail_by_day_dense.png
+  - step: upload_empty_scale
+    story: "1.5"
+    flow: scale_spot
+    png: ui-real-scale/17_upload_empty_scale.png
+  - step: upload_staged_50
+    story: "1.5"
+    flow: scale_spot
+    png: ui-real-scale/18_upload_staged_50.png
+  - step: upload_drop_during_fr06
+    story: "1.5"
+    flow: scale_spot
+    png: ui-real-scale/19_upload_drop_during_fr06.png
+  - step: upload_fr06_batch_50
+    story: "1.5"
+    flow: scale_spot
+    png: ui-real-scale/20_upload_fr06_batch_50.png
+  - step: review_package_preview_100_truncated
+    story: "4.1"
+    flow: scale_spot
+    png: ui-real-scale/21_review_package_preview_100_truncated.png
+  - step: review_share_selection_20
+    story: "4.1"
+    flow: scale_spot
+    png: ui-real-scale/22_review_share_selection_20.png
+  - step: review_package_share_preview
+    story: "4.1"
+    flow: scale_spot
+    png: ui-real-scale/23_review_package_share_preview.png
+
+ux_edge:
+  - step: review_grid_edge_baseline
+    story: "2.2"
+    flow: edge
+    png: ui-real-edge/01_review_grid_edge_baseline.png
+  - step: review_filter_empty_edge
+    story: "2.12"
+    flow: edge
+    png: ui-real-edge/02_review_filter_empty_edge.png
+  - step: review_delete_confirm_edge
+    story: "2.7"
+    flow: edge
+    png: ui-real-edge/03_review_delete_confirm_edge.png
+  - step: rejected_grid_edge
+    story: "2.6"
+    flow: edge
+    png: ui-real-edge/04_rejected_grid_edge.png
+  - step: review_library_empty
+    story: "2.12"
+    flow: edge
+    png: ui-real-edge/05_review_library_empty.png
+  - step: review_delete_confirm_50
+    story: "2.7"
+    flow: edge
+    png: ui-real-edge/06_review_delete_confirm_50.png
+  - step: review_filter_deadlock_reset
+    story: "2.2"
+    flow: edge
+    png: ui-real-edge/07_review_filter_deadlock_reset.png
+  - step: review_filters_fr16_reset
+    story: "2.2"
+    flow: edge
+    png: ui-real-edge/08_review_filters_fr16_reset.png
+  - step: review_package_blocked_501
+    story: "4.1"
+    flow: edge
+    png: ui-real-edge/09_review_package_blocked_501.png
+  - step: rejected_grid_500
+    story: "2.6"
+    flow: edge
+    png: ui-real-edge/10_rejected_grid_500.png
+  - step: rejected_bulk_delete_confirm
+    story: "2.7"
+    flow: edge
+    png: ui-real-edge/11_rejected_bulk_delete_confirm.png
+  - step: collections_re_tap_nav_reset
+    story: "2.8"
+    flow: edge
+    png: ui-real-edge/12_collections_re_tap_nav_reset.png
+  - step: review_undo_reject_single
+    story: "2.6"
+    flow: edge
+    png: ui-real-edge/13_review_undo_reject_single.png
+  - step: rejected_filter_min_rating_empty
+    story: "2.6"
+    flow: edge
+    png: ui-real-edge/14_rejected_filter_min_rating_empty.png
+  - step: review_loupe_edge
+    story: "2.4"
+    flow: edge
+    png: ui-real-edge/15_review_loupe_edge.png
+  - step: upload_empty_at_scale
+    story: "1.4"
+    flow: edge
+    png: ui-real-edge/16_upload_empty_at_scale.png
+  - step: collections_empty_album_edge
+    story: "2.8"
+    flow: edge
+    png: ui-real-edge/17_collections_empty_album_edge.png
+  - step: review_loupe_share_rejected_block
+    story: "3.2"
+    flow: edge
+    png: ui-real-edge/18_review_loupe_share_rejected_block.png
+
+ux_layout:
+  - step: review_grid_nfr01_min_window
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/01_review_grid_nfr01_min_window.png
+  - step: review_theme_switch_full_grid
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/02_review_theme_switch_full_grid.png
+  - step: review_bulk_bar_nfr01_min_window
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/03_review_bulk_bar_nfr01_min_window.png
+  - step: review_loupe_nfr01_min_window
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/04_review_loupe_nfr01_min_window.png
+  - step: collections_list_nfr01_min_window
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/05_collections_list_nfr01_min_window.png
+  - step: collections_detail_nfr01_min_window
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/06_collections_detail_nfr01_min_window.png
+  - step: review_grid_ultrawide
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/07_review_grid_ultrawide.png
+  - step: review_filter_strip_fyne_scale_15
+    story: "2.11"
+    flow: layout
+    png: ui-real-layout/08_review_filter_strip_fyne_scale_15.png

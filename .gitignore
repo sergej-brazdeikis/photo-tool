@@ -3,5 +3,13 @@
 # Allow tracked .cursor/rules/; ignore local Cursor debug logs only
 /.cursor/debug*.log
 /.cursor/**/debug-*.log
+/_bmad-output/scale-fixtures/
 /bin/
 photo-tool
+
+# --- Local test artifacts (generated; do not commit) ---
+# Contracts (prompts, rubrics, trace matrices) stay at _bmad-output/test-artifacts/*.md
+/_bmad-output/test-artifacts/extended-runs/*
+!/_bmad-output/test-artifacts/extended-runs/.gitignore
+/_bmad-output/test-artifacts/judge-bundles/*
+!/_bmad-output/test-artifacts/judge-bundles/.gitignore

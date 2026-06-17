@@ -14,28 +14,31 @@ import (
 	"fyne.io/fyne/v2"
 
 	"photo-tool/internal/domain"
+	"photo-tool/internal/share"
 )
 
 // JourneyStepMeta is one row in steps.json.
 type JourneyStepMeta struct {
-	ID     string `json:"id"`
-	Flow   string `json:"flow"`
-	File   string `json:"file"`
-	Intent string `json:"intent"`
+	ID       string `json:"id"`
+	Flow     string `json:"flow"`
+	File     string `json:"file"`
+	Intent   string `json:"intent"`
+	TimingMs int64  `json:"timing_ms,omitempty"`
 }
 
 // JourneyCaptureOptions configures a UX journey capture run.
 type JourneyCaptureOptions struct {
-	Win          fyne.Window
-	OutDir       string
-	DB           *sql.DB
-	LibraryRoot  string
-	AppMode      string // software_driver | real_binary
-	CaptureTool  string
-	GoTestTarget string
-	UploadSeeds  []string
-	FlowFilter   []string
+	Win           fyne.Window
+	OutDir        string
+	DB            *sql.DB
+	LibraryRoot   string
+	AppMode       string // software_driver | real_binary
+	CaptureTool   string
+	GoTestTarget  string
+	UploadSeeds   []string
+	FlowFilter    []string
 	UseLightTheme bool
+	ShareLoopback *share.Loopback // production real_binary: loopback HTTP for share mint URL UI
 }
 
 func (o JourneyCaptureOptions) flowAllowed(flow string) bool {
@@ -144,7 +147,7 @@ func RunUXJourneyCapture(o JourneyCaptureOptions) error {
 		var sh fyne.CanvasObject
 		journeyOnMain(func() {
 			clearUXCaptureReviewGrid()
-			sh = NewMainShell(o.Win, o.DB, o.LibraryRoot, nil)
+			sh = NewMainShell(o.Win, o.DB, o.LibraryRoot, o.ShareLoopback)
 			o.Win.SetContent(sh)
 			journeySettle()
 		})
@@ -252,6 +255,8 @@ func RunUXJourneyCapture(o JourneyCaptureOptions) error {
 	if err := journeyListSelectAt(shell, 0, 0); err != nil {
 		return err
 	}
+	journeyAfterNav(o.Win)
+	journeyWaitCollectionThumbnails(o.Win)
 	if err := capture("collections", "collections_album_detail_stars", "Collections: album detail stars"); err != nil {
 		return err
 	}
@@ -290,15 +295,17 @@ func RunUXJourneyCapture(o JourneyCaptureOptions) error {
 	if err := capture("rejected", "rejected_hidden_grid", "Rejected: grid"); err != nil {
 		return err
 	}
-	if err := journeySetSelectAt(shell, 1, "5"); err != nil {
+	if err := journeySetSelectAt(shell, 0, "UXCapNone"); err != nil {
 		return err
 	}
+	journeyAfterNav(o.Win)
 	if err := capture("rejected", "rejected_filter_min_rating_empty", "Rejected: narrow filter empty"); err != nil {
 		return err
 	}
-	if err := journeySetSelectAt(shell, 1, reviewRatingAny); err != nil {
+	if err := journeySetSelectAt(shell, 0, reviewCollectionSentinel); err != nil {
 		return err
 	}
+	journeyAfterNav(o.Win)
 
 	nfrW := float32(domain.NFR01WindowMinWidth)
 	nfrH := float32(domain.NFR01WindowMinHeight)
@@ -378,9 +385,9 @@ func RunUXJourneyCapture(o JourneyCaptureOptions) error {
 		GoTestTarget string            `json:"go_test_target,omitempty"`
 		Omissions    []string          `json:"omissions"`
 	}{
-		AppMode: o.AppMode,
-		Flows:   []string{"upload", "review", "collections", "rejected", "delete", "packages"},
-		Steps:   steps,
+		AppMode:      o.AppMode,
+		Flows:        []string{"upload", "review", "collections", "rejected", "delete", "packages"},
+		Steps:        steps,
 		CaptureTool:  o.CaptureTool,
 		GoTestTarget: o.GoTestTarget,
 		Omissions: []string{
@@ -397,7 +404,24 @@ func RunUXJourneyCapture(o JourneyCaptureOptions) error {
 }
 
 // RunUXJourneyRealApp runs capture from the production GUI binary (native driver).
-func RunUXJourneyRealApp(win fyne.Window, db *sql.DB, root string) error {
+func RunUXJourneyRealApp(win fyne.Window, db *sql.DB, root string, shareLoop *share.Loopback) error {
+	flows := UXCaptureFlowFilter()
+	if len(flows) == 1 {
+		switch flows[0] {
+		case "scale_spot":
+			o := newScaleJourneyOptions(win, db, root, UXCaptureDir(), "photo-tool-scale-spot-journey")
+			o.ShareLoopback = shareLoop
+			return runScaleSpotJourney(o)
+		case "edge":
+			o := newScaleJourneyOptions(win, db, root, UXCaptureDir(), "photo-tool-edge-pack-journey")
+			o.ShareLoopback = shareLoop
+			return runEdgePackJourney(o)
+		case "layout":
+			o := newScaleJourneyOptions(win, db, root, UXCaptureDir(), "photo-tool-layout-matrix-journey")
+			o.ShareLoopback = shareLoop
+			return runLayoutMatrixJourney(o)
+		}
+	}
 	return RunUXJourneyCapture(JourneyCaptureOptions{
 		Win:           win,
 		OutDir:        UXCaptureDir(),
@@ -406,7 +430,8 @@ func RunUXJourneyRealApp(win fyne.Window, db *sql.DB, root string) error {
 		AppMode:       "real_binary",
 		CaptureTool:   "photo-tool-gui-journey",
 		UploadSeeds:   uxUploadSeedPathsFromEnv(),
-		FlowFilter:    UXCaptureFlowFilter(),
+		FlowFilter:    flows,
 		UseLightTheme: strings.ToLower(os.Getenv("PHOTO_TOOL_TEST_THEME")) != "dark",
+		ShareLoopback: shareLoop,
 	})
 }

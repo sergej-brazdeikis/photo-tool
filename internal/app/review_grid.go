@@ -276,7 +276,7 @@ func newReviewAssetGrid(win fyne.Window, db *sql.DB, libraryRoot string, onLoupe
 	g.list.HideSeparators = true
 	// PHOTO_TOOL_UX_JOURNEY_TEST=1 scopes registration to the capture test / bundle subprocess only
 	// (avoid parallel package tests seeing PHOTO_TOOL_UX_CAPTURE_DIR alone and clobbering this pointer).
-	if os.Getenv("PHOTO_TOOL_UX_CAPTURE_DIR") != "" && os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" && g.onLoupeOpen != nil {
+	if os.Getenv("PHOTO_TOOL_UX_CAPTURE_DIR") != "" && os.Getenv("PHOTO_TOOL_UX_JOURNEY_TEST") == "1" {
 		registerUXCaptureReviewGrid(g)
 	}
 	return g

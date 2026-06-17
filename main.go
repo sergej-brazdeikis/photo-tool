@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -74,16 +75,23 @@ func runGUI() {
 	if ptapp.UXJourneyRealBinaryMode() {
 		w.Resize(fyne.NewSize(1280, 800))
 		w.Show()
+		var exitCode atomic.Int32
+		exitCode.Store(1)
 		go func() {
-			time.Sleep(1500 * time.Millisecond)
-			if err := ptapp.RunUXJourneyRealApp(w, db, root); err != nil {
+			time.Sleep(3500 * time.Millisecond)
+			code := int32(0)
+			if err := ptapp.RunUXJourneyRealApp(w, db, root, shareLoop); err != nil {
 				slog.Error("ux journey capture", "err", err)
-				os.Exit(1)
+				code = 1
 			}
-			os.Exit(0)
+			exitCode.Store(code)
+			fyne.Do(func() { a.Quit() })
+			// Ultrawide GL capture can leave Run() blocked; extended-test timeout is 20m.
+			time.Sleep(3 * time.Second)
+			os.Exit(int(code))
 		}()
 		a.Run()
-		return
+		os.Exit(int(exitCode.Load()))
 	}
 
 	w.Resize(fyne.NewSize(800, 560))

@@ -1,12 +1,18 @@
 package app
 
 import (
+	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+
+	"photo-tool/internal/store"
 )
 
 func uxCaptureSettle() {
@@ -30,8 +36,7 @@ func journeyAfterNav(win fyne.Window) {
 	journeyOnMain(func() {
 		journeyRealBinaryRepaintDirect(win)
 	})
-	time.Sleep(200 * time.Millisecond)
-	journeySettle()
+	_ = journeyWaitPainted(win, 3*time.Second)
 }
 
 func journeyFindButton(root fyne.CanvasObject, want string) (*widget.Button, error) {
@@ -62,7 +67,16 @@ func journeyTapButton(root fyne.CanvasObject, want string) error {
 }
 
 func journeyTapPanel(shell fyne.CanvasObject, label string) error {
-	return journeyTapButton(shell, label)
+	if err := journeyTapButton(shell, label); err != nil {
+		return err
+	}
+	switch label {
+	case "Review":
+		uxCaptureActivateReviewGrid()
+	case "Rejected":
+		uxCaptureActivateRejectedGrid()
+	}
+	return nil
 }
 
 func journeySelectReviewGridAt(idx int) error {
@@ -114,6 +128,45 @@ func journeyListSelectAt(root fyne.CanvasObject, listIdx, rowIdx int) error {
 		}
 		lists[listIdx].Select(rowIdx)
 		journeySettle()
+	})
+	return err
+}
+
+func journeyScrollListAt(root fyne.CanvasObject, listIdx, rowIdx int) error {
+	var err error
+	journeyOnMain(func() {
+		lists := collectListsForJourney(root)
+		if len(lists) <= listIdx {
+			err = fmt.Errorf("list index %d: have %d lists", listIdx, len(lists))
+			return
+		}
+		lists[listIdx].ScrollTo(rowIdx)
+		journeySettle()
+	})
+	return err
+}
+
+// journeyCollectionSelectNamed opens the collections album list row whose label contains name.
+func journeyCollectionSelectNamed(root fyne.CanvasObject, name string) error {
+	var err error
+	journeyOnMain(func() {
+		lists := collectListsForJourney(root)
+		if len(lists) == 0 {
+			err = fmt.Errorf("collections list not found")
+			return
+		}
+		list := lists[0]
+		n := list.Length()
+		for i := 0; i < n; i++ {
+			list.Select(i)
+			journeySettle()
+			for _, lb := range collectLabelsDeepForJourney(root) {
+				if strings.Contains(lb.Text, name) {
+					return
+				}
+			}
+		}
+		err = fmt.Errorf("collection %q not found in list", name)
 	})
 	return err
 }
@@ -255,6 +308,135 @@ func journeyTapSharePreviewOverlay(win fyne.Window, want string) error {
 	return journeyTapButtonInOverlays(win, want)
 }
 
+func journeyBulkTagAdd(root fyne.CanvasObject, label string) error {
+	var err error
+	journeyOnMain(func() {
+		entries := collectEntriesForJourney(root)
+		if len(entries) == 0 {
+			err = fmt.Errorf("tag entry not found")
+			return
+		}
+		entries[0].SetText(label)
+		entries[0].Refresh()
+		journeySettle()
+	})
+	if err != nil {
+		return err
+	}
+	return journeyTapButton(root, "Add tag to selection")
+}
+
+func journeyTapSharePackage(root fyne.CanvasObject) error {
+	for _, label := range []string{"Share (selection)…", "Share (filtered)…"} {
+		if err := journeyTapButton(root, label); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("share package button not found (Share (selection)… / Share (filtered)…)")
+}
+
+func journeyTapShareFiltered(root fyne.CanvasObject) error {
+	return journeyTapButton(root, "Share (filtered)…")
+}
+
+func journeyClearReviewGridSelection() {
+	journeyOnMain(func() {
+		uxCaptureClearReviewGridSelection()
+		journeySettle()
+	})
+}
+
+// journeyApplyZeroMatchFilters selects empty album UXCapNone (scale fixture) for zero-match empty state.
+func journeyApplyZeroMatchFilters(shell fyne.CanvasObject) error {
+	return journeySetSelectAt(shell, 0, "UXCapNone")
+}
+
+// journeyApplyZeroMatchDeadlockFilters stacks non-default filters that still match zero assets.
+func journeyApplyZeroMatchDeadlockFilters(shell fyne.CanvasObject) error {
+	if err := journeySetSelectAt(shell, 0, "UXCapNone"); err != nil {
+		return err
+	}
+	if err := journeySetSelectAt(shell, 1, "5"); err != nil {
+		return err
+	}
+	return journeySetSelectAt(shell, 2, "UXCapTag")
+}
+
+// journeyWaitCollectionThumbnails allows async collection detail decodes to finish before capture.
+func journeyWaitCollectionThumbnails(win fyne.Window) {
+	if !isJourneyRealBinary() {
+		journeySettle()
+		return
+	}
+	time.Sleep(600 * time.Millisecond)
+	journeyAfterNav(win)
+}
+
+func journeySyncReviewGridSelection(win fyne.Window) {
+	journeyOnMain(func() {
+		uxCaptureReviewGridMu.Lock()
+		g := uxCaptureReviewGrid
+		uxCaptureReviewGridMu.Unlock()
+		if g != nil && g.list != nil {
+			g.list.Refresh()
+		}
+		if isJourneyRealBinary() {
+			journeyRealBinaryRepaintDirect(win)
+		}
+		journeySettle()
+	})
+	journeyAfterNav(win)
+}
+
+func journeyKeyboardLoupeRating(win fyne.Window, n int) error {
+	if n < 1 || n > 5 {
+		return fmt.Errorf("loupe rating %d out of range 1–5", n)
+	}
+	var err error
+	journeyOnMain(func() {
+		type canvasTypedRune interface {
+			OnTypedRune() func(rune)
+		}
+		tc, ok := win.Canvas().(canvasTypedRune)
+		if !ok {
+			err = fmt.Errorf("canvas does not support typed rune")
+			return
+		}
+		fn := tc.OnTypedRune()
+		if fn == nil {
+			want := strconv.Itoa(n) + "★"
+			overs := win.Canvas().Overlays().List()
+			for i := len(overs) - 1; i >= 0; i-- {
+				for _, b := range collectButtonsDeep(overs[i]) {
+					if b.Text == want && b.OnTapped != nil {
+						b.OnTapped()
+						journeySettle()
+						return
+					}
+				}
+			}
+			err = fmt.Errorf("loupe keyboard handler not registered")
+			return
+		}
+		fn(rune('0' + n))
+		journeySettle()
+	})
+	return err
+}
+
+func journeyResetFilters(shell fyne.CanvasObject) error {
+	if err := journeyTapButton(shell, "Reset filters"); err == nil {
+		return nil
+	}
+	if err := journeySetSelectAt(shell, 0, reviewCollectionSentinel); err != nil {
+		return err
+	}
+	if err := journeySetSelectAt(shell, 1, reviewRatingAny); err != nil {
+		return err
+	}
+	return journeySetSelectAt(shell, 2, reviewTagAny)
+}
+
 func journeyFindLoupeClose(win fyne.Window) (*widget.Button, error) {
 	overs := win.Canvas().Overlays().List()
 	for i := len(overs) - 1; i >= 0; i-- {
@@ -274,4 +456,64 @@ func journeyFindLoupeClose(win fyne.Window) (*widget.Button, error) {
 		}
 	}
 	return nil, fmt.Errorf("loupe Close not found")
+}
+
+func journeyTapLoupeButton(win fyne.Window, label string) error {
+	var err error
+	journeyOnMain(func() {
+		overs := win.Canvas().Overlays().List()
+		for i := len(overs) - 1; i >= 0; i-- {
+			for _, b := range collectButtonsDeep(overs[i]) {
+				if b.Text == label && b.OnTapped != nil {
+					b.OnTapped()
+					journeySettle()
+					return
+				}
+			}
+		}
+		err = fmt.Errorf("loupe button %q not found", label)
+	})
+	return err
+}
+
+func journeyLoupeShareRejectedBlock(db *sql.DB, win fyne.Window) error {
+	id := getUXCaptureLoupeAssetID()
+	if id <= 0 {
+		return fmt.Errorf("loupe share rejected block: no asset in loupe")
+	}
+	if _, err := store.RejectAsset(db, id, time.Now().Unix()); err != nil {
+		return err
+	}
+	return journeyTapLoupeButton(win, "Share…")
+}
+
+func journeySimulateUploadDrop(path string) error {
+	if uxJourneyUploadDropFn == nil {
+		return fmt.Errorf("upload drop simulator not registered")
+	}
+	if path == "" {
+		return fmt.Errorf("empty drop path")
+	}
+	var err error
+	journeyOnMain(func() {
+		uxJourneyUploadDropFn([]fyne.URI{storage.NewFileURI(path)})
+		journeySettle()
+	})
+	return err
+}
+
+func journeyToggleAppTheme(win fyne.Window, light bool) {
+	journeyOnMain(func() {
+		v := theme.VariantDark
+		if light {
+			v = theme.VariantLight
+		}
+		if app := fyne.CurrentApp(); app != nil {
+			app.Settings().SetTheme(NewPhotoToolTheme(v))
+		}
+		if c := win.Content(); c != nil {
+			c.Refresh()
+		}
+		journeySettle()
+	})
 }

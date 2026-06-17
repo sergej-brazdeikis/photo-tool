@@ -1,6 +1,7 @@
 package extended
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -35,12 +36,14 @@ func BuildIssueQueue(runDir string) ([]Issue, error) {
 			return nil
 		}
 		step := strings.TrimSuffix(filepath.Base(path), ".md")
+		layer := inferScaleStepLayer(runDir, step)
+		evidence := scaleStepEvidence(runDir, step)
 		add(Issue{
 			Flow:          inferFlowFromStep(step),
 			Step:          step,
-			Layer:         LayerStepUX,
+			Layer:         layer,
 			ParallelGroup: inferParallelGroup(inferFlowFromStep(step)),
-			Evidence:      []string{rel(runDir, path), "ui-real/steps.json"},
+			Evidence:      evidence,
 			Summary:       fmt.Sprintf("Step UX judge failed for %s", step),
 			Acceptance:    fmt.Sprintf("STEP_UX_RESULT=pass in verdicts/steps/%s.md after re-run", step),
 		})
@@ -67,7 +70,7 @@ func BuildIssueQueue(runDir string) ([]Issue, error) {
 		return nil
 	})
 
-	for _, g := range []string{"epic1_foundation", "epic1_cli", "epic1_upload", "epic2_review", "epic2_layout", "epic3_share", "epic4_packages", "root_ci", "go-test", "go-test-ci", "go-test-e2e"} {
+	for _, g := range []string{"epic1_foundation", "epic1_cli", "epic1_upload", "epic2_review", "epic2_layout", "epic3_share", "epic4_packages", "root_ci", "go-test", "go-test-ci", "go-test-e2e", "scale_unit", "scale_nfr02", "scale_cli_deep", "scale_share_http", "scale_share_reject", "scale_ingest", "scale_app"} {
 		logPath := filepath.Join(runDir, "logs", g+".txt")
 		data, err := os.ReadFile(logPath)
 		if err != nil {
@@ -75,8 +78,12 @@ func BuildIssueQueue(runDir string) ([]Issue, error) {
 		}
 		body := string(data)
 		if strings.Contains(body, "FAIL") || strings.Contains(body, "--- FAIL:") {
+			layer := LayerFunctional
+			if strings.HasPrefix(g, "scale_") {
+				layer = LayerScaleFunctional
+			}
 			add(Issue{
-				Layer:         LayerFunctional,
+				Layer:         layer,
 				ParallelGroup: inferGroupFromLogName(g),
 				Evidence:      []string{"logs/" + g + ".txt"},
 				Summary:       fmt.Sprintf("Functional tests failed in %s", g),
@@ -143,15 +150,79 @@ func inferParallelGroup(flow string) string {
 
 func inferGroupFromLogName(name string) string {
 	switch {
-	case strings.HasPrefix(name, "epic1"):
+	case strings.HasPrefix(name, "epic1"), name == "scale_nfr02", name == "scale_ingest":
 		return "epic-1"
-	case strings.HasPrefix(name, "epic2"):
+	case strings.HasPrefix(name, "epic2"), name == "scale_unit", name == "scale_app":
 		return "epic-2"
-	case strings.HasPrefix(name, "epic3"):
+	case strings.HasPrefix(name, "epic3"), name == "scale_share_http", name == "scale_share_reject":
 		return "epic-3"
 	case strings.HasPrefix(name, "epic4"):
 		return "epic-4"
+	case name == "scale_cli_deep":
+		return "epic-1"
 	default:
 		return "root"
 	}
+}
+
+func inferScaleStepLayer(runDir, step string) Layer {
+	entries, err := os.ReadDir(runDir)
+	if err != nil {
+		return LayerStepUX
+	}
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), "ui-real") {
+			continue
+		}
+		dir := e.Name()
+		if !stepInCaptureDir(runDir, dir, step) {
+			continue
+		}
+		switch {
+		case dir == "ui-real-scale":
+			return LayerUxScaleSpot
+		case strings.HasPrefix(dir, "ui-real-edge"):
+			return LayerUxEdge
+		case dir == "ui-real-layout":
+			return LayerUxLayout
+		}
+	}
+	return LayerStepUX
+}
+
+func stepInCaptureDir(runDir, dir, step string) bool {
+	data, err := os.ReadFile(filepath.Join(runDir, dir, "steps.json"))
+	if err != nil {
+		return false
+	}
+	var m struct {
+		Steps []struct {
+			ID string `json:"id"`
+		} `json:"steps"`
+	}
+	if json.Unmarshal(data, &m) != nil {
+		return false
+	}
+	for _, s := range m.Steps {
+		if s.ID == step {
+			return true
+		}
+	}
+	return false
+}
+
+func scaleStepEvidence(runDir, step string) []string {
+	out := []string{filepath.ToSlash(filepath.Join("verdicts", "steps", step+".md"))}
+	entries, _ := os.ReadDir(runDir)
+	for _, e := range entries {
+		if !e.IsDir() || !strings.HasPrefix(e.Name(), "ui-real") {
+			continue
+		}
+		dir := e.Name()
+		if stepInCaptureDir(runDir, dir, step) {
+			out = append(out, filepath.ToSlash(filepath.Join(dir, "steps.json")))
+			break
+		}
+	}
+	return out
 }

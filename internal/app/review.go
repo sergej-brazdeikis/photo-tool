@@ -329,17 +329,6 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		}
 		f := buildFilters()
 		n, qerr := store.CountAssetsForReview(db, f)
-		// When results fit in one page, the first list query is the source of truth for how many
-		// tiles the grid can show — keep the count line aligned with visible thumbnails (tag/collection
-		// drift or COUNT vs list edge cases should not disagree in that window).
-		if qerr == nil && n < int64(reviewGridPageSize) {
-			if rows0, rerr := store.ListAssetsForReview(db, f, reviewGridPageSize, 0); rerr == nil {
-				ln := int64(len(rows0))
-				if ln < int64(reviewGridPageSize) {
-					n = ln
-				}
-			}
-		}
 		if qerr != nil {
 			msg := fmt.Sprintf("Matching assets: — (%s)", libraryErrText(qerr))
 			if listErr != nil {
@@ -742,6 +731,7 @@ func NewReviewView(win fyne.Window, db *sql.DB, libraryRoot string, registerUndo
 		if grid == nil || win == nil {
 			return
 		}
+		refreshReviewData()
 		f := buildFilters()
 		ids, err := store.ListAssetIDsForReview(db, f)
 		openPackageShareFromReview(win, grid, ids, err)

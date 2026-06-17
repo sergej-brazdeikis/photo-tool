@@ -76,10 +76,26 @@ Hands-free extended testing: functional + real-app UX capture + step/flow judges
 |----------|-------------|
 | `PHOTO_TOOL_GUI_E2E_LINUX` | Must be `1` for real-binary journey in `main.go` and `tests/gui_linux/`. |
 | `PHOTO_TOOL_UX_CAPTURE_APP_MODE` | `real_binary` for authoritative `step_ux` / `flow_ux` PNGs (Tier B). |
-| `PHOTO_TOOL_UX_CAPTURE_FLOWS` | Comma-separated flow filter (`upload,review`, …) for parallel capture shards. |
+| `PHOTO_TOOL_UX_CAPTURE_FLOWS` | Comma-separated flow filter (`upload,review`, `scale_spot`, `edge`, `layout`, …). |
+| `PHOTO_TOOL_UX_FIXTURE_SCALE` | Scale tier preset `S0`–`S8` for library seed (`S1` default, `S4`/`S5` for scale UX). |
+| `PHOTO_TOOL_SCALE_TIER` | Tier for `extended-test-run.sh --layer=scale_ux` (default `S4`). |
 | `PHOTO_TOOL_UX_CAPTURE_SOFTWARE_SUBDIR` | Set to `ui-software` when running Tier A software-driver capture via extended runner. |
 | `EXTENDED_LOOP_MAX` | Max rounds for `extended-test-loop.sh` (default `20`). |
 | `EXTENDED_PARALLEL_FIX` | Concurrent fix agents (default `4`). |
 | `EXTENDED_USE_XVFB` | Set by setup when `DISPLAY` unset and `xvfb-run` is available. |
 
-Scripts: [`scripts/extended-test-setup.sh`](../scripts/extended-test-setup.sh), [`scripts/extended-test-run.sh`](../scripts/extended-test-run.sh), [`scripts/extended-test-loop.sh`](../scripts/extended-test-loop.sh). Matrix package: [`tests/extended/`](../tests/extended/).
+Scripts: [`scripts/extended-test-setup.sh`](../scripts/extended-test-setup.sh), [`scripts/extended-test-run.sh`](../scripts/extended-test-run.sh), [`scripts/extended-test-loop.sh`](../scripts/extended-test-loop.sh). Matrix package: [`tests/extended/`](../tests/extended/). Scale fixture CLI: `go run ./tests/extended/cmd/seed-library -out LIB -tier S4`.
+
+### Scale tiers (volume / UX limits)
+
+| Tier | Assets | Use |
+|------|--------|-----|
+| S0 | 0 | Empty-library UX |
+| S1 | 3 | Default UX journey |
+| S4 | 96 | Grid paging (2×48) |
+| S5 | 500 | Package cap boundary; tag bulk |
+| S5R | 500 rejected | Rejected grid at volume |
+| S6 | 501 | Over package cap |
+| S8 | 10k files | NFR-02 CLI scan tree (filesystem only) |
+
+Make targets: `make scale-test` (unit, `-short`), `make extended-test-scale` (functional only), `make extended-test-scale-ux` (real-binary capture + `scale-report.html`).
